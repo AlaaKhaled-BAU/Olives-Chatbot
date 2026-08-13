@@ -17,7 +17,8 @@ Match verified after `rsync -a` (including `.obsidian/`).
 ## Git
 
 - `git init` in `/media/alaa/data/client-chatbot`
-- Initial commit: **`a0506d8b6134c2d05219ea3f32bef48c3a714b55`**
+- Initial extract commit: **`a0506d8b6134c2d05219ea3f32bef48c3a714b55`**
+- HEAD (includes this receipt): **`a6331b538f1573d5ab18103eb36909c95eab528f`**
 - **2772** files tracked (vault 2659 + chatbot source + knowledge + MCP + graph)
 - Not pushed (per instructions)
 
