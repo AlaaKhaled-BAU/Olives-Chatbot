@@ -1,6 +1,6 @@
 # Tool Review — Grilled Against the client-chatbot Plan
 
-> Companion to [RESEARCH-RAW.md](RESEARCH-RAW.md). Each tool judged on one question: **does it beat what we already have for THIS project (or clearly enhance the general workflow), or is it solving a different problem?** Not a dictator — where a tool is genuinely worth a plan change, it says so and shows both sides. Where the research's numbers look speculative (near-future versions, thin repos), adopt candidates are tagged *verify before betting*.
+> Standalone cleanup removed the raw research archive; decisions live here and in `PLAN.md`. Each tool judged on one question:
 
 ---
 

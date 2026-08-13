@@ -5,6 +5,8 @@ __pycache__/
 .pytest_cache/
 docs_corpus/
 *.bak
+.~lock.*
+**/.~lock.*
 
 # C2 (2026-07-26): clients/*.yaml used to hold api_token in plaintext and was
 # git-tracked -- both live tokens were committed. Now api_token_env only

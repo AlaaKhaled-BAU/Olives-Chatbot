@@ -15,7 +15,7 @@ This repository is a **standalone extract** of the Olives client chatbot pilot f
 | `api/`, `core/`, `static/` | FastAPI app, SQL gate, UI |
 | `clients/` | Per-client yaml (`clients/_example.yaml` template); **no secrets in yaml** |
 | `db/*.sql` | Read-only login + tenant `t.` views (server-side wall) |
-| `gateway/` | LiteLLM / OmniRoute — **LLM API keys live here only** |
+| `gateway/` | OmniRoute client config docs; optional LiteLLM `litellm.config.yaml` |
 | `knowledge/` | FTS corpus sources (reference, back-office, front-office, support-agent) |
 | `docs_corpus/` | **Derived** — gitignored symlinks; regenerate with `setup/04_assemble_docs_corpus.py` |
 | `obsidian/olives/` | Obsidian vault (schema notes, tables, procedures, relations) — **2659 files, track as-is** |
@@ -35,7 +35,7 @@ This repository is a **standalone extract** of the Olives client chatbot pilot f
 ## Secrets and tenant wall
 
 - **Tenant bearer tokens:** only in `.env` (gitignored). Each `clients/*.yaml` names its var via `api_token_env`; never put token values in yaml.
-- **LLM keys:** only in `gateway/.env` (gitignored). Never in `core/`, logs, or client yaml.
+- **LLM:** OmniRoute at `GATEWAY_URL` (default `http://localhost:20128/v1`). App key in `.env` as `GATEWAY_API_KEY`. Provider keys in `~/.omniroute` via `omniroute keys`.
 - **Never commit:** `.env`, `gateway/.env`, `work/`, real `clients/*.yaml`, `*.bak`, gateway keys, `MASTER_KEY`, `GATEWAY_API_KEY`.
 - **Tenant wall:** app connects as **`chatbot_ro`** + tenant-scoped **`t.` views** + `SESSION_CONTEXT` (`CompanyID`). **Never** use IIS `cds` credentials from customer `Web.config`.
 - **One SQL implementation:** `core/sql.py` + `core/gate.py`. All SQL paths go through the gate.

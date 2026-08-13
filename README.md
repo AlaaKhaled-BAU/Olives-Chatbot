@@ -1,6 +1,6 @@
 # Olives Client Chatbot — Pilot
 
-**Standalone repo.** Extracted from olives `apps/client-chatbot` with vault (`obsidian/olives/`), MCP (`obsidian-mcp-server.py`), and FTS sources (`knowledge/`). Agent/orchestration notes: `AGENTS.md` and `docs/extract-notes/`. Regenerate derived `docs_corpus/` via `setup/04_assemble_docs_corpus.py`.
+**Standalone repo.** Vault (`obsidian/olives/`), MCP (`obsidian-mcp-server.py`), FTS sources (`knowledge/`). See `AGENTS.md`. Regenerate `docs_corpus/` via `setup/04_assemble_docs_corpus.py`.
 
 Read-only reporting chatbot over the Olives back-office DB. Pilot-grade: real service, key custody,
 memory/cache, tracing, multi-client by config — between a bare MCP and full production.
@@ -15,7 +15,7 @@ Full build steps: **[PLAN.md](PLAN.md)**. Tool decisions: **[TOOLS-REVIEW.md](TO
    yaml names its var via `api_token_env`; the token value itself never goes in the yaml — see C2).
 2. `set -a && source .env && set +a`          # load tenant tokens into the environment
 3. `python3.13 setup/01_db_up.py`            # boot SQL Server (Docker) + restore the test DB
-4. start the gateway (see `gateway/README.md`) # LiteLLM or OmniRoute, Claude-pinned + fallback
+4. ensure OmniRoute is running (see `gateway/README.md`) — `omniroute serve --port 20128`
 5. `uvicorn api.server:app`                   # chat + /health + /metrics
 6. `python3.13 evals/run_evals.py`            # accuracy + isolation pass/fail
 

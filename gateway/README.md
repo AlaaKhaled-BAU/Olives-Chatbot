@@ -1,30 +1,39 @@
 # Gateway
 
-Key custody lives here ONLY (PLAN.md golden rule 4). `core/` and `api/` never
-see `LLM_API_KEY` or `GEMINI_KEY` -- they call `http://localhost:4000` with no key.
+**Active:** [OmniRoute](https://github.com/diegosouzapw/OmniRoute) on `http://localhost:20128/v1`.
 
-## Run
+Provider keys (Gemini, OpenRouter, etc.) live in OmniRoute (`omniroute keys list`), not in this repo.
+The chatbot app sends `GATEWAY_API_KEY` from the repo-root `.env` when calling OmniRoute.
+
+## Run OmniRoute
+
+```bash
+omniroute serve --port 20128
+# or daemon: omniroute serve --port 20128 --no-open --daemon
+```
+
+Set in repo-root `.env`:
 
 ```
-cp gateway/.env.example gateway/.env   # paste LLM_API_KEY (Claude); GEMINI_KEY is the fallback
-set -a && source gateway/.env && set +a
-litellm --config gateway/litellm.config.yaml --port 4000
+GATEWAY_URL=http://localhost:20128/v1
+GATEWAY_API_KEY=<your-omniroute-client-key>
+CHATBOT_MODEL=auto/best-coding
 ```
 
-Claude (`chatbot`, primary) and Gemini (`chatbot`, fallback) share one model
-alias -- `core/llm.py` only ever asks for `"chatbot"`. On primary outage
-(bad/missing key, rate limit, etc.) LiteLLM retries the fallback
-automatically. Cache is in-memory for pilot (`cache_params.type: local`);
-swap to `type: redis` (`docker run -p 6379:6379 redis`) when HA matters.
+## Verify
 
-## Verify it's working
-
-```
-curl -s -i -X POST http://localhost:4000/chat/completions \
+```bash
+set -a && source ../.env && set +a
+curl -s -X POST http://localhost:20128/v1/chat/completions \
+  -H "Authorization: Bearer $GATEWAY_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"chatbot","messages":[{"role":"user","content":"hi"}]}'
+  -d "{\"model\":\"$CHATBOT_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":20}"
 ```
 
-A repeat of the exact same request should come back with an
-`x-litellm-cache-key` header and a near-zero `x-litellm-response-duration-ms`
--- that's the cache hit.
+## LiteLLM (optional fallback)
+
+`litellm.config.yaml` is kept for a self-hosted LiteLLM path. To use it instead:
+
+1. Put provider keys in `gateway/.env` (`GEMINI_KEY`, `DEEPSEEK_KEY`, `MASTER_KEY`)
+2. `litellm --config gateway/litellm.config.yaml --port 4000`
+3. Point `.env` at `GATEWAY_URL=http://localhost:4000` and `CHATBOT_MODEL=chatbot`

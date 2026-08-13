@@ -32,7 +32,7 @@ _client = OpenAI(
     timeout=30.0,
 )
 
-MODEL = "chatbot"  # the only model name core/ knows; the gateway maps it to Claude/Gemini
+MODEL = os.environ.get("CHATBOT_MODEL", "auto/best-coding")
 
 
 def complete(messages, retries: int = 3, **kwargs):
