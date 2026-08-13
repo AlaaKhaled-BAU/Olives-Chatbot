@@ -44,9 +44,10 @@ This repository is a **standalone extract** of the Olives client chatbot pilot f
 
 ## SQL Server / IIS target
 
-- Production: customer **Windows IIS** host with **Olives_BO** + **OSFA_DB** on their SQL Server instance.
-- The **circle widget is not built yet**; this repo is the service backend + pilot UI.
-- Local dev: Docker SQL Server via **drift-tool** (see below) — not the production path.
+- **Production:** customer Windows IIS host, **`Olives_BO`** on their SQL Server (same pattern as `Web.config` `CNNStr`, but app uses **`chatbot_ro`**, not `cds`).
+- **Local dev (default):** native instance on **`DB_PORT=1433`** — your local `mssql` container or Azure Data Studio connection. Databases found on this machine: `Olives_BO`, `OSFA_DB`, `olives_PEEK`.
+- Bootstrap once: `python3.13 setup/native_bootstrap.py --client morec`
+- Legacy Docker scratch (port 14330): `setup/01_db_up.py --mode docker` + olives `drift-tool`
 
 ## Local Docker / drift-tool (dev only)
 

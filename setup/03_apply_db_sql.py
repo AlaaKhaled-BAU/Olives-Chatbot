@@ -21,13 +21,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORK_DIR = REPO_ROOT / "work"
 DB_DIR = REPO_ROOT / "db"
-DRIFT_TOOL_ROOT = Path(
-    os.environ.get("DRIFT_TOOL_ROOT", "/media/alaa/data/olives/apps/drift-tool")
-)
-sys.path.insert(0, str(DRIFT_TOOL_ROOT))
+sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(REPO_ROOT / "setup"))
 
 import pymssql  # noqa: E402
-from drift import config  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import db_connect  # noqa: E402
 
 GO_SPLIT = re.compile(r"^\s*GO\s*$", re.IGNORECASE | re.MULTILINE)
 
@@ -37,11 +37,7 @@ def log(msg):
 
 
 def connect(db_name):
-    return pymssql.connect(
-        server="127.0.0.1", port=config.HOST_PORT,
-        user=config.SA_USER, password=config.SA_PASSWORD,
-        database=db_name, autocommit=True, timeout=60, login_timeout=10,
-    )
+    return db_connect.sa_connect(database=db_name, autocommit=True, timeout=60)
 
 
 def run_script(cur, text, replacements):

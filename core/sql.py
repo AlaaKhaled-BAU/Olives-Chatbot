@@ -27,7 +27,7 @@ def get_conn(client: str):
     db_name = config.load_client(client)["db_name"]
     return pymssql.connect(
         server=os.environ.get("DB_HOST", "127.0.0.1"),
-        port=int(os.environ.get("DB_PORT", 14330)),
+        port=int(os.environ.get("DB_PORT", "1433")),
         user="chatbot_ro",
         password=_ro_password(),
         database=db_name,

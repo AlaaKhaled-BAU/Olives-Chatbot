@@ -29,14 +29,10 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DRIFT_TOOL_ROOT = Path(
-    os.environ.get("DRIFT_TOOL_ROOT", "/media/alaa/data/olives/apps/drift-tool")
-)
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(DRIFT_TOOL_ROOT))
+sys.path.insert(0, str(REPO_ROOT / "setup"))
+import db_connect  # noqa: E402
 import pymssql  # noqa: E402
-from drift import config as drift_config  # noqa: E402
-
 from core import config as client_config  # noqa: E402
 from core import memory  # noqa: E402
 
@@ -45,11 +41,7 @@ def _drop_orphaned_tenant_views(db_name: str):
     """A t.<name> view whose backing dbo.<name> table no longer exists is
     dead weight left by a table rename/removal -- 02_tenant_views.sql never
     cleans these up on its own (see module docstring)."""
-    conn = pymssql.connect(
-        server="127.0.0.1", port=drift_config.HOST_PORT,
-        user=drift_config.SA_USER, password=drift_config.SA_PASSWORD,
-        database=db_name, autocommit=True,
-    )
+    conn = db_connect.sa_connect(database=db_name, autocommit=True)
     cur = conn.cursor()
     cur.execute("SELECT name FROM sys.views WHERE schema_id = SCHEMA_ID('t')")
     view_names = [row[0] for row in cur.fetchall()]

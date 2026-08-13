@@ -6,22 +6,23 @@ Read-only reporting chatbot over the Olives back-office DB. Pilot-grade: real se
 memory/cache, tracing, multi-client by config — between a bare MCP and full production.
 Full build steps: **[PLAN.md](PLAN.md)**. Tool decisions: **[TOOLS-REVIEW.md](TOOLS-REVIEW.md)**.
 
-> **Local Docker restore** (`setup/01_db_up.py` etc.) still expects olives `apps/drift-tool` on disk (or env `DRIFT_TOOL_ROOT`). Production connects to customer SQL Server as `chatbot_ro` — see `AGENTS.md`.
+> **Native SQL Server** (port 1433, Azure Data Studio / local `mssql` container) is the default dev path — see **Run** below. Legacy Docker scratch DB: `setup/01_db_up.py --mode docker` + `DRIFT_TOOL_ROOT`.
 
-**Main DB backups** (gitignored, ~4.7 GB): `data/db-snapshots/backup test/` — `105/` (master) + `morec/` (pilot client). Default restore: `morec/Olives_BO.bak`. Source copy also at `/media/alaa/data/olives/data/db-snapshots/backup test/`.
+**Main DB backups** (gitignored, ~4.7 GB): `data/db-snapshots/backup test/`. Mount parent folder into SQL Server as `/snapshots` for `RESTORE`.
 
-## Run (after the phases in PLAN.md are built)
-1. `cp .env.example .env`, fill in `OLIVES_TOKEN_<CLIENT>` for each client in `clients/*.yaml` (each
-   yaml names its var via `api_token_env`; the token value itself never goes in the yaml — see C2).
-2. `set -a && source .env && set +a`          # load tenant tokens into the environment
-3. `python3.13 setup/01_db_up.py`            # boot SQL Server (Docker) + restore the test DB
-4. ensure OmniRoute is running (see `gateway/README.md`) — `omniroute serve --port 20128`
-5. `uvicorn api.server:app`                   # chat + /health + /metrics
-6. `python3.13 evals/run_evals.py`            # accuracy + isolation pass/fail
+## Run
 
-> `python3.13` only. Never connect as SA from the app — the read-only login + tenant views are the wall.
-> The LLM API key lives only in the gateway, never in `core/` or logs. Tenant bearer tokens live only
-> in `.env` (gitignored), never in `clients/*.yaml` (git-tracked) -- see PLAN-04 §C2.
+1. `cp .env.example .env` — set `DB_SA_PASSWORD`, `GATEWAY_API_KEY`, tenant tokens
+2. `set -a && source .env && set +a`
+3. Bootstrap the DB (skip if already done):
+   - **DB already exists** (`Olives_BO` on your instance):  
+     `python3.13 setup/native_bootstrap.py --client morec`
+   - **Restore from `.bak` first**:  
+     `python3.13 setup/01_db_up.py --mode native --db-name Olives_BO` then bootstrap as above
+4. `./run.sh` or manually: OmniRoute on `:20128` + `uvicorn api.server:app --port 8100`
+5. `python3.13 evals/run_evals.py` (optional gate)
+
+> `python3.13` only. App connects as **`chatbot_ro`** + tenant `t.` views — never SA, never IIS `cds`.
 
 ## Client schema changed? (renamed column, new table, new/changed procedure)
 

@@ -4,8 +4,7 @@ set -e
 export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$PATH"
 cd "$(dirname "$0")"
 
-echo "Checking SQL Server container (drift-tool-mssql)..."
-docker start drift-tool-mssql >/dev/null 2>&1 || echo "  (not running — skip if using remote SQL)"
+echo "Using SQL Server at ${DB_HOST:-127.0.0.1}:${DB_PORT:-1433} (set in .env)"
 
 if curl -sf http://localhost:20128/v1/models >/dev/null 2>&1; then
   echo "OmniRoute gateway OK on :20128"

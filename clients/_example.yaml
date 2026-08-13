@@ -1,5 +1,5 @@
 # Template for a new client. Copy to clients/<name>.yaml.
-db_name: chatbot_dbN            # restored via setup/01_db_up.py --db-name
+db_name: Olives_BO            # live catalog on the customer's SQL Server instance
 company_scope: single           # single | multi -- informational; params.py's
                                  # discover_profile() derives the real answer
                                  # from a live distinct-count probe, never this file
