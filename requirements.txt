@@ -1,0 +1,9 @@
+fastapi==0.129.0
+uvicorn==0.41.0
+pymssql==2.3.13
+pyyaml==6.0.1
+sqlglot==30.13.0
+openai==2.31.0
+litellm[proxy]==1.93.0
+prometheus-client
+slowapi==0.1.9

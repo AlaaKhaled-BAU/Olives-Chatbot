@@ -1,0 +1,14 @@
+# Template for a new client. Copy to clients/<name>.yaml.
+db_name: chatbot_dbN            # restored via setup/01_db_up.py --db-name
+company_scope: single           # single | multi -- informational; params.py's
+                                 # discover_profile() derives the real answer
+                                 # from a live distinct-count probe, never this file
+name_aliases: [ClientShortName] # this client's own name-suffixed procs
+                                 # (core/catalog.py) -- include known
+                                 # misspellings/variants if any (see morec.yaml)
+locale: ar
+api_token_env:                  # REQUIRED. Name of an env var (set in client-chatbot/.env, gitignored) holding
+                                 # the token. Generate the value with:
+                                 # `python3.13 -c "import secrets;print(secrets.token_urlsafe(32))"`
+                                 # The token itself must NEVER be written into this file -- clients/*.yaml is
+                                 # git-tracked, .env is not.

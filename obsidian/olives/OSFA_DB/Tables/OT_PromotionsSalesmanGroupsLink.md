@@ -1,0 +1,63 @@
+---
+type: table
+database: OSFA_DB
+name: OT_PromotionsSalesmanGroupsLink
+schema: dbo
+tags: [#mobile, #reference, #sales]
+foreign_keys:
+referenced_by:
+support_relevance: high
+last_verified: 2026-07-05
+---
+# OT_PromotionsSalesmanGroupsLink
+
+
+
+## Business Purpose
+> [!warning] AUTO-GENERATED — verify before trusting
+
+Tablet-side data table in OSFA_DB, synced to/from Back Office.
+
+## Columns
+| Column | Type | Nullable | PK | FK | References |
+|--------|------|----------|----|----|------------|
+| CompNo | smallint | NO | ✓ |  |  |
+| SalesmanNo | int | NO | ✓ |  |  |
+| PromotionCode | nvarchar | YES | ✓ |  |  |
+| SalesmanGroup_ID | nvarchar | YES | ✓ |  |  |
+## Primary Key
+CompNo
+SalesmanNo
+PromotionCode
+SalesmanGroup_ID
+## Foreign Keys
+(none)
+## Impact / Procedures Using This Table
+
+_No procedures reference this table in the dependency graph._
+
+## Estimated Size / Volatility
+Typical business table
+## Common Issues
+
+
+- **Missing route assignment**: Salesperson has no RouteID — cannot see customers on tablet
+- **Item balance mismatch**: Van stock differs from SalesPersonsItemsBalance — run stock-taking proc
+- **Device permission missing**: No device permission record — tablet app features unavailable
+- **Target not calculated**: Monthly targets missing — dashboard shows zero achievement
+
+## Related
+
+
+- [[_MOC-OSFA_DB|OSFA_DB MOC]]
+- [[OT_PaymentsTypes]]
+- [[OT_RequestToChangeInvoicePaymentType]]
+- [[OT_PromotionsCustomersGroupsLink]]
+- [[OT_LinkedSalesman]]
+- [[OT_PromotionsCondUnCodInput]]
+- [[OT_PromotionsHeaders]]
+
+- [[OT_CustomersItemsAssigment]]
+- [[OT_Banks]]
+- [[OT_CompanyBranches]]
+- [[Glossary]]

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Olives — مساعد البيانات</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>مساعد بيانات Olives</h1>
+    <div id="auth-bar">
+      <input id="token" type="password" placeholder="رمز الدخول" autocomplete="off">
+      <button id="connect-btn" type="button">دخول</button>
+      <span id="auth-status"></span>
+    </div>
+  </header>
+  <main id="messages" aria-live="polite"></main>
+  <form id="ask-form">
+    <input id="question" type="text" placeholder="اسأل عن بياناتك..." autocomplete="off" required disabled>
+    <button type="submit" disabled>إرسال</button>
+  </form>
+  <script src="/app.js"></script>
+</body>
+</html>

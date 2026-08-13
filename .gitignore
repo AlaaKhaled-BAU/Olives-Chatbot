@@ -1,0 +1,15 @@
+.env
+gateway/.env
+work/
+__pycache__/
+.pytest_cache/
+docs_corpus/
+*.bak
+
+# C2 (2026-07-26): clients/*.yaml used to hold api_token in plaintext and was
+# git-tracked -- both live tokens were committed. Now api_token_env only
+# (the actual value lives in .env, already ignored above). Ignore real client
+# configs; keep the template tracked so `git status` still shows new clients
+# needing setup.
+clients/*.yaml
+!clients/_example.yaml

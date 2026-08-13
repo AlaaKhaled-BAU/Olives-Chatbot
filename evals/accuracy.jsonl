@@ -1,0 +1,12 @@
+{"name": "company_count_ar", "client": "morec", "lang": "ar", "question": "كم عدد الشركات؟", "expect_contains_any": ["1", "واحدة"]}
+{"name": "customer_count_ar", "client": "morec", "lang": "ar", "question": "كم عدد العملاء؟", "expect_contains": ["33517"]}
+{"name": "customer_count_en", "client": "morec", "lang": "en", "question": "How many customers are there in total?", "expect_contains": ["33517"]}
+{"name": "usecase1_device_permissions_en", "client": "morec", "lang": "en", "question": "Which salespersons are allowed to make sales invoices from their device? How many are there?", "expect_contains": ["65"]}
+{"name": "usecase1_device_permissions_ar", "client": "morec", "lang": "ar", "question": "كم عدد مندوبي المبيعات المسموح لهم بإصدار فواتير مبيعات من أجهزتهم؟", "expect_contains": ["65"]}
+{"name": "usecase2_bestseller_per_pricelist", "client": "morec", "lang": "en", "question": "What is the best-selling item for each price list?", "expect_refusal": true}
+{"name": "nonexistent_salesperson", "client": "morec", "lang": "en", "question": "What is the name of the salesperson with ID 999999?", "expect_refusal": true}
+{"name": "out_of_domain", "client": "morec", "lang": "en", "question": "What's the weather like today?", "expect_refusal": true}
+{"name": "subjective_no_metric_ar", "client": "morec", "lang": "ar", "question": "من هو أفضل موظف في الشركة ولماذا؟", "expect_refusal": true}
+{"name": "salesperson_count_en", "client": "morec", "lang": "en", "question": "How many salespersons does this company have?", "expect_contains": ["67"]}
+{"name": "budget_orders_month_over_month_en", "client": "morec", "lang": "en", "question": "Compare the number of orders placed in June 2026 with July 2026.", "expect_contains_any": ["114", "37"]}
+{"name": "budget_item_growth_two_months_en", "client": "morec", "lang": "en", "question": "Which item had the largest increase in quantity ordered from May 2026 to June 2026?", "expect_contains_any": ["136", "مكسرات شرقية كبير"]}

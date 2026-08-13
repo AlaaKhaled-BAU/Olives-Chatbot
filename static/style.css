@@ -1,0 +1,203 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, "Segoe UI", Tahoma, sans-serif;
+}
+
+body {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #8884;
+  padding-bottom: 0.5rem;
+}
+
+header h1 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+#auth-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+#auth-bar input {
+  width: 8.5rem;
+  padding: 0.3rem 0.5rem;
+}
+
+#auth-bar button {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+#auth-status.ok { color: #16a34a; }
+#auth-status.err { color: #dc2626; }
+
+#question:disabled,
+#ask-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.msg {
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.6rem;
+  max-width: 85%;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+/* flex-start/-end follow the page's RTL direction (start=right, end=left) --
+   inverted from the usual "mine=end" LTR convention so the user's own
+   messages still land on the right, matching Arabic chat-app norms
+   (WhatsApp/Telegram RTL keep sent-by-me on the right, not mirrored). */
+.msg.user {
+  align-self: flex-start;
+  background: #2563eb;
+  color: white;
+}
+
+.msg.bot {
+  align-self: flex-end;
+  background: #8883;
+}
+
+.msg.error {
+  align-self: flex-end;
+  background: #dc262633;
+}
+
+.msg.en {
+  direction: ltr;
+  text-align: left;
+}
+
+.feedback-row {
+  margin-top: 0.4rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.fb-btn {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.95rem;
+  background: none;
+  border: none;
+  line-height: 1;
+}
+
+.fb-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#ask-form {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #8884;
+}
+
+#question {
+  flex: 1;
+  padding: 0.6rem;
+  font-size: 1rem;
+}
+
+button {
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+}
+
+/* C8: insight presentation -- table/chart/sources/followups */
+.table-wrap {
+  margin-top: 0.6rem;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.result-table {
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.result-table th,
+.result-table td {
+  border: 1px solid #8884;
+  padding: 0.3rem 0.5rem;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.result-table th {
+  background: #8882;
+  font-weight: 600;
+}
+
+.csv-btn {
+  margin-top: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  background: none;
+  border: 1px solid #8886;
+  border-radius: 0.4rem;
+}
+
+.result-chart {
+  display: block;
+  margin-top: 0.6rem;
+  max-width: 100%;
+}
+
+.sources-row {
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  opacity: 0.65;
+}
+
+.followup-row {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.followup-chip {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  border: 1px solid #2563eb66;
+  border-radius: 1rem;
+  background: #2563eb14;
+  color: inherit;
+  cursor: pointer;
+}
+
+.followup-chip:hover {
+  background: #2563eb2a;
+}

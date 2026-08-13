@@ -1,0 +1,5 @@
+{"name": "docs_ot_invoicehf_mapping_en", "client": "morec", "lang": "en", "question": "What table does OT_InvoiceHF map to in the back-office (Olives_BO) database?", "expect_contains": ["TransactionsHeaders"]}
+{"name": "docs_routes_purpose_en", "client": "morec", "lang": "en", "question": "What are Routes used for in the Olives back office?", "expect_contains_any": ["fuel", "efficient", "customer locations", "salesman"]}
+{"name": "docs_system_option_344_en", "client": "morec", "lang": "en", "question": "What does system option number 344 control?", "expect_contains_any": ["Get My Location By Map", "location"]}
+{"name": "docs_system_option_157_ar", "client": "morec", "lang": "ar", "question": "ما هو خيار النظام رقم 157؟", "expect_contains_any": ["Cust LogOut GPS Check", "GPS"]}
+{"name": "docs_system_option_211_ar", "client": "morec", "lang": "ar", "question": "ما هو خيار النظام رقم 211؟", "expect_contains_any": ["No GPS Check For Non Route Customers", "GPS"]}

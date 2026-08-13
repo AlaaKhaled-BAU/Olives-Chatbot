@@ -1,0 +1,394 @@
+---
+type: procedure
+database: Olives_BO
+name: OT_SendSalesmanData_Test
+schema: dbo
+tags: [#maintenance]
+reads_from:
+  - Banks
+  - BanksAccounts
+  - BatchsItemsInfo
+  - Branches
+  - BusinessUnits
+  - CatalogMedia
+  - Checks
+  - ClientsActive
+  - Companies
+  - CompanyBranches
+  - CompetitiveItems
+  - ContractItems
+  - Contracts
+  - CouponsBooksDetails
+  - CouponsBooksHeaders
+  - Currencies
+  - CurrenciesRate
+  - CustomerChqList
+  - CustomerSalesByCategory
+  - CustomerStatmentOfAccount
+  - CustomerStockTacking
+  - CustomerStockTackingDetails
+  - Customers
+  - CustomersClasses
+  - CustomersGPSLocations
+  - CustomersGroups
+  - CustomersItemQtyLimit
+  - CustomersItemsAssigment
+  - CustomersMonthlyCollectionTarget
+  - CustomersPaidTransList
+  - CustomersReturnItemQtyLimit
+  - CustomersTypes
+  - CustomersVisitActivity
+  - DailyProcedures
+  - DeliveryCars
+  - DocumentsTypes
+  - Drawers
+  - ERPStores
+  - ImageTypes
+  - InvoiceDeliveryDF
+  - InvoiceDeliveryHF
+  - InvoiceHistoryDF
+  - InvoiceHistoryHF
+  - InvoiceReturnLink
+  - ItemsBarcodes
+  - ItemsCategStockHeader
+  - ItemsCategories
+  - ItemsPriceExceptions
+  - ItemsPriority
+  - ItemsSuggestGroupLink
+  - ItemsUnits
+  - ItemsUnitsDetails
+  - Locations
+  - LogActionTransaction
+  - NoTransactionsReasons
+  - OrdersDetails
+  - PaymentsOrders
+  - PaymentsTypes
+  - Positions
+  - PriceLists
+  - ProspectiveCustomers
+  - ReceiptRequests
+  - ReceiptRequestsInvoicesLink
+  - ReceiptRequestsSchedule
+  - Receipts_PaidTrans
+  - Receipts_PaidTransChecks
+  - ReprintReasons
+  - RoutesInformation
+  - SalesOrderDeliveryDF
+  - SalesOrderDeliveryHF
+  - SalesOrderHistoryDF
+  - SalesOrderHistoryHF
+  - SalesPersonCollectionsTargets
+  - SalesPersonContractsAssignment
+  - SalesPersonGroupItemBonusTarget
+  - SalesPersonGroupItemQtyLimit
+  - SalesPersonItemBonusTarget
+  - SalesPersonItemBonusTargetByCustomer
+  - SalesPersonItemsBalanceBatches
+  - SalesPersonItemsSalesUnits
+  - SalesPersonTargets
+  - SalesPersonTargetsDetails
+  - SalesPersonsAdditionalRoutes
+  - SalesPersonsDevicePermissions
+  - SalesPersonsGroups
+  - SalesPersonsRoutes
+  - SalespersonCustStockItemsTargetLink
+  - SalespersonRouteByDate
+  - SalespersonTargetReferenceFocusItem
+  - SalespersonsProcedures
+  - SalespersonsSecurity
+  - StoresBalances
+  - SurveyCustomers
+  - SurveySalesPersonsAssignment
+  - Surveys
+  - Surveys_Questions
+  - Surveys_Questions_Options
+  - TransactionsDetails
+  - TransactionsPromotions
+  - TransactionsTypes
+  - TransfersOrder_Auto
+writes_to:
+  - CompanyParameters
+  - CustomersFinancialDetails
+  - Items
+  - OT_SendLog
+  - OrdersHeaders
+  - Receipts
+  - SalesPersonItemsAssignment
+  - SalesPersonItemsBalance
+  - SalesPersonNotbookTransactionsSerials
+  - SalesPersonTransactionsSerials
+  - SalesPersonTransactionsSerialsMulti
+  - SalesPersons
+  - TransactionsHeaders
+  - TransfersOrdersHeaders
+  - WF_PositionsVer
+called_by:
+support_relevance: high
+last_verified: 2026-08-05
+status: documented
+---
+# OT_SendSalesmanData_Test
+
+## Purpose
+> [!warning] AUTO-GENERATED — verify before trusting
+Stored procedure in Olives_BO — reads 101 table(s); writes 15; calls 30 proc(s). See sections below for the full dependency map.
+## Parameters
+- @CompNo int
+- @SalesmanNo int
+- @SendDate smalldatetime
+## Tables Read
+- [[Banks]]
+- [[BanksAccounts]]
+- [[BatchsItemsInfo]]
+- [[Branches]]
+- [[BusinessUnits]]
+- [[CatalogMedia]]
+- [[Checks]]
+- [[ClientsActive]]
+- [[Companies]]
+- [[CompanyBranches]]
+- [[CompetitiveItems]]
+- [[ContractItems]]
+- [[Contracts]]
+- [[CouponsBooksDetails]]
+- [[CouponsBooksHeaders]]
+- [[Currencies]]
+- [[CurrenciesRate]]
+- [[CustomerChqList]]
+- [[CustomerSalesByCategory]]
+- [[CustomerStatmentOfAccount]]
+- [[CustomerStockTacking]]
+- [[CustomerStockTackingDetails]]
+- [[Customers]]
+- [[CustomersClasses]]
+- [[CustomersGPSLocations]]
+- [[CustomersGroups]]
+- [[CustomersItemQtyLimit]]
+- [[CustomersItemsAssigment]]
+- [[CustomersMonthlyCollectionTarget]]
+- [[CustomersPaidTransList]]
+- [[CustomersReturnItemQtyLimit]]
+- [[CustomersTypes]]
+- [[CustomersVisitActivity]]
+- [[DailyProcedures]]
+- [[DeliveryCars]]
+- [[DocumentsTypes]]
+- [[Drawers]]
+- [[ERPStores]]
+- [[ImageTypes]]
+- [[InvoiceDeliveryDF]]
+- [[InvoiceDeliveryHF]]
+- [[InvoiceHistoryDF]]
+- [[InvoiceHistoryHF]]
+- [[InvoiceReturnLink]]
+- [[ItemsBarcodes]]
+- [[ItemsCategStockHeader]]
+- [[ItemsCategories]]
+- [[ItemsPriceExceptions]]
+- [[ItemsPriority]]
+- [[ItemsSuggestGroupLink]]
+- [[ItemsUnits]]
+- [[ItemsUnitsDetails]]
+- [[Locations]]
+- [[LogActionTransaction]]
+- [[NoTransactionsReasons]]
+- [[OrdersDetails]]
+- [[PaymentsOrders]]
+- [[PaymentsTypes]]
+- [[Positions]]
+- [[PriceLists]]
+- [[ProspectiveCustomers]]
+- [[ReceiptRequests]]
+- [[ReceiptRequestsInvoicesLink]]
+- [[ReceiptRequestsSchedule]]
+- [[Receipts_PaidTrans]]
+- [[Receipts_PaidTransChecks]]
+- [[ReprintReasons]]
+- [[RoutesInformation]]
+- [[SalesOrderDeliveryDF]]
+- [[SalesOrderDeliveryHF]]
+- [[SalesOrderHistoryDF]]
+- [[SalesOrderHistoryHF]]
+- [[SalesPersonCollectionsTargets]]
+- [[SalesPersonContractsAssignment]]
+- [[SalesPersonGroupItemBonusTarget]]
+- [[SalesPersonGroupItemQtyLimit]]
+- [[SalesPersonItemBonusTarget]]
+- [[SalesPersonItemBonusTargetByCustomer]]
+- [[SalesPersonItemsBalanceBatches]]
+- [[SalesPersonItemsSalesUnits]]
+- [[SalesPersonTargets]]
+- [[SalesPersonTargetsDetails]]
+- [[SalesPersonsAdditionalRoutes]]
+- [[SalesPersonsDevicePermissions]]
+- [[SalesPersonsGroups]]
+- [[SalesPersonsRoutes]]
+- [[SalespersonCustStockItemsTargetLink]]
+- [[SalespersonRouteByDate]]
+- [[SalespersonTargetReferenceFocusItem]]
+- [[SalespersonsProcedures]]
+- [[SalespersonsSecurity]]
+- [[StoresBalances]]
+- [[SurveyCustomers]]
+- [[SurveySalesPersonsAssignment]]
+- [[Surveys]]
+- [[Surveys_Questions]]
+- [[Surveys_Questions_Options]]
+- [[TransactionsDetails]]
+- [[TransactionsPromotions]]
+- [[TransactionsTypes]]
+- [[TransfersOrder_Auto]]
+## Tables Written
+- [[CompanyParameters]]
+- [[CustomersFinancialDetails]]
+- [[Items]]
+- [[OT_SendLog]]
+- [[OrdersHeaders]]
+- [[Receipts]]
+- [[SalesPersonItemsAssignment]]
+- [[SalesPersonItemsBalance]]
+- [[SalesPersonNotbookTransactionsSerials]]
+- [[SalesPersonTransactionsSerials]]
+- [[SalesPersonTransactionsSerialsMulti]]
+- [[SalesPersons]]
+- [[TransactionsHeaders]]
+- [[TransfersOrdersHeaders]]
+- [[WF_PositionsVer]]
+## Cross-DB Tables
+References tables in **OSFA_DB** (qualified as `OSFA_DB.dbo.*`):
+- [[CompanyParameters]]
+- [[OSFA_DB/Tables/OT_ActionLog|OT_ActionLog]]
+- [[OSFA_DB/Tables/OT_BankDepositHF|OT_BankDepositHF]]
+- [[OSFA_DB/Tables/OT_Banks|OT_Banks]]
+- [[OSFA_DB/Tables/OT_BanksAccounts|OT_BanksAccounts]]
+- [[OSFA_DB/Tables/OT_BatchsInfo|OT_BatchsInfo]]
+- [[OSFA_DB/Tables/OT_Branchs|OT_Branchs]]
+- [[OSFA_DB/Tables/OT_BusinessUnitDef|OT_BusinessUnitDef]]
+- [[OSFA_DB/Tables/OT_COMPANY|OT_COMPANY]]
+- [[OSFA_DB/Tables/OT_CompanyBranches|OT_CompanyBranches]]
+- [[OSFA_DB/Tables/OT_CompetitiveItems|OT_CompetitiveItems]]
+- [[OSFA_DB/Tables/OT_CompetitveItemsDataHF|OT_CompetitveItemsDataHF]]
+- [[OSFA_DB/Tables/OT_ConsOrderHF|OT_ConsOrderHF]]
+- [[OSFA_DB/Tables/OT_ContractItems|OT_ContractItems]]
+- [[OSFA_DB/Tables/OT_Contracts|OT_Contracts]]
+- [[OSFA_DB/Tables/OT_CouponsInfo|OT_CouponsInfo]]
+- [[OSFA_DB/Tables/OT_CreditInvoiceList|OT_CreditInvoiceList]]
+- [[OSFA_DB/Tables/OT_Currency|OT_Currency]]
+- [[OSFA_DB/Tables/OT_CustGalaryImages|OT_CustGalaryImages]]
+- [[OSFA_DB/Tables/OT_CustIssueAmount|OT_CustIssueAmount]]
+- [[OSFA_DB/Tables/OT_CustStockHF|OT_CustStockHF]]
+- [[OSFA_DB/Tables/OT_CustStockHistory|OT_CustStockHistory]]
+- [[OSFA_DB/Tables/OT_CustType|OT_CustType]]
+- [[OSFA_DB/Tables/OT_CustomerChqList|OT_CustomerChqList]]
+- [[OSFA_DB/Tables/OT_CustomerMF|OT_CustomerMF]]
+- [[OSFA_DB/Tables/OT_CustomerSalesByCategory|OT_CustomerSalesByCategory]]
+- [[OSFA_DB/Tables/OT_CustomersClasses|OT_CustomersClasses]]
+- [[OSFA_DB/Tables/OT_CustomersGPSLocations|OT_CustomersGPSLocations]]
+- [[OSFA_DB/Tables/OT_CustomersGroups|OT_CustomersGroups]]
+- [[OSFA_DB/Tables/OT_CustomersItemQtyLimit|OT_CustomersItemQtyLimit]]
+- [[OSFA_DB/Tables/OT_CustomersItemsAssigment|OT_CustomersItemsAssigment]]
+- [[OSFA_DB/Tables/OT_CustomersReturnItemQtyLimit|OT_CustomersReturnItemQtyLimit]]
+- [[OSFA_DB/Tables/OT_DebitCreditNoteTrans|OT_DebitCreditNoteTrans]]
+- [[OSFA_DB/Tables/OT_DocTypes|OT_DocTypes]]
+- [[OSFA_DB/Tables/OT_Drawers|OT_Drawers]]
+- [[OSFA_DB/Tables/OT_ErrorLog|OT_ErrorLog]]
+- [[OSFA_DB/Tables/OT_GeoLevel1|OT_GeoLevel1]]
+- [[OSFA_DB/Tables/OT_ImageTypes|OT_ImageTypes]]
+- [[OSFA_DB/Tables/OT_InvoiceHF|OT_InvoiceHF]]
+- [[OSFA_DB/Tables/OT_InvoiceHistoryDF|OT_InvoiceHistoryDF]]
+- [[OSFA_DB/Tables/OT_InvoiceHistoryHF|OT_InvoiceHistoryHF]]
+- [[OSFA_DB/Tables/OT_InvoiceReturnLinkToTab|OT_InvoiceReturnLinkToTab]]
+- [[OSFA_DB/Tables/OT_InvoicesDelivery|OT_InvoicesDelivery]]
+- [[OSFA_DB/Tables/OT_IssueItemsHF|OT_IssueItemsHF]]
+- [[OSFA_DB/Tables/OT_ItemUnits|OT_ItemUnits]]
+- [[OSFA_DB/Tables/OT_ItemsCateg|OT_ItemsCateg]]
+- [[OSFA_DB/Tables/OT_ItemsMF|OT_ItemsMF]]
+- [[OSFA_DB/Tables/OT_ItemsPriceExceptions|OT_ItemsPriceExceptions]]
+- [[OSFA_DB/Tables/OT_ItemsPriority|OT_ItemsPriority]]
+- [[OSFA_DB/Tables/OT_ItemsQtyAvg|OT_ItemsQtyAvg]]
+- [[OSFA_DB/Tables/OT_ItemsReplacmentHF|OT_ItemsReplacmentHF]]
+- [[OSFA_DB/Tables/OT_ItemsSalesUnits|OT_ItemsSalesUnits]]
+- [[OSFA_DB/Tables/OT_ItemsSubCateg|OT_ItemsSubCateg]]
+- [[OSFA_DB/Tables/OT_ItemsUnitsBarcode|OT_ItemsUnitsBarcode]]
+- [[OSFA_DB/Tables/OT_LinkedSalesman|OT_LinkedSalesman]]
+- [[OSFA_DB/Tables/OT_OrderHF|OT_OrderHF]]
+- [[OSFA_DB/Tables/OT_OrderHistoryDF|OT_OrderHistoryDF]]
+- [[OSFA_DB/Tables/OT_OrderHistoryHF|OT_OrderHistoryHF]]
+- [[OSFA_DB/Tables/OT_Payments|OT_Payments]]
+- [[OSFA_DB/Tables/OT_PaymentsTypes|OT_PaymentsTypes]]
+- [[OSFA_DB/Tables/OT_PriceList|OT_PriceList]]
+- [[OSFA_DB/Tables/OT_PriceListsMF|OT_PriceListsMF]]
+- [[OSFA_DB/Tables/OT_PromotionsCondUnCodInput|OT_PromotionsCondUnCodInput]]
+- [[OSFA_DB/Tables/OT_PromotionsCondUnCodOutput|OT_PromotionsCondUnCodOutput]]
+- [[OSFA_DB/Tables/OT_PromotionsCustomersGroupsLink|OT_PromotionsCustomersGroupsLink]]
+- [[OSFA_DB/Tables/OT_PromotionsGroupsCustomersLink|OT_PromotionsGroupsCustomersLink]]
+- [[OSFA_DB/Tables/OT_PromotionsHeaders|OT_PromotionsHeaders]]
+- [[OSFA_DB/Tables/OT_PromotionsRangeInputOutput|OT_PromotionsRangeInputOutput]]
+- [[OSFA_DB/Tables/OT_PromotionsSalesmanGroupsLink|OT_PromotionsSalesmanGroupsLink]]
+- [[OSFA_DB/Tables/OT_ProspectiveCustomer|OT_ProspectiveCustomer]]
+- [[OSFA_DB/Tables/OT_Reasons|OT_Reasons]]
+- [[OSFA_DB/Tables/OT_ReceiptRequests|OT_ReceiptRequests]]
+- [[OSFA_DB/Tables/OT_ReceiptRequestsInvoicesLink|OT_ReceiptRequestsInvoicesLink]]
+- [[OSFA_DB/Tables/OT_ReprintReasons|OT_ReprintReasons]]
+- [[OSFA_DB/Tables/OT_ReturnChecks|OT_ReturnChecks]]
+- [[OSFA_DB/Tables/OT_ReturnOrderHF|OT_ReturnOrderHF]]
+- [[OSFA_DB/Tables/OT_RouteMF|OT_RouteMF]]
+- [[OSFA_DB/Tables/OT_SalesQuotationHF|OT_SalesQuotationHF]]
+- [[OSFA_DB/Tables/OT_SalesmanGroupItemQtyLimit|OT_SalesmanGroupItemQtyLimit]]
+- [[OSFA_DB/Tables/OT_SalesmanItemBonusTarget|OT_SalesmanItemBonusTarget]]
+- [[OSFA_DB/Tables/OT_SalesmanItemBonusTargetByCustomer|OT_SalesmanItemBonusTargetByCustomer]]
+- [[OSFA_DB/Tables/OT_SalesmanMF|OT_SalesmanMF]]
+- [[OSFA_DB/Tables/OT_SalesmanNotebookSerials|OT_SalesmanNotebookSerials]]
+- [[OSFA_DB/Tables/OT_SalesmanProcedures|OT_SalesmanProcedures]]
+- [[OSFA_DB/Tables/OT_SalesmanRoute|OT_SalesmanRoute]]
+- [[OSFA_DB/Tables/OT_SalesmanStockHF|OT_SalesmanStockHF]]
+- [[OSFA_DB/Tables/OT_SalesmanTransactionsSerialsMulti|OT_SalesmanTransactionsSerialsMulti]]
+- [[OSFA_DB/Tables/OT_StateAccBalance|OT_StateAccBalance]]
+- [[OSFA_DB/Tables/OT_StoreItemsQty|OT_StoreItemsQty]]
+- [[OSFA_DB/Tables/OT_StoreItemsQty_Main|OT_StoreItemsQty_Main]]
+- [[OSFA_DB/Tables/OT_StoreItemsQty_Main_ERP|OT_StoreItemsQty_Main_ERP]]
+- [[OSFA_DB/Tables/OT_Stores|OT_Stores]]
+- [[OSFA_DB/Tables/OT_Surveys|OT_Surveys]]
+- [[OSFA_DB/Tables/OT_Surveys_Questions|OT_Surveys_Questions]]
+- [[OSFA_DB/Tables/OT_Surveys_Questions_Options|OT_Surveys_Questions_Options]]
+- [[OSFA_DB/Tables/OT_SystemOptions|OT_SystemOptions]]
+- [[OSFA_DB/Tables/OT_VanTransferHF|OT_VanTransferHF]]
+## Callers
+_None_
+## Callees
+- `Fun_CheckSalesmanTransIsPosted`
+- `Fun_ConvArrayToTABLE`
+- `Fun_GetCustomerSuggestItemsTrCount`
+- `Fun_GetCustomerTarget`
+- `Fun_GetCustomersTargetAndSales`
+- `Fun_GetInvoiceAndOrderForSoldQtyLimit`
+- `Fun_GetInvoiceAndOrderForSoldQtyLimit_ByCustomer`
+- `Fun_GetInvoiceAndOrderForTargetBonus`
+- `Fun_GetLocationFullPath`
+- `Fun_GetMaxCustomerTypeEarlyPayDays`
+- `Fun_GetPostPonedCustomers`
+- `Fun_GetSalesmanBonusItemForTarget`
+- `Fun_GetSalesmanStatmentOfAccount`
+- `Fun_GetSalesmanSysOpValue`
+- `Fun_GetSalesmanTreeByID`
+- `Fun_GetWeekNo`
+- `GetItemOrgUnitQty`
+- `GetItemSmallUnitQty`
+- `GetItemUnitBySerial`
+- `GetSalesman`
+- `IscoJordan_INTeg_GetItemsBalance`
+- `OT_SENDCustomersInfo`
+- `OT_SENDItemsInfo`
+- `OT_SEND_StatmentOfAccount_Client161`
+- `Phenix_Sukhtian_INTeg_GetItemsBalance`
+- `PrestoSoft_INTeg_GetItemBalance`
+- [[SAP_GetItemBalance]]
+- `Wings_INTeg_GetItemBalance`
+- `X3_INTeg_GetItemBalance`
+- `trim`
+## When to Run
+
+Scheduled or on-demand per business cycle; inspect body (columns read/written) for exact trigger.
+
+## Related
+- [[_MOC-Olives_BO|Olives_BO MOC]]
