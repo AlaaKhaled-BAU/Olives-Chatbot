@@ -8,6 +8,8 @@ Full build steps: **[PLAN.md](PLAN.md)**. Tool decisions: **[TOOLS-REVIEW.md](TO
 
 > **Local Docker restore** (`setup/01_db_up.py` etc.) still expects olives `apps/drift-tool` on disk (or env `DRIFT_TOOL_ROOT`). Production connects to customer SQL Server as `chatbot_ro` — see `AGENTS.md`.
 
+**Main DB backups** (gitignored, ~4.7 GB): `data/db-snapshots/backup test/` — `105/` (master) + `morec/` (pilot client). Default restore: `morec/Olives_BO.bak`. Source copy also at `/media/alaa/data/olives/data/db-snapshots/backup test/`.
+
 ## Run (after the phases in PLAN.md are built)
 1. `cp .env.example .env`, fill in `OLIVES_TOKEN_<CLIENT>` for each client in `clients/*.yaml` (each
    yaml names its var via `api_token_env`; the token value itself never goes in the yaml — see C2).

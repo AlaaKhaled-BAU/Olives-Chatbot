@@ -12,16 +12,19 @@ generated once, then reused on every subsequent run (for chatbot_db2,
 chatbot_db3, ...) so applying the wall to a new client never rotates the
 password out from under an already-configured one."""
 import argparse
+import os
 import re
 import secrets
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-CLIENT_CHATBOT = REPO_ROOT / "client-chatbot"
-WORK_DIR = CLIENT_CHATBOT / "work"
-DB_DIR = CLIENT_CHATBOT / "db"
-sys.path.insert(0, str(REPO_ROOT / "drift-tool"))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+WORK_DIR = REPO_ROOT / "work"
+DB_DIR = REPO_ROOT / "db"
+DRIFT_TOOL_ROOT = Path(
+    os.environ.get("DRIFT_TOOL_ROOT", "/media/alaa/data/olives/apps/drift-tool")
+)
+sys.path.insert(0, str(DRIFT_TOOL_ROOT))
 
 import pymssql  # noqa: E402
 from drift import config  # noqa: E402

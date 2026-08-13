@@ -23,14 +23,17 @@ cleans it up. db/02_tenant_views.sql itself is intentionally left
 untouched (FIXPLAN.md's own rule: don't edit the wall file except where a
 phase explicitly calls for it) -- the cleanup lives here instead."""
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+DRIFT_TOOL_ROOT = Path(
+    os.environ.get("DRIFT_TOOL_ROOT", "/media/alaa/data/olives/apps/drift-tool")
+)
 sys.path.insert(0, str(REPO_ROOT))
-
-sys.path.insert(0, str(REPO_ROOT.parent / "drift-tool"))
+sys.path.insert(0, str(DRIFT_TOOL_ROOT))
 import pymssql  # noqa: E402
 from drift import config as drift_config  # noqa: E402
 

@@ -4,13 +4,16 @@ Structure only -- never fetches proc bodies (PLAN.md golden rule 5).
 Also runs the two Phase-1 acceptance probes (Companies scope, ClientsActive)."""
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-CLIENT_CHATBOT = REPO_ROOT / "client-chatbot"
-sys.path.insert(0, str(REPO_ROOT / "drift-tool"))
-sys.path.insert(0, str(CLIENT_CHATBOT))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DRIFT_TOOL_ROOT = Path(
+    os.environ.get("DRIFT_TOOL_ROOT", "/media/alaa/data/olives/apps/drift-tool")
+)
+sys.path.insert(0, str(DRIFT_TOOL_ROOT))
+sys.path.insert(0, str(REPO_ROOT))
 
 import pymssql  # noqa: E402
 from drift import config  # noqa: E402

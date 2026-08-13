@@ -52,6 +52,8 @@ This repository is a **standalone extract** of the Olives client chatbot pilot f
 
 Setup scripts `setup/01_db_up.py`, `02_introspect.py`, `03_apply_db_sql.py`, and `setup/refresh.py` still import **`drift-tool`** from the olives monorepo layout. They are **not rewritten in this extract**.
 
+**Main DB backups** (gitignored): `data/db-snapshots/backup test/` — copied from olives (`105/` master pair + `morec/` pilot client). Default restore: `morec/Olives_BO.bak`.
+
 For local restore and introspection, either:
 
 - Keep olives `apps/drift-tool` on disk and set:
