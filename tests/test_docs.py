@@ -6,8 +6,13 @@ a known, stable fixture) rather than fabricating a client.yaml too."""
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core import config, docs
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+GUIDE_HEADED = REPO_ROOT / "knowledge" / "guide-headed"
 
 
 def test_chunks_splits_flat_text_with_no_headings():
@@ -273,3 +278,152 @@ def test_search_boosts_customers_48_assign_heading(tmp_path, monkeypatch):
     assert hits
     assert "4.8" in hits[0]["heading"] or "Assign Customers" in hits[0]["excerpt"]
     assert hits[0]["source"].startswith("back-office/")
+
+
+def test_is_noise_chunk_drops_toc_and_page_numbers():
+    assert docs._is_noise_chunk("Table of Contents", "chapter list")
+    assert docs._is_noise_chunk("", "Table of Contents\n1.1 Settings")
+    assert docs._is_noise_chunk("", "73")
+    assert docs._is_noise_chunk("", "short")
+    assert not docs._is_noise_chunk("", "assign customers for salesman workflow steps")
+    assert not docs._is_noise_chunk("4.8 Customers - Assign Customers for Salesman", "Choose Position")
+
+
+def test_inject_headings_from_setup_script():
+    sys.path.insert(0, str(REPO_ROOT / "setup"))
+    from inject_doc_headings import inject_headings  # noqa: E402
+
+    raw = "4.8 Customers - Assign Customers for Salesman\nChoose Position then Update.\n"
+    headed = inject_headings(raw)
+    assert headed.startswith("# 4.8 Customers - Assign Customers for Salesman")
+    assert "##" not in headed.splitlines()[0]
+
+    chapter = inject_headings("CHAPTER 1\nintro\n")
+    assert chapter.splitlines()[0] == "# CHAPTER 1"
+
+    already = inject_headings("# Existing\nbody\n")
+    assert already.splitlines()[0] == "# Existing"
+
+
+@pytest.mark.skipif(not GUIDE_HEADED.exists(), reason="run setup/inject_doc_headings.py first")
+def test_guide_headed_corpus_has_numbered_headings():
+    customers = GUIDE_HEADED / "back-office" / "customers.md"
+    assert customers.exists()
+    text = customers.read_text(encoding="utf-8", errors="replace")
+    assert "# 4.8 Customers - Assign Customers for Salesman" in text
+    chunks = list(docs.iter_corpus_chunks(GUIDE_HEADED))
+    headed = [hp for _, hp, _ in chunks if hp and "4.8" in hp]
+    assert headed, "expected headed chunk for §4.8 in guide-headed corpus"
+
+
+@pytest.mark.skipif(not GUIDE_HEADED.exists(), reason="run setup/inject_doc_headings.py first")
+def test_assign_customers_ranks_top3_with_headed_corpus(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "work_dir", lambda client: tmp_path / "work" / client)
+    (tmp_path / "work" / "morec").mkdir(parents=True)
+    docs.build_index("morec", corpus_dir=GUIDE_HEADED)
+
+    hits = docs.search("morec", "كيف تُسند الزبائن للمندوب", locale="ar", limit=3)
+    assert len(hits) >= 1
+    top3 = hits[:3]
+    assign_hits = [
+        h for h in top3
+        if "4.8" in h["heading"]
+        or "Assign Customers" in h["heading"]
+        or "Assign Customers" in h["excerpt"]
+    ]
+    assert assign_hits, f"expected §4.8 in top 3, got: {[h['heading'] for h in top3]}"
+
+
+@pytest.mark.skipif(not GUIDE_HEADED.exists(), reason="run setup/inject_doc_headings.py first")
+def test_toc_chunks_never_in_top5_with_headed_corpus(tmp_path, monkeypatch):
+    corpus = tmp_path / "corpus"
+    (corpus / "back-office").mkdir(parents=True)
+    (corpus / "back-office" / "real.md").write_text(
+        "# 4.8 Customers - Assign Customers for Salesman\n"
+        "assign customers to salesman using Position checkbox Update.\n"
+    )
+    (corpus / "toc.md").write_text("## Table of Contents\nassign customers list of sections.\n")
+    (corpus / "noise.md").write_text("73\n")
+    _build_custom_index(tmp_path, monkeypatch, corpus)
+
+    hits = docs.search("morec", "assign customers salesman", limit=5)
+    assert hits
+    assert all("table of contents" not in h["heading"].lower() for h in hits[:5])
+    assert all(h["heading"] != "73" for h in hits[:5])
+
+
+def test_search_filters_headingless_page_number_chunks(tmp_path, monkeypatch):
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "back-office").mkdir()
+    (corpus / "back-office" / "customers.md").write_text(
+        "# 4.8 Customers - Assign Customers for Salesman\n"
+        "assign customers Position Update checkbox salesman.\n"
+    )
+    (corpus / "user_guide.md").write_text("73\nassign customers orphan page break.\n")
+    _build_custom_index(tmp_path, monkeypatch, corpus)
+
+    hits = docs.search("morec", "assign customers salesman Position", limit=5)
+    assert hits
+    assert hits[0]["source"].startswith("back-office/")
+    assert all("73" != h["heading"] for h in hits)
+
+
+def test_search_filters_short_headingless_stubs(tmp_path, monkeypatch):
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "guide.md").write_text(
+        "# Real Section\nassign customers for salesman detailed workflow here.\n"
+        "noise stub\n"
+    )
+    _build_custom_index(tmp_path, monkeypatch, corpus)
+
+    hits = docs.search("morec", "assign customers salesman", limit=5)
+    assert hits
+    assert all(h["heading"] != "noise stub" for h in hits)
+    assert any("Real Section" in h["heading"] for h in hits)
+
+
+def test_headed_chunk_breadcrumb_not_empty_for_numbered_section(tmp_path, monkeypatch):
+    corpus = tmp_path / "corpus"
+    (corpus / "back-office").mkdir(parents=True)
+    (corpus / "back-office" / "customers.md").write_text(
+        "# 4.8 Customers - Assign Customers for Salesman\n"
+        "Choose salesman Position then check customers and press Update.\n"
+    )
+    _build_custom_index(tmp_path, monkeypatch, corpus)
+
+    hits = docs.search("morec", "assign customers Position Update", limit=1)
+    assert hits
+    assert hits[0]["heading"]
+    assert hits[0]["heading"] != ""
+    assert "4.8" in hits[0]["heading"]
+
+
+def test_assignment_boost_prefers_heading_over_body_match(tmp_path, monkeypatch):
+    corpus = tmp_path / "corpus"
+    (corpus / "back-office").mkdir(parents=True)
+    (corpus / "back-office" / "customers.md").write_text(
+        "# 4.8 Customers - Assign Customers for Salesman\n"
+        "Primary assign customers workflow.\n"
+    )
+    (corpus / "other.md").write_text(
+        "Generic text mentioning 4.8 assign customers for salesman elsewhere.\n"
+    )
+    _build_custom_index(tmp_path, monkeypatch, corpus)
+
+    hits = docs.search("morec", "4.8 assign customers salesman", limit=2)
+    assert hits[0]["source"].startswith("back-office/")
+
+
+@pytest.mark.skipif(
+    not (GUIDE_HEADED.exists() and (REPO_ROOT / "work" / "105" / "docs.sqlite").exists()),
+    reason="run inject_doc_headings + index for client 105",
+)
+def test_client_105_assign_customers_in_top3():
+    hits = docs.search("105", "كيف تُسند الزبائن للمندوبين من شاشة الباك أوفيس؟", locale="ar", limit=3)
+    assert hits
+    assert any(
+        "4.8" in h["heading"] or "Assign Customers" in h["excerpt"]
+        for h in hits[:3]
+    )

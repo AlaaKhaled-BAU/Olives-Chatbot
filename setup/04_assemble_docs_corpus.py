@@ -10,7 +10,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = REPO_ROOT / "docs_corpus"
 
 FILES = {
-    "user_guide.md": REPO_ROOT / "knowledge" / "reference" / "OLIVES USER GUIDE_2021Updated2025.md",
+    # Lane A: headed copy (setup/inject_doc_headings.py) — chunker needs # headings.
+    "user_guide.md": REPO_ROOT / "knowledge" / "guide-headed" / "user_guide.md",
     "sql_documentation.md": REPO_ROOT / "knowledge" / "reference" / "Olives SQL_Documentation.md",
     "tables_summary.md": REPO_ROOT / "knowledge" / "reference" / "tables summary.md",
     # C5: support-agent/system_options_guide.md over the repo-root "system
@@ -24,8 +25,8 @@ FILES = {
     # not end-user documentation. Same exclusion spirit as procedures.md.
 }
 DIRS = {
-    "back-office": REPO_ROOT / "knowledge" / "back-office",
-    "front-office": REPO_ROOT / "knowledge" / "front-office",
+    "back-office": REPO_ROOT / "knowledge" / "guide-headed" / "back-office",
+    "front-office": REPO_ROOT / "knowledge" / "guide-headed" / "front-office",
 }
 
 

@@ -187,6 +187,7 @@ def build_index(client: str, corpus_dir: Path = CORPUS_DIR) -> dict:
 
 _AL_PREFIX = "ال"
 _TOC_RE = re.compile(r"(?i)table of contents|^toc$")
+_PAGE_NUM_RE = re.compile(r"^\d{1,4}$")
 _SYNONYM_GROUPS = (
     ("فاتورة", "فواتير", "فاتورتي"),
     ("طلب", "طلبات"),
@@ -254,6 +255,24 @@ def _assignment_boost(heading: str, excerpt: str) -> int:
 
 def _synthetic_heading(text: str) -> str:
     return text.replace("\n", " ").strip()[:80]
+
+
+def _is_noise_chunk(heading_path: str, text: str) -> bool:
+    """Drop TOC rows and headingless PDF conversion debris (page numbers, stubs)."""
+    hp = heading_path.strip()
+    if hp and _TOC_RE.match(hp):
+        return True
+    body = text.strip()
+    if not body:
+        return True
+    if not hp:
+        if _TOC_RE.search(body[:240]):
+            return True
+        if _PAGE_NUM_RE.match(body):
+            return True
+        if len(body) < 20:
+            return True
+    return False
 
 
 def _question_tokens(question: str) -> set[str]:
@@ -365,7 +384,7 @@ def search(client: str, query: str, limit: int = 5, locale: str | None = None) -
 
     survivors = []
     for rank, (source_file, heading_path, text) in enumerate(rows):
-        if _TOC_RE.match(heading_path.strip()):
+        if _is_noise_chunk(heading_path, text):
             continue
         heading = heading_path.strip() or _synthetic_heading(text)
         survivors.append(
