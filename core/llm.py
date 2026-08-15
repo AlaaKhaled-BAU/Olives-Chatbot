@@ -34,6 +34,20 @@ _client = OpenAI(
 
 MODEL = os.environ.get("CHATBOT_MODEL", "auto/best-coding")
 
+# Shown to end users when the gateway is down — never leak raw HTTP/tool XML.
+GATEWAY_UNAVAILABLE_AR = (
+    "عذراً، خدمة الذكاء الاصطناعي غير متاحة مؤقتاً. يرجى المحاولة بعد قليل."
+)
+
+
+class GatewayUnavailableError(Exception):
+    """Gateway returned 502/504 — surface GATEWAY_UNAVAILABLE_AR to the user."""
+
+
+def _raise_if_gateway_down(exc: openai.APIStatusError) -> None:
+    if exc.status_code in (502, 504):
+        raise GatewayUnavailableError(GATEWAY_UNAVAILABLE_AR) from exc
+
 
 def complete(messages, retries: int = 3, **kwargs):
     """Retries on rate limits and auth errors with backoff. Primary/fallback
@@ -53,4 +67,7 @@ def complete(messages, retries: int = 3, **kwargs):
             last_error = e
             if attempt < retries:
                 time.sleep(min(5 * (attempt + 1), 15))
+        except openai.APIStatusError as e:
+            _raise_if_gateway_down(e)
+            raise
     raise last_error

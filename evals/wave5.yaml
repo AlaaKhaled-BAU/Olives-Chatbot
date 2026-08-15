@@ -1,0 +1,76 @@
+# Wave 5 Arabic accuracy eval — release gate for client 105, CompanyID 2, ClientID 207
+# Ground truth verified LIVE against Olives_BO on 2026-08-14 (CHATBOT_CLIENT=105).
+# Cases: evals/wave5_accuracy.jsonl (Arabic questions only).
+#
+# Harness: pass conversation={"CompanyID": 2} to agent.ask() for every case.
+# Run: python3.13 evals/run_evals.py --suite wave5
+#      python3.13 evals/run_evals.py          # all suites incl. wave5 + isolation gate
+
+suite: wave5_accuracy
+client: "105"
+company_id: 2
+client_active_id: 207
+database: Olives_BO
+cases_file: evals/wave5_accuracy.jsonl
+language: ar
+
+categories:
+  cfd_position_join:
+    description: >
+      Customer-to-salesperson via CustomersFinancialDetails.PositionsID
+      joined to SalesPersons.PositionID (and Positions.ID). Never join
+      cfd.CustomerID to SalesPersons.ID.
+    canonical_join: |
+      Customers c
+      JOIN CustomersFinancialDetails cfd ON cfd.CustomerID = c.ID AND cfd.CompanyID = c.CompanyID
+      JOIN SalesPersons sp ON sp.PositionID = cfd.PositionsID AND sp.CompanyID = cfd.CompanyID
+
+  orders_vs_invoices:
+    description: >
+      Orders use OrdersHeaders/OrdersDetails; sales invoices use
+      TransactionsHeaders/TransactionsDetails (type=1 sales, type=2 returns).
+      Different grains — do not substitute one for the other.
+    tables:
+      orders: OrdersHeaders
+      invoices: TransactionsHeaders
+
+  void_filter:
+    description: >
+      Non-void sales invoices: TransactionsHeaders type=1 AND ISNULL(IsVoid,0)=0.
+    filter: "TransactionsHeaders.TransactionTypeID = 1 AND ISNULL(TransactionsHeaders.IsVoid, 0) = 0"
+
+  daily_sales_report:
+    description: >
+      Report-shaped daily sales from invoice headers + details; exclude voids.
+      Gross from SUM(TransactionsDetails.Quantity * TransactionsDetails.Price).
+    tables:
+      - TransactionsHeaders
+      - TransactionsDetails
+
+  temporal_context:
+    description: >
+      Relative date questions ("هذا الشهر") must not treat an empty current
+      month (Aug 2026) as the only truth — cite latest available data or Jul 2025.
+
+ground_truth:
+  company_name: "شركة الاضواء الماسية التجارية"
+  salesperson_count: 7
+  customer_count: 25
+  item_count: 15
+  orders_total: 132
+  orders_undelivered: 132
+  # Sales invoices (type=1, non-void) — the correct مبيعات answer is 238, NOT 261.
+  sales_invoices_non_void: 238
+  returns_type2: 23
+  transactions_headers_all_types: 261  # includes returns; must NOT be used as sales count
+  void_invoices: 0
+  orders_june_2025: 9
+  # Sales invoices only (type=1, non-void) in June 2025 — NOT all TransactionsHeaders.
+  # All headers in June 2025 = 11 (8 sales + 3 returns type=2); prior GT 11 was all-headers grain.
+  invoices_june_2025: 8
+  transactions_headers_june_2025: 11
+  invoices_2025_07_15: 2
+  gross_sales_2025_07_15: 432.58
+  cfd_position_3_salesperson: "Amjad Hijazi"
+  cfd_position_3_customer: "دكتور اسامة عكة"
+  imad_customers_via_positions: 17

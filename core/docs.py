@@ -43,6 +43,7 @@ filter to accidentally bypass.
 """
 import re
 import sqlite3
+import unicodedata
 from pathlib import Path
 
 from . import catalog, config
@@ -185,9 +186,86 @@ def build_index(client: str, corpus_dir: Path = CORPUS_DIR) -> dict:
 
 
 _AL_PREFIX = "ال"
+_TOC_RE = re.compile(r"(?i)table of contents|^toc$")
+_SYNONYM_GROUPS = (
+    ("فاتورة", "فواتير", "فاتورتي"),
+    ("طلب", "طلبات"),
+    ("مندوب", "مناديب", "مندوبين", "salesman", "salesperson"),
+    ("معلق", "suspended", "IsSuspended"),
+    (
+        "assign", "customers", "salesman", "4.8",
+        "تعيين", "أسند", "اسند", "تسند", "إسناد", "سند",
+        "زبائن", "زبون", "مندوب",
+    ),
+)
+# Arabic UI terms → English corpus glosses (docs index is mostly English).
+_AR_EN_BRIDGE = {
+    "خيار": ("option",),
+    "نظام": ("system",),
+    "فواتير": ("invoice", "Invoicing"),
+    "فاتورة": ("invoice",),
+    "فاتورتي": ("invoice",),
+    "تابلت": ("tablet",),
+    "معلق": ("suspended",),
+    "زبون": ("customer",),
+    "زبائن": ("customer", "customers"),
+    "عميل": ("customer",),
+    "سند": ("assign",),
+    "تسند": ("assign",),
+    "إسناد": ("assign",),
+    "تعيين": ("assign",),
+    "أسند": ("assign",),
+    "اسند": ("assign",),
+    "مندوب": ("salesman", "salesperson"),
+    "مندوبين": ("salesman", "salesperson"),
+    "للمندوب": ("salesman", "salesperson"),
+    "باك": ("back-office",),
+    "أوفيس": ("office",),
+    "اعتماد": ("approve", "approval"),
+}
+_ASSIGN_HEADING_RE = re.compile(
+    r"(?i)4\.8|assign customers for salesman",
+)
 
 
-def _fts_query(question: str) -> str:
+def _strip_ar_diacritics(text: str) -> str:
+    return "".join(c for c in text if unicodedata.category(c) != "Mn")
+
+
+def _path_priority(source_file: str) -> int:
+    sf = source_file.replace("\\", "/").lower()
+    if "back-office/" in sf:
+        return 0
+    if "support-agent/" in sf or "system_options" in sf:
+        return 1
+    return 2
+
+
+def _assignment_boost(heading: str, excerpt: str) -> int:
+    """Prefer customers.md §4.8 (Assign Customers for Salesman) over generic
+    assign-customer prose elsewhere in the corpus."""
+    text = f"{heading}\n{excerpt}"
+    if _ASSIGN_HEADING_RE.search(heading):
+        return 2
+    if _ASSIGN_HEADING_RE.search(text):
+        return 1
+    return 0
+
+
+def _synthetic_heading(text: str) -> str:
+    return text.replace("\n", " ").strip()[:80]
+
+
+def _question_tokens(question: str) -> set[str]:
+    tokens: set[str] = set()
+    for w in _WORD_RE.findall(_strip_ar_diacritics(question)):
+        tokens.add(w.lower())
+        if w.startswith(_AL_PREFIX) and len(w) >= 4:
+            tokens.add(w[len(_AL_PREFIX) :].lower())
+    return tokens
+
+
+def _fts_query(question: str, locale: str | None = None) -> str:
     """Every word double-quoted (embedded quotes doubled per FTS5 escaping)
     and OR'd together -- an arbitrary user question can never be read as
     FTS5 query syntax (AND/OR/NOT/NEAR, a leading '-', unbalanced quotes).
@@ -196,25 +274,68 @@ def _fts_query(question: str) -> str:
     bare form (module docstring: trigram substring matching means a
     prefixed query alone would miss bare-form corpus text). >= 4 chars
     before stripping so a 2-3 letter word that only coincidentally starts
-    with the same two letters isn't mangled down to nothing useful."""
-    words = _WORD_RE.findall(question)
+    with the same two letters isn't mangled down to nothing useful.
+
+    When locale is ``ar``, up to three synonym groups expand for tokens
+    present in the question (after ``ال`` strip). Total quoted terms are
+    capped at original term count + 6."""
+    words = _WORD_RE.findall(_strip_ar_diacritics(question))
     if not words:
         return '""'
     terms, seen = [], set()
     for w in words:
         candidates = (w, w[len(_AL_PREFIX):]) if w.startswith(_AL_PREFIX) and len(w) >= 4 else (w,)
         for t in candidates:
-            if t not in seen:
-                seen.add(t)
+            key = t.lower()
+            if key not in seen:
+                seen.add(key)
                 terms.append(t)
+    original_count = len(terms)
+    max_terms = original_count + 6
+
+    if locale == "ar":
+        q_tokens = _question_tokens(question)
+        groups_fired = 0
+        for group in _SYNONYM_GROUPS:
+            if groups_fired >= 3:
+                break
+            group_lower = {g.lower() for g in group}
+            if not (q_tokens & group_lower):
+                continue
+            groups_fired += 1
+            for syn in group:
+                syn_key = syn.lower()
+                if syn_key in seen:
+                    continue
+                if len(terms) >= max_terms:
+                    break
+                seen.add(syn_key)
+                terms.append(syn)
+        bridge_added = 0
+        for ar_tok, en_terms in _AR_EN_BRIDGE.items():
+            if bridge_added >= 4 or ar_tok not in q_tokens:
+                continue
+            for en in en_terms:
+                if len(terms) >= max_terms:
+                    break
+                en_key = en.lower()
+                if en_key in seen:
+                    continue
+                seen.add(en_key)
+                terms.append(en)
+                bridge_added += 1
     return " OR ".join('"' + t.replace('"', '""') + '"' for t in terms)
 
 
-def search(client: str, query: str, limit: int = 5) -> list:
+def search(client: str, query: str, limit: int = 5, locale: str | None = None) -> list:
     """[{source, heading, excerpt}, ...], best match first. Returns []
     (not an error) when this client has no docs index yet -- a missing
     setup/05_index_docs.py run should degrade the tool to 'no results',
     not crash the agent loop.
+
+    Post-fetch: drop TOC rows, synthesize headings for headingless chunks,
+    re-sort by back-office path priority, then take ``limit`` survivors.
+    ``locale`` gates Arabic synonym expansion in ``_fts_query`` (``ar`` only).
 
     "excerpt" is the FULL chunk text, not FTS5's snippet(). Measured live:
     snippet()'s "best 30-token window" heuristic picks the window with the
@@ -237,8 +358,35 @@ def search(client: str, query: str, limit: int = 5) -> list:
         rows = conn.execute(
             "SELECT source_file, heading_path, text "
             "FROM docs WHERE docs MATCH ? ORDER BY rank LIMIT ?",
-            (_fts_query(query), limit),
+            (_fts_query(query, locale=locale), limit * 4),
         ).fetchall()
     finally:
         conn.close()
-    return [{"source": r[0], "heading": r[1], "excerpt": r[2]} for r in rows]
+
+    survivors = []
+    for rank, (source_file, heading_path, text) in enumerate(rows):
+        if _TOC_RE.match(heading_path.strip()):
+            continue
+        heading = heading_path.strip() or _synthetic_heading(text)
+        survivors.append(
+            {
+                "source": source_file,
+                "heading": heading,
+                "excerpt": text,
+                "_path_priority": _path_priority(source_file),
+                "_assignment_boost": _assignment_boost(heading, text),
+                "_original_rank": rank,
+            }
+        )
+
+    survivors.sort(
+        key=lambda row: (
+            row["_path_priority"],
+            -row["_assignment_boost"],
+            row["_original_rank"],
+        )
+    )
+    return [
+        {"source": row["source"], "heading": row["heading"], "excerpt": row["excerpt"]}
+        for row in survivors[:limit]
+    ]

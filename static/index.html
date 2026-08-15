@@ -8,17 +8,20 @@
 </head>
 <body>
   <header>
-    <h1>مساعد بيانات Olives</h1>
-    <div id="auth-bar">
-      <input id="token" type="password" placeholder="رمز الدخول" autocomplete="off">
-      <button id="connect-btn" type="button">دخول</button>
-      <span id="auth-status"></span>
+    <div class="header-left">
+      <h1>مساعد بيانات Olives</h1>
+    </div>
+    <div id="context-bar" class="header-right">
+      <span id="company-label"></span>
+      <select id="company-select" class="hidden" aria-label="Company"></select>
+      <span id="client-label"></span>
+      <span id="as-of-label" class="as-of-label hidden" aria-label="As-of dates"></span>
     </div>
   </header>
   <main id="messages" aria-live="polite"></main>
   <form id="ask-form">
-    <input id="question" type="text" placeholder="اسأل عن بياناتك..." autocomplete="off" required disabled>
-    <button type="submit" disabled>إرسال</button>
+    <input id="question" type="text" placeholder="اسأل عن بياناتك..." autocomplete="off" required>
+    <button type="submit">إرسال</button>
   </form>
   <script src="/app.js"></script>
 </body>

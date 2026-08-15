@@ -42,6 +42,7 @@ def main():
     if not args.skip_docs:
         run([py, str(SETUP / "04_assemble_docs_corpus.py")])
         run([py, str(SETUP / "05_index_docs.py"), "--client", args.client])
+    run([py, str(SETUP / "compile_vault_cards.py"), "--client", args.client])
 
     print(f"\nNative bootstrap done for client={args.client} db={db_name}")
     print(f"Connect: {db_name} @ {__import__('os').environ.get('DB_HOST', '127.0.0.1')}:{__import__('os').environ.get('DB_PORT', '1433')} as chatbot_ro")

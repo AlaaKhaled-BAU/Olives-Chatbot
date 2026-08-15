@@ -86,6 +86,12 @@ def main():
     removed = memory.clear_plan_cache(args.client)
     print(f"[refresh] cleared {removed} stale plan_cache entr{'y' if removed == 1 else 'ies'} for {args.client}")
 
+    print(f"[refresh] {args.client}: compiling vault schema cards...")
+    subprocess.run(
+        ["python3.13", str(setup_dir / "compile_vault_cards.py"), "--client", args.client],
+        check=True,
+    )
+
     print(f"[refresh] {args.client} done.")
 
 

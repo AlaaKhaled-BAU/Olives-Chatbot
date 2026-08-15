@@ -18,8 +18,8 @@ else
   }
 fi
 
-echo "Starting chatbot API on :8100..."
-( set -a && source .env && set +a && exec python3.13 -m uvicorn api.server:app --host 0.0.0.0 --port 8100 ) &
+echo "Starting chatbot API on :8100 (127.0.0.1)..."
+( set -a && source .env && set +a && exec python3.13 -m uvicorn api.server:app --host 127.0.0.1 --port 8100 ) &
 SERVER_PID=$!
 trap 'kill $SERVER_PID 2>/dev/null' EXIT
 

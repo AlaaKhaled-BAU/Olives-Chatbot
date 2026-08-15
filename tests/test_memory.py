@@ -32,7 +32,7 @@ def test_promote_verified_query_requires_a_source(tmp_path, monkeypatch):
     must fail loudly, not silently reintroduce the bug this fix closes."""
     monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
     try:
-        memory.promote_verified_query("morec", "q", "SELECT 1")
+        memory.promote_verified_query("morec", 1, "q", "SELECT 1")
         assert False, "expected a missing-argument TypeError"
     except TypeError:
         pass
@@ -83,7 +83,6 @@ def test_migration_adds_columns_to_a_pre_c3_database(tmp_path, monkeypatch):
     conn.close()
 
     monkeypatch.setattr(memory, "DB_PATH", db_path)
-    row = memory.get_verified_query("morec", "old q")
+    row = memory.get_verified_query("morec", 0, "old q")
     assert row == {"proc_or_sql": "SELECT 1", "ok_count": 7}, "existing row must survive the migration"
-    # legacy row has source='unknown' by migration default -- must not feed few_shots
-    assert memory.few_shots("morec") == []
+    assert memory.few_shots("morec", 0) == []

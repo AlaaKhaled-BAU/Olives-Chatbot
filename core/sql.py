@@ -7,12 +7,13 @@ which the tenant views treat as zero rows (fail closed).
 Every function takes an explicit `client` -- there is no default, so a
 caller can't accidentally hit the wrong client's database by omission
 (PLAN.md Phase 9)."""
+import json
 import os
 from pathlib import Path
 
 import pymssql
 
-from . import config, gate
+from . import config, gate, memory
 
 _SHARED_WORK_DIR = Path(__file__).resolve().parent.parent / "work"
 
@@ -43,19 +44,38 @@ def set_tenant(conn, company_id: int):
     cur.execute("EXEC sp_set_session_context %s, %s", ("CompanyID", company_id))
 
 
+RESULT_CACHE_TTL = 45
+
+
+def _schema_cache(client: str) -> dict:
+    return json.loads((config.work_dir(client) / "schema_cache.json").read_text())
+
+
 def run_select(raw_sql: str, company_id: int, client: str, allowed_procs=None, row_cap: int = gate.DEFAULT_ROW_CAP):
     """gate -> set tenant -> execute via the t. views. raw_sql is untrusted
     (model-generated); the gate is the only thing standing between it and
     the database, on top of the server-side wall."""
-    safe_sql = gate.validate(raw_sql, allowed_procs=allowed_procs, row_cap=row_cap)
+    safe_sql = gate.validate(
+        raw_sql,
+        allowed_procs=allowed_procs,
+        row_cap=row_cap,
+        company_id=company_id,
+        schema_cache=_schema_cache(client),
+    )
+    rc_key = memory.result_cache_key(client, company_id, safe_sql)
+    cached = memory.get_result(rc_key, ttl_seconds=RESULT_CACHE_TTL)
+    if cached is not None:
+        return cached
     conn = get_conn(client)
     try:
         set_tenant(conn, company_id)
         cur = conn.cursor(as_dict=True)
         cur.execute(safe_sql)
-        return cur.fetchall()
+        rows = cur.fetchall()
     finally:
         conn.close()
+    memory.set_result(rc_key, rows)
+    return rows
 
 
 def run_proc(proc_name: str, args: dict, company_id: int, client: str, allowed_procs):

@@ -30,6 +30,29 @@ def test_retry_backoff_is_capped(monkeypatch):
     assert sum(sleeps) < 72, "must be a real reduction from the old 12+24+36=72s worst case"
 
 
-def _fake_response():
+def _fake_response(status_code=429):
     import types
-    return types.SimpleNamespace(status_code=429, headers={}, request=types.SimpleNamespace())
+    return types.SimpleNamespace(status_code=status_code, headers={}, request=types.SimpleNamespace())
+
+
+def test_gateway_502_raises_gateway_unavailable():
+    with patch.object(llm._client.chat.completions, "create",
+                       side_effect=openai.APIStatusError(
+                           "bad gateway", response=_fake_response(502), body=None)):
+        try:
+            llm.complete([{"role": "user", "content": "hi"}])
+            assert False, "expected GatewayUnavailableError"
+        except llm.GatewayUnavailableError as e:
+            assert str(e) == llm.GATEWAY_UNAVAILABLE_AR
+
+
+def test_gateway_504_raises_gateway_unavailable():
+    with patch.object(llm._client.chat.completions, "create",
+                       side_effect=openai.APIStatusError(
+                           "gateway timeout", response=_fake_response(504), body=None)):
+        try:
+            llm.complete([{"role": "user", "content": "hi"}])
+            assert False, "expected GatewayUnavailableError"
+        except llm.GatewayUnavailableError as e:
+            assert "غير متاحة" in str(e)
+

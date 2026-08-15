@@ -1,22 +1,8 @@
-"""SQLite memory (PLAN.md Phase 5): verified queries (procedural few-shots),
-plan cache, result cache. Cache keys MUST include client+CompanyID+role+model
-(golden rule 7) -- a cache-key bug here is a tenant leak, not a stale
-answer. Exact-match only, never semantic/embedding (would confuse customer
-4022 with 4023).
-
-C3 (2026-07-26): verified_queries used to be written by core/agent.py on
-EVERY answered question, with no correctness signal at all -- a confidently
-wrong query got stored under the name "verified", and since few_shots()
-orders by ok_count DESC and the old writer incremented it on every repeat,
-a wrong query asked twice climbed ABOVE a correct one asked once. Fixed by
-splitting what "cheap to regenerate" (plan_cache, may still be written
-automatically) from what "trusted enough to teach the model from"
-(verified_queries, written ONLY by promote_verified_query -- called from an
-explicit user thumbs-up or a passing eval, never from the agent's own
-success path). plan_cache also gained schema_version in its key: a stale
-cached plan from before a schema change (renamed column, dropped table)
-must never silently reuse the old shape -- setup/refresh.py clears it
-after rebuilding schema_cache.json."""
+"""SQLite memory: verified/negative queries, plan cache, result cache.
+Cache keys include client+CompanyID+role+model (golden rule 7).
+verified_queries written ONLY via promote_verified_query (thumbs-up / eval).
+result_cache stores identical SQL row payloads for ~45s only — never treat
+cached numbers or answer text as long-term truth."""
 import hashlib
 import json
 import sqlite3
@@ -28,11 +14,21 @@ DB_PATH = Path(__file__).resolve().parent.parent / "work" / "cache.sqlite"
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS verified_queries (
     client TEXT NOT NULL,
+    company_id INTEGER NOT NULL DEFAULT 0,
     question_norm TEXT NOT NULL,
     proc_or_sql TEXT NOT NULL,
     ok_count INTEGER NOT NULL DEFAULT 1,
     source TEXT NOT NULL DEFAULT 'unknown',
-    PRIMARY KEY (client, question_norm)
+    PRIMARY KEY (client, company_id, question_norm)
+);
+CREATE TABLE IF NOT EXISTS negative_queries (
+    client TEXT NOT NULL,
+    company_id INTEGER NOT NULL,
+    question_norm TEXT NOT NULL,
+    proc_or_sql TEXT,
+    reason TEXT,
+    ts REAL NOT NULL,
+    PRIMARY KEY (client, company_id, question_norm)
 );
 CREATE TABLE IF NOT EXISTS plan_cache (
     key TEXT PRIMARY KEY,
@@ -52,18 +48,35 @@ def _conn():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(_SCHEMA)
-    # C3: CREATE TABLE IF NOT EXISTS leaves an already-existing pre-C3
-    # cache.sqlite (client-less plan_cache, source-less verified_queries)
-    # untouched -- additive migration for a file that predates this
-    # column, silently a no-op (existing column) for one that doesn't.
     for stmt in (
         "ALTER TABLE plan_cache ADD COLUMN client TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE verified_queries ADD COLUMN source TEXT NOT NULL DEFAULT 'unknown'",
+        "ALTER TABLE verified_queries ADD COLUMN company_id INTEGER NOT NULL DEFAULT 0",
     ):
         try:
             conn.execute(stmt)
         except sqlite3.OperationalError:
-            pass  # column already exists
+            pass
+    conn.execute(
+        "CREATE VIRTUAL TABLE IF NOT EXISTS verified_queries_fts USING fts5("
+        "question_norm, proc_or_sql, client UNINDEXED, company_id UNINDEXED)"
+    )
+    # backfill fts if empty
+    try:
+        count = conn.execute("SELECT COUNT(*) FROM verified_queries_fts").fetchone()[0]
+        if count == 0:
+            rows = conn.execute(
+                "SELECT client, company_id, question_norm, proc_or_sql FROM verified_queries "
+                "WHERE source IN ('user_feedback', 'eval')"
+            ).fetchall()
+            for r in rows:
+                conn.execute(
+                    "INSERT INTO verified_queries_fts (question_norm, proc_or_sql, client, company_id) "
+                    "VALUES (?, ?, ?, ?)",
+                    (r[2], r[3], r[0], str(r[1])),
+                )
+    except sqlite3.OperationalError:
+        pass
     return conn
 
 
@@ -72,69 +85,120 @@ def normalize_question(question: str) -> str:
 
 
 def cache_key(client: str, company_id, role: str, model: str, question: str, schema_version: str = "") -> str:
-    """Exact-match key ONLY -- client+CompanyID+role+model+question_norm+
-    schema_version. Never a semantic/embedding key (golden rule 7): that
-    would confuse customer 4022 with 4023. schema_version defaults to ""
-    for callers that don't have one yet (a bare miss is always safe --
-    worse case is a cache miss, never a wrong hit)."""
     raw = "|".join([str(client), str(company_id), str(role), str(model),
                      normalize_question(question), str(schema_version)])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def promote_verified_query(client: str, question: str, proc_or_sql: str, source: str):
-    """The ONLY writer for verified_queries -- callers must state WHY this
-    is trusted (source is required, not defaulted, so a future accidental
-    call from the agent's own success path can't silently reintroduce C3's
-    bug). Known sources: "user_feedback" (an explicit thumbs-up on a real
-    answer) and "eval" (a passing evals/accuracy.jsonl case, see C3a)."""
+def result_cache_key(client: str, company_id: int, sql: str) -> str:
+    raw = f"result|{client}|{company_id}|{sql.strip().lower()}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def promote_verified_query(client: str, company_id: int, question: str, proc_or_sql: str, source: str):
     q = normalize_question(question)
     conn = _conn()
     try:
         conn.execute(
-            "INSERT INTO verified_queries (client, question_norm, proc_or_sql, ok_count, source) "
-            "VALUES (?, ?, ?, 1, ?) "
-            "ON CONFLICT(client, question_norm) DO UPDATE SET "
+            "INSERT INTO verified_queries (client, company_id, question_norm, proc_or_sql, ok_count, source) "
+            "VALUES (?, ?, ?, ?, 1, ?) "
+            "ON CONFLICT(client, company_id, question_norm) DO UPDATE SET "
             "proc_or_sql = excluded.proc_or_sql, ok_count = ok_count + 1, source = excluded.source",
-            (client, q, proc_or_sql, source),
+            (client, int(company_id), q, proc_or_sql, source),
+        )
+        conn.execute("DELETE FROM verified_queries_fts WHERE client = ? AND company_id = ? AND question_norm = ?",
+                     (client, str(company_id), q))
+        conn.execute(
+            "INSERT INTO verified_queries_fts (question_norm, proc_or_sql, client, company_id) VALUES (?, ?, ?, ?)",
+            (q, proc_or_sql, client, str(company_id)),
         )
         conn.commit()
     finally:
         conn.close()
 
 
-def get_verified_query(client: str, question: str):
+def promote_negative_query(client: str, company_id: int, question: str, proc_or_sql: str | None, reason: str | None = None):
+    q = normalize_question(question)
+    conn = _conn()
+    try:
+        conn.execute(
+            "INSERT INTO negative_queries (client, company_id, question_norm, proc_or_sql, reason, ts) "
+            "VALUES (?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(client, company_id, question_norm) DO UPDATE SET "
+            "proc_or_sql = excluded.proc_or_sql, reason = excluded.reason, ts = excluded.ts",
+            (client, int(company_id), q, proc_or_sql, reason, time.time()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_verified_query(client: str, company_id: int, question: str):
     q = normalize_question(question)
     conn = _conn()
     try:
         row = conn.execute(
-            "SELECT proc_or_sql, ok_count FROM verified_queries WHERE client = ? AND question_norm = ?",
-            (client, q),
+            "SELECT proc_or_sql, ok_count FROM verified_queries "
+            "WHERE client = ? AND company_id = ? AND question_norm = ?",
+            (client, int(company_id), q),
         ).fetchone()
         return {"proc_or_sql": row[0], "ok_count": row[1]} if row else None
     finally:
         conn.close()
 
 
-def few_shots(client: str, limit: int = 5):
-    """Most-reused verified queries for this client, as few-shot examples.
-    Trustworthy now that promote_verified_query is the only writer (C3) --
-    ok_count DESC used to be gameable by asking a wrong query repeatedly.
-    source filter excludes legacy rows written by the old agent-side
-    auto-write (source='unknown' after the migration in _conn()) -- those
-    were written under exactly the bug this fix closes, with no real
-    correctness signal behind their ok_count. They'll come back on their
-    own via promote_verified_query the moment they're genuinely confirmed
-    (a thumbs-up, or turning up in evals/accuracy.jsonl)."""
+def few_shots(client: str, company_id: int, question: str = "", limit: int = 3) -> list:
+    """FTS few-shots for this client + CompanyID only."""
+    conn = _conn()
+    try:
+        if question:
+            q_norm = normalize_question(question)
+            terms = [t for t in q_norm.split() if len(t) >= 3]
+            match_expr = " OR ".join(f'"{t}"' for t in terms[:8]) if terms else q_norm
+            try:
+                rows = conn.execute(
+                    "SELECT f.question_norm, f.proc_or_sql FROM verified_queries_fts f "
+                    "JOIN verified_queries v ON v.client = f.client "
+                    "AND v.company_id = CAST(f.company_id AS INTEGER) "
+                    "AND v.question_norm = f.question_norm "
+                    "WHERE f.client = ? AND f.company_id = ? AND v.source IN ('user_feedback', 'eval') "
+                    "AND verified_queries_fts MATCH ? "
+                    "ORDER BY rank LIMIT ?",
+                    (client, str(int(company_id)), match_expr, limit),
+                ).fetchall()
+                if rows:
+                    return [{"question": r[0], "proc_or_sql": r[1]} for r in rows]
+            except sqlite3.OperationalError:
+                pass
+        rows = conn.execute(
+            "SELECT question_norm, proc_or_sql FROM verified_queries "
+            "WHERE client = ? AND company_id = ? AND source IN ('user_feedback', 'eval') "
+            "ORDER BY ok_count DESC LIMIT ?",
+            (client, int(company_id), limit),
+        ).fetchall()
+        return [{"question": r[0], "proc_or_sql": r[1]} for r in rows]
+    finally:
+        conn.close()
+
+
+def negative_shots(client: str, company_id: int, question: str = "", limit: int = 2) -> list:
     conn = _conn()
     try:
         rows = conn.execute(
-            "SELECT question_norm, proc_or_sql FROM verified_queries "
-            "WHERE client = ? AND source IN ('user_feedback', 'eval') "
-            "ORDER BY ok_count DESC LIMIT ?",
-            (client, limit),
+            "SELECT question_norm, proc_or_sql, reason FROM negative_queries "
+            "WHERE client = ? AND company_id = ? ORDER BY ts DESC LIMIT ?",
+            (client, int(company_id), limit * 3),
         ).fetchall()
-        return [{"question": r[0], "proc_or_sql": r[1]} for r in rows]
+        if not question:
+            return [{"question": r[0], "proc_or_sql": r[1], "reason": r[2]} for r in rows[:limit]]
+        q_tokens = set(normalize_question(question).split())
+        scored = []
+        for r in rows:
+            overlap = len(q_tokens & set(r[0].split()))
+            if overlap:
+                scored.append((overlap, r))
+        scored.sort(key=lambda x: -x[0])
+        return [{"question": r[0], "proc_or_sql": r[1], "reason": r[2]} for _, r in scored[:limit]]
     finally:
         conn.close()
 
@@ -149,9 +213,6 @@ def get_plan(key: str):
 
 
 def set_plan(key: str, client: str, plan):
-    """client is stored (not just baked into the opaque key) so
-    clear_plan_cache(client) can sweep a single client's entries after a
-    schema refresh without needing to recompute every possible key."""
     conn = _conn()
     try:
         conn.execute(
@@ -165,8 +226,6 @@ def set_plan(key: str, client: str, plan):
 
 
 def delete_plan(key: str):
-    """Thumbs-down on a cached-plan answer: remove just that one entry, not
-    the whole client's cache -- other cached questions may still be fine."""
     conn = _conn()
     try:
         conn.execute("DELETE FROM plan_cache WHERE key = ?", (key,))
@@ -176,10 +235,6 @@ def delete_plan(key: str):
 
 
 def clear_plan_cache(client: str):
-    """setup/refresh.py calls this after rebuilding schema_cache.json --
-    schema_version in the key already stops an old-shape plan from being
-    matched by a new query, but old rows would otherwise accumulate in the
-    table forever with no cleanup path."""
     conn = _conn()
     try:
         cur = conn.execute("DELETE FROM plan_cache WHERE client = ?", (client,))
@@ -190,8 +245,6 @@ def clear_plan_cache(client: str):
 
 
 def get_result(key: str, ttl_seconds: int = 300):
-    """Closed-period questions only, short TTL -- callers decide what counts
-    as closed-period; this just enforces the expiry once cached."""
     conn = _conn()
     try:
         row = conn.execute("SELECT rows, ts FROM result_cache WHERE key = ?", (key,)).fetchone()

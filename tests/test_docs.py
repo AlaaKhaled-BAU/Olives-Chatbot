@@ -163,3 +163,113 @@ def test_fts_query_neutralizes_syntax_and_injection_characters():
 
 def test_fts_query_empty_input_is_a_valid_no_op_query():
     assert docs._fts_query("   ") == '""'
+
+
+def _build_custom_index(tmp_path, monkeypatch, corpus_dir):
+    monkeypatch.setattr(config, "work_dir", lambda client: tmp_path / "work" / client)
+    (tmp_path / "work" / "morec").mkdir(parents=True)
+    docs.build_index("morec", corpus_dir=corpus_dir)
+
+
+def test_search_drops_toc_rows(tmp_path, monkeypatch):
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "guide.md").write_text("## Real Section\ninvoice approval workflow here.\n")
+    (corpus / "toc.md").write_text("## Table of Contents\ninvoice list of chapters.\n")
+    _build_custom_index(tmp_path, monkeypatch, corpus)
+
+    hits = docs.search("morec", "invoice", limit=5)
+    assert hits
+    assert all("table of contents" not in h["heading"].lower() for h in hits)
+    assert any("Real Section" in h["heading"] for h in hits)
+
+
+def test_search_synthetic_heading_for_headingless_chunks(tmp_path, monkeypatch):
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    long_text = "A" * 50 + "\n" + "B" * 50
+    (corpus / "user_guide.md").write_text(long_text + "\n")
+    _build_custom_index(tmp_path, monkeypatch, corpus)
+
+    hits = docs.search("morec", "AAAA", limit=1)
+    assert len(hits) == 1
+    assert hits[0]["heading"] == ("A" * 50 + " " + "B" * 29)
+
+
+def test_search_prefers_back_office_path(tmp_path, monkeypatch):
+    corpus = tmp_path / "corpus"
+    (corpus / "back-office").mkdir(parents=True)
+    (corpus / "back-office" / "sales.md").write_text("## BO Sales\nassign customers to salesperson route.\n")
+    (corpus / "user_guide.md").write_text("assign customers to salesperson from generic guide.\n")
+    _build_custom_index(tmp_path, monkeypatch, corpus)
+
+    hits = docs.search("morec", "assign customers salesperson", limit=2)
+    assert len(hits) >= 2
+    assert hits[0]["source"].startswith("back-office/")
+
+
+def test_fts_query_ar_synonym_expansion_for_invoice_group():
+    q = docs._fts_query("ما هي الفاتورة", locale="ar")
+    assert '"فاتورة"' in q
+    assert '"فواتير"' in q
+    assert '"فاتورتي"' in q
+
+
+def test_fts_query_en_locale_does_not_expand_arabic_synonyms():
+    q_ar = docs._fts_query("فاتورة", locale="ar")
+    q_en = docs._fts_query("فاتورة", locale="en")
+    assert q_en == '"فاتورة"'
+    assert q_ar != q_en
+    assert '"فواتير"' in q_ar
+
+
+def test_fts_query_synonym_cap_at_original_plus_six():
+    question = "فاتورة طلب مندوب extra1 extra2 extra3 extra4 extra5 extra6 extra7"
+    q = docs._fts_query(question, locale="ar")
+    terms = [part.strip('"') for part in q.split(" OR ")]
+    original = len(docs._WORD_RE.findall(question))
+    assert len(terms) <= original + 6
+
+
+def test_fts_query_locale_none_skips_synonym_expansion():
+    q = docs._fts_query("فاتورة", locale=None)
+    assert q == '"فاتورة"'
+
+
+def test_fts_query_ar_en_bridge_for_system_options():
+    q = docs._fts_query("خيار نظام فواتير تابلت", locale="ar")
+    assert '"system"' in q
+    assert '"option"' in q
+    assert '"invoice"' in q or '"Invoicing"' in q
+
+
+def test_fts_query_strips_arabic_diacritics_before_tokenizing():
+    q = docs._fts_query("كيف تُسند الزبائن", locale="ar")
+    assert '"تسند"' in q
+    assert '"assign"' in q
+
+
+def test_fts_query_ar_assign_customers_salesman_synonyms():
+    q = docs._fts_query("كيف تعيين الزبائن للمندوب", locale="ar")
+    assert '"تعيين"' in q
+    assert '"assign"' in q
+    assert '"customers"' in q
+    assert '"salesman"' in q or '"salesperson"' in q
+
+
+def test_search_boosts_customers_48_assign_heading(tmp_path, monkeypatch):
+    corpus = tmp_path / "corpus"
+    (corpus / "back-office").mkdir(parents=True)
+    (corpus / "back-office" / "customers.md").write_text(
+        "4.8 Customers - Assign Customers for Salesman\n"
+        "Choose salesman Position then check customers and press Update.\n"
+    )
+    (corpus / "user_guide.md").write_text(
+        "assign customers to salesperson from generic guide without section number.\n"
+    )
+    _build_custom_index(tmp_path, monkeypatch, corpus)
+
+    hits = docs.search("morec", "كيف تُسند الزبائن للمندوب", locale="ar", limit=2)
+    assert hits
+    assert "4.8" in hits[0]["heading"] or "Assign Customers" in hits[0]["excerpt"]
+    assert hits[0]["source"].startswith("back-office/")

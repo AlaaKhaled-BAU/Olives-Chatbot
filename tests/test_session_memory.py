@@ -8,19 +8,20 @@ C6c: resolution is also mocked at params.discover_profile -- the real fix
 validates a reply against the client's REAL (id, name) company set, which
 morec/rukn (both single-company) can't provide, so a synthetic multi-
 company profile is injected here to exercise the actual matching logic."""
+import os
 import sys
 from pathlib import Path
 from unittest.mock import patch
+
+os.environ.setdefault("CHATBOT_CLIENT", "morec")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from fastapi.testclient import TestClient
 
 from api import server
-from api.server import app, SESSIONS, TOKEN_MAP
+from api.server import app, SESSIONS
 
 client = TestClient(app)
-MOREC_TOKEN = next(t for t, c in TOKEN_MAP.items() if c == "morec")
-AUTH = {"authorization": f"Bearer {MOREC_TOKEN}"}
 
 _MULTI_COMPANY_PROFILE = {
     "CompanyID": "MULTI",
@@ -35,7 +36,8 @@ def _stream_of(result):
 
 
 def _ask(question, session_id):
-    resp = client.post("/ask", json={"question": question, "session_id": session_id}, headers=AUTH)
+    headers = {"X-Session-Id": session_id or "anon"} if session_id else {}
+    resp = client.post("/ask", json={"question": question, "session_id": session_id}, headers=headers)
     resp.read()  # force the StreamingResponse generator to actually run
     return resp
 

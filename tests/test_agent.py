@@ -17,6 +17,8 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core import agent, memory
 
+SCOPE = {"CompanyID": 1}  # bypass multi-company probe in live schema_cache
+
 
 def _msg(content=None, tool_calls=None):
     """A minimal stand-in for the openai SDK's ChatCompletionMessage."""
@@ -115,13 +117,32 @@ def test_build_table_keeps_a_single_row_with_multiple_columns():
     assert table == {"columns": ["Name", "Phone"], "rows": [["Alpha", "123"]]}
 
 
+def test_run_select_unfiltered_transactions_headers_count_returns_grain_error():
+    """P0.3: raw header counts without type+void must fail with a metric hint."""
+    state = {"queries": [], "last_rows": None, "doc_source_pairs": []}
+    with patch.object(agent.sql, "run_select") as mock_run:
+        result = agent._run_tool(
+            "run_select",
+            {"sql": "SELECT COUNT(*) FROM t.TransactionsHeaders"},
+            {},
+            {},
+            [],
+            2,
+            "105",
+            state,
+        )
+    mock_run.assert_not_called()
+    assert "error" in result
+    assert "run_metric" in result["error"]
+
+
 def test_run_tool_tracks_the_most_substantive_result_not_simply_the_last():
     """Live-observed real bug: a multi-row breakdown query followed by an
     incidental 1-row 'what's today's date' lookup (also a real business
     query by run_select's own free-vs-counted rule -- it isn't
     INFORMATION_SCHEMA) must not let the smaller result silently clobber
     the actual breakdown as the answer envelope's table data."""
-    state = {"queries": [], "last_rows": None, "doc_sources": []}
+    state = {"queries": [], "last_rows": None, "doc_source_pairs": []}
     breakdown = [{"Month": "Jan", "n": 10}, {"Month": "Feb", "n": 20}]
     date_check = [{"CurrentDateTime": "2026-07-27"}]
     with patch.object(agent.sql, "run_select", side_effect=[breakdown, date_check]):
@@ -162,8 +183,8 @@ def test_build_chart_none_for_wrong_shapes():
 
 def test_build_sources_extracts_table_names_and_keeps_doc_sources():
     queries = ["SELECT COUNT(*) FROM t.Customers", "SELECT * FROM t.Orders o JOIN t.Customers c ON o.id=c.id"]
-    doc_sources = ["system_options_guide.md › Invoicing"]
-    sources = agent._build_sources(queries, doc_sources)
+    doc_source_pairs = [("system_options_guide.md", "Invoicing")]
+    sources = agent._build_sources(queries, doc_source_pairs)
     assert sources == ["Customers", "Orders", "system_options_guide.md › Invoicing"], \
         "table names deduped/sorted, doc sources kept verbatim and appended"
 
@@ -199,7 +220,7 @@ def test_suggest_followups_never_raises_on_a_bad_reply():
 
 
 def test_build_envelope_skips_followups_when_there_is_no_final_text():
-    state = {"queries": [], "last_rows": None, "doc_sources": []}
+    state = {"queries": [], "last_rows": None, "doc_source_pairs": []}
     with patch.object(agent.llm, "complete") as mock_complete:
         envelope = agent._build_envelope("q", "", state)
     mock_complete.assert_not_called()
@@ -274,8 +295,9 @@ def test_information_schema_exploration_never_counts_against_the_budget(monkeypa
         _resp(_msg(content="There are 33517 customers.")),
     ]
     with patch.object(agent.llm, "complete", side_effect=calls) as mock_complete, \
-         patch.object(agent.sql, "run_select", return_value=[{"n": 1}]) as mock_run_select:
-        result = agent.ask("morec", "how many customers?")
+         patch.object(agent.sql, "run_select", return_value=[{"n": 1}]) as mock_run_select, \
+         patch.object(agent.tenant_pack, "build", return_value="## Tenant context\nCompanyID: 1"):
+        result = agent.ask("morec", "how many customers?", conversation=SCOPE)
 
     assert result["answer"] == "There are 33517 customers."
     # C4: tools stay offered on BOTH call #2 (the INFORMATION_SCHEMA probe
@@ -298,7 +320,7 @@ def test_query_budget_closes_after_max_queries_real_queries(monkeypatch, tmp_pat
     calls.append(_resp(_msg(content="Here is the comparison.")))
     with patch.object(agent.llm, "complete", side_effect=calls) as mock_complete, \
          patch.object(agent.sql, "run_select", return_value=[{"n": 1}]):
-        result = agent.ask("morec", "compare this month to last month")
+        result = agent.ask("morec", "compare this month to last month", conversation=SCOPE)
 
     assert result["answer"] == "Here is the comparison."
     # calls[0..MAX_QUERIES-1] each still had tools offered (budget not yet
@@ -322,7 +344,7 @@ def test_analyze_tool_never_counts_against_the_budget(monkeypatch, tmp_path):
     ]
     with patch.object(agent.llm, "complete", side_effect=calls) as mock_complete, \
          patch.object(agent.sql, "run_select", return_value=[{"n": 1}]):
-        result = agent.ask("morec", "how much did customers grow?")
+        result = agent.ask("morec", "how much did customers grow?", conversation=SCOPE)
 
     assert result["answer"] == "Customers grew 20%."
     # only 1 of MAX_QUERIES=4 spent (the analyze call is free) -- tools
@@ -350,10 +372,11 @@ def test_search_docs_tool_never_counts_against_the_budget(monkeypatch, tmp_path)
     with patch.object(agent.llm, "complete", side_effect=calls) as mock_complete, \
          patch.object(agent.sql, "run_select", return_value=[{"n": 1}]), \
          patch.object(agent.docs, "search", return_value=[{"source": "guide.md", "heading": "Price Lists", "excerpt": "..."}]) as mock_search:
-        result = agent.ask("morec", "what is a price list, and how many customers do I have?")
+        result = agent.ask("morec", "what is a price list, and how many customers do I have?", conversation=SCOPE)
 
     assert result["answer"] == "A price list controls item pricing; you have 33517 customers."
-    mock_search.assert_called_once_with("morec", "price list")
+    mock_search.assert_called_once()
+    assert mock_search.call_args.args[:2] == ("morec", "price list")
     # only 1 of MAX_QUERIES=4 spent (search_docs is free) -- tools must
     # still be offered on the turn right after it.
     assert mock_complete.call_args_list[2].kwargs["tools"] is not None
@@ -371,14 +394,14 @@ def test_real_table_result_feeds_plan_cache_but_never_verified_query(monkeypatch
     ]
     with patch.object(agent.llm, "complete", side_effect=calls), \
          patch.object(agent.sql, "run_select", return_value=[{"n": 33517}]):
-        result = agent.ask("morec", "how many customers total?")
+        result = agent.ask("morec", "how many customers total?", conversation=SCOPE)
 
     assert result["answer"] == "33517 customers."
     assert result["answer_sql"] == "SELECT COUNT(*) FROM t.Customers"
     # C4a: plan_cache stores the real ORDERED LIST, not a joined string --
     # each entry must independently pass gate.validate() again on replay.
     assert memory.get_plan(result["cache_key"]) == {"queries": ["SELECT COUNT(*) FROM t.Customers"]}
-    assert memory.get_verified_query("morec", "how many customers total?") is None
+    assert memory.get_verified_query("morec", 1, "how many customers total?") is None
 
 
 def test_information_schema_only_turn_never_caches_the_probe_as_the_answer(monkeypatch, tmp_path):
@@ -405,7 +428,7 @@ def test_information_schema_only_turn_never_caches_the_probe_as_the_answer(monke
     ]
     with patch.object(agent.llm, "complete", side_effect=calls), \
          patch.object(agent.sql, "run_select", return_value=[{"COLUMN_NAME": "ID"}]):
-        result = agent.ask("morec", "how many customers total?")
+        result = agent.ask("morec", "how many customers total?", conversation=SCOPE)
 
     assert result["answer_sql"] is None
     assert memory.get_plan(result["cache_key"]) is None, "an info-schema-only turn must cache nothing at all"
@@ -416,7 +439,7 @@ def test_refusal_when_no_final_answer_within_turn_budget(monkeypatch, tmp_path):
     # every turn keeps calling a tool, never producing a final text answer
     endless = _resp(_msg(tool_calls=[_tool_call("c", "introspect_schema", '{"name": "Customers"}')]))
     with patch.object(agent.llm, "complete", return_value=endless):
-        result = agent.ask("morec", "an impossible question")
+        result = agent.ask("morec", "an impossible question", conversation=SCOPE)
 
     assert result["needs_ask"] is None
     assert "can't answer" in result["answer"].lower()
@@ -426,7 +449,7 @@ def test_ask_user_tool_call_returns_needs_ask_immediately(monkeypatch, tmp_path)
     monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
     resp = _resp(_msg(tool_calls=[_tool_call("c1", "ask_user", '{"question": "Which month?"}')]))
     with patch.object(agent.llm, "complete", return_value=resp):
-        result = agent.ask("morec", "how many orders?")
+        result = agent.ask("morec", "how many orders?", conversation=SCOPE)
 
     assert result["needs_ask"] == "Which month?"
     assert result["answer"] is None
@@ -446,7 +469,7 @@ def test_malformed_tool_syntax_is_retried_not_returned_as_answer(monkeypatch, tm
     # unrelated call C8 adds on top.
     followups = _plain_resp("[]")
     with patch.object(agent.llm, "complete", side_effect=[garbled, clean, followups]) as mock_complete:
-        result = agent.ask("morec", "how many companies?")
+        result = agent.ask("morec", "how many companies?", conversation=SCOPE)
 
     assert result["answer"] == "There are 3 companies."
     assert mock_complete.call_count == 3
@@ -481,9 +504,39 @@ def test_cap_for_context_leaves_non_list_results_alone():
 
 def test_looks_like_malformed_tool_syntax():
     assert agent._looks_like_malformed_tool_syntax("<｜｜DSML｜｜tool_calls>")
+    assert agent._looks_like_malformed_tool_syntax("<tool_call>\n<function=run_select>")
+    assert agent._looks_like_malformed_tool_syntax(
+        "prose:<tool_call>run_select<arg_key>sql</arg_key></tool_call>")
     assert not agent._looks_like_malformed_tool_syntax("There are 3 companies.")
     assert not agent._looks_like_malformed_tool_syntax("")
     assert not agent._looks_like_malformed_tool_syntax(None)
+
+
+def test_stream_turn_never_forwards_tool_call_xml():
+    chunks = [_content_chunk("<tool_call>"), _content_chunk("<function=run_select>")]
+    with patch.object(agent.llm, "complete", return_value=chunks):
+        events = list(agent._stream_turn([], None))
+    assert not any(e["type"] == "answer_chunk" for e in events)
+    done = next(e for e in events if e["type"] == "_turn_done")
+    assert agent._looks_like_malformed_tool_syntax(done["message"]["content"])
+
+
+def test_malformed_tool_call_xml_is_retried_not_returned(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    garbled = _resp(_msg(content="<tool_call>\n<function=run_select>\n<parameter=sql>\nSELECT 1\n"))
+    clean = _resp(_msg(content="Top customer is Acme."))
+    followups = _plain_resp("[]")
+    with patch.object(agent.llm, "complete", side_effect=[garbled, clean, followups]) as mock_complete:
+        result = agent.ask("morec", "top customers?", conversation=SCOPE)
+    assert result["answer"] == "Top customer is Acme."
+    assert mock_complete.call_count == 3
+
+
+def test_system_prompt_documents_invoice_grain_and_isvoid():
+    prompt = agent._system_prompt("105")
+    assert "TransactionTypeID" in prompt
+    assert "ISNULL(IsVoid" in prompt
+    assert "Receipts" in prompt
 
 
 def test_malformed_tool_syntax_does_not_false_positive_on_prose_mentioning_it():
@@ -502,7 +555,10 @@ def test_run_proc_tool_not_offered():
     audited EXECUTE grant) would re-add this deliberately, not by accident."""
     names = {t["function"]["name"] for t in agent.TOOLS}
     assert "run_proc" not in names
-    assert names == {"introspect_schema", "run_select", "ask_user", "analyze", "search_docs"}
+    assert names == {
+        "introspect_schema", "run_select", "run_metric", "ask_user", "analyze", "search_docs",
+        "search_schema_notes", "read_schema_note", "get_joins", "lookup_hot",
+    }
 
 
 def test_introspect_refuses_a_table_with_no_tenant_view():
@@ -531,3 +587,205 @@ def test_introspect_never_refuses_on_a_pre_c0_cache():
     cache = {"tables": {"dbo.Users": [{"column": "UserID", "type": "int"}]}}
     result = agent._introspect(cache, {}, "Users")
     assert result["kind"] == "table"
+
+
+def test_dedupe_doc_pairs_preserves_first_seen_order():
+    pairs = [("a.md", "H1"), ("b.md", "H2"), ("a.md", "H1"), ("c.md", "H3")]
+    assert agent._dedupe_doc_pairs(pairs) == [("a.md", "H1"), ("b.md", "H2"), ("c.md", "H3")]
+
+
+def test_has_count_sql_intent():
+    assert agent._has_count_sql_intent("كم طلب لدينا؟")
+    assert agent._has_count_sql_intent("how many invoices")
+    assert agent._has_count_sql_intent("SELECT COUNT(*) FROM t.X")
+    assert not agent._has_count_sql_intent("ماذا تعني قائمة الأسعار؟")
+    assert not agent._has_count_sql_intent("what is the price list")
+
+
+def test_is_fast_count_path_for_masters_and_metrics():
+    assert agent._is_fast_count_path("كم عدد العملاء؟")
+    assert agent._is_fast_count_path("how many items")
+    assert agent._is_fast_count_path("كم مبيعات اليوم")
+    assert not agent._is_fast_count_path("اشرح كيف أعيّن زبائن لمندوب")
+    assert not agent._is_fast_count_path("ماذا تعني قائمة الأسعار؟")
+
+
+def test_fast_count_path_omits_docs_and_vault_tools():
+    state = {"queries": [], "fast_count": True, "doc_searches": 0, "docs_only": False}
+    names = {t["function"]["name"] for t in agent._active_tools(state)}
+    assert "search_docs" not in names
+    assert "search_schema_notes" not in names
+    assert "run_metric" in names
+
+
+def test_needs_honesty_preamble():
+    assert agent._needs_honesty_preamble("كم مبيعات هذا الشهر؟")
+    assert agent._needs_honesty_preamble("sales this month")
+    assert agent._needs_honesty_preamble("كم مبيعات كل الشركات؟")
+    assert not agent._needs_honesty_preamble("how many customers")
+
+
+def test_doc_search_cap_omits_search_docs(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call(f"c{i}", "search_docs", f'{{"query": "q{i}"}}')]))
+        for i in range(agent.MAX_DOC_SEARCHES)
+    ]
+    calls.append(_resp(_msg(content="Answer from docs.")))
+    followups = _plain_resp("[]")
+    with patch.object(agent.llm, "complete", side_effect=calls + [followups]) as mock_complete, \
+         patch.object(agent.docs, "search", return_value=[{"source": "g.md", "heading": "H", "excerpt": "x"}]):
+        result = agent.ask("morec", "how does approval work?", conversation=SCOPE)
+    assert result["answer"] == "Answer from docs."
+    assert result["doc_search_count"] == agent.MAX_DOC_SEARCHES
+    tools_on_fourth = mock_complete.call_args_list[agent.MAX_DOC_SEARCHES].kwargs["tools"]
+    names = {t["function"]["name"] for t in tools_on_fourth}
+    assert "search_docs" not in names
+
+
+def test_docs_only_omits_schema_tools(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call("c1", "search_docs", '{"query": "price list"}')])),
+        _resp(_msg(tool_calls=[_tool_call("c2", "introspect_schema", '{"name": "Items"}')])),
+        _resp(_msg(content="Price list explained.")),
+    ]
+    followups = _plain_resp("[]")
+    with patch.object(agent.llm, "complete", side_effect=calls + [followups]) as mock_complete, \
+         patch.object(agent.docs, "search", return_value=[{"source": "g.md", "heading": "Price", "excerpt": "..."}]):
+        result = agent.ask("morec", "what is a price list?", conversation=SCOPE)
+    assert result["answer"] == "Price list explained."
+    tools_after_docs = mock_complete.call_args_list[1].kwargs["tools"]
+    names = {t["function"]["name"] for t in tools_after_docs}
+    assert "introspect_schema" not in names
+    assert "search_schema_notes" not in names
+
+
+def test_docs_only_not_set_when_count_intent(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call("c1", "search_docs", '{"query": "price list"}')])),
+        _resp(_msg(tool_calls=[_tool_call("c2", "run_select", '{"sql": "SELECT COUNT(*) FROM t.Items"}')])),
+        _resp(_msg(content="Price list and count.")),
+    ]
+    followups = _plain_resp("[]")
+    with patch.object(agent.llm, "complete", side_effect=calls + [followups]) as mock_complete, \
+         patch.object(agent.docs, "search", return_value=[{"source": "g.md", "heading": "Price", "excerpt": "..."}]), \
+         patch.object(agent.sql, "run_select", return_value=[{"n": 5}]):
+        agent.ask("morec", "explain price list then كم items", conversation=SCOPE)
+    tools_after_docs = mock_complete.call_args_list[1].kwargs["tools"]
+    names = {t["function"]["name"] for t in tools_after_docs}
+    assert "introspect_schema" in names
+
+
+def test_honesty_preamble_injected(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    seen = []
+    stream_resp = _resp(_msg(content="Contextual answer."))
+    followups = _plain_resp("[]")
+
+    def side_effect(messages, **kwargs):
+        if kwargs.get("stream"):
+            seen.append(messages)
+            return stream_resp
+        return followups
+
+    with patch.object(agent.llm, "complete", side_effect=side_effect), \
+         patch.object(agent.sql, "run_select", return_value=[{"d": "2025-07-15"}]), \
+         patch.object(agent, "_empty_calendar_needs_ask", return_value=None):
+        agent.ask("morec", "كم مبيعات هذا الشهر؟", conversation=SCOPE)
+    honesty = [m for m in seen[0] if m.get("role") == "system" and m.get("content", "").startswith("Honesty:")]
+    assert len(honesty) == 1
+    assert "calendar_today=" in honesty[0]["content"]
+    assert "CompanyID=1" in honesty[0]["content"]
+
+
+def test_doc_search_count_in_result(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call("c1", "search_docs", '{"query": "approval"}')])),
+        _resp(_msg(content="Approved via screen 7.1.3.")),
+    ]
+    followups = _plain_resp("[]")
+    with patch.object(agent.llm, "complete", side_effect=calls + [followups]), \
+         patch.object(agent.docs, "search", return_value=[{"source": "g.md", "heading": "Approve", "excerpt": "..."}]):
+        result = agent.ask("morec", "how to approve orders?", conversation=SCOPE)
+    assert result["doc_search_count"] == 1
+
+
+def test_build_arabic_stub_single_count_row():
+    state = {"last_rows": [{"n": 9}], "doc_source_pairs": [], "queries": ["SELECT COUNT(*) AS n FROM t.X"]}
+    assert agent._build_arabic_stub(state) == "النتيجة: 9."
+
+
+def test_build_arabic_stub_multi_numeric_columns():
+    state = {"last_rows": [{"total": 432.58, "invoice_count": 2}], "doc_source_pairs": []}
+    stub = agent._build_arabic_stub(state)
+    assert "432.58" in stub
+    assert "invoice_count" in stub
+
+
+def test_build_arabic_stub_docs_only():
+    state = {"last_rows": None, "doc_source_pairs": [("guide.md", "Assign")]}
+    assert agent._build_arabic_stub(state) == "الإجابة في المصادر أدناه."
+
+
+def test_empty_model_answer_after_run_select_uses_arabic_stub(monkeypatch, tmp_path):
+    """P0.1: SQL rows but blank model text must never yield an empty answer."""
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call("c1", "run_select", '{"sql": "SELECT COUNT(*) AS n FROM t.Customers"}')])),
+        _resp(_msg(content="   ")),
+    ]
+    retry = _plain_resp("   ")
+    followups = _plain_resp("[]")
+    with patch.object(agent.llm, "complete", side_effect=calls + [retry, followups]), \
+         patch.object(agent.sql, "run_select", return_value=[{"n": 9}]):
+        result = agent.ask("morec", "كم عدد الزبائن؟", conversation=SCOPE)
+    assert result["answer"] == "النتيجة: 9."
+    assert result["answer_sql"]
+
+
+def test_empty_calendar_month_needs_ask_before_tools(monkeypatch, tmp_path):
+    """P0.2: هذا الشهر with no invoices in current calendar month → needs_ask."""
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    today = __import__("datetime").date.today()
+
+    def fake_run_select(sql_text, company_id, client, **kwargs):
+        if "MAX(TransactionDate)" in sql_text:
+            return [{"d": "2025-07-15"}]
+        if "TOP 1" in sql_text:
+            return []
+        raise AssertionError(f"unexpected SQL: {sql_text}")
+
+    with patch.object(agent.llm, "complete") as mock_complete, \
+         patch.object(agent.sql, "run_select", side_effect=fake_run_select):
+        result = agent.ask("morec", "كم مبيعات هذا الشهر؟", conversation=SCOPE)
+    mock_complete.assert_not_called()
+    assert result["needs_ask"]
+    assert str(today.year) in result["needs_ask"]
+    assert "2025" in result["needs_ask"] or "يوليو" in result["needs_ask"]
+    assert "هل أحسب" in result["needs_ask"]
+
+
+def test_calendar_confirm_skips_empty_month_gate(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call("c1", "run_metric", '{"metric": "net_sales", "filters": {"from_date": "2025-07-01", "to_date": "2025-07-31"}}')])),
+        _resp(_msg(content="مبيعات يوليو 2025: 432.58.")),
+    ]
+    followups = _plain_resp("[]")
+
+    def fake_run_select(sql_text, company_id, client, **kwargs):
+        if "MAX(TransactionDate)" in sql_text:
+            return [{"d": "2025-07-15"}]
+        return [{"net_sales": 432.58}]
+
+    with patch.object(agent.llm, "complete", side_effect=calls + [followups]), \
+         patch.object(agent.sql, "run_select", side_effect=fake_run_select), \
+         patch.object(agent.metrics, "run_metric", return_value={
+             "rows": [{"net_sales": 432.58}], "sql": "SELECT 1",
+         }):
+        result = agent.ask("morec", "نعم احسب آخر شهر قيد", conversation=SCOPE)
+    assert result["answer"]
+    assert result["needs_ask"] is None
