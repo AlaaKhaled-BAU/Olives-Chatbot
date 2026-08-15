@@ -41,6 +41,7 @@ docs.sqlite per client, so a client's index physically never contains a
 chunk naming another client's customization -- there is no query-time
 filter to accidentally bypass.
 """
+import os
 import re
 import sqlite3
 import unicodedata
@@ -125,11 +126,23 @@ def _chunks(text: str):
             yield heading_path, para
 
 
+def _iter_corpus_md_files(corpus_dir: Path):
+    """Yield every ``.md`` file under corpus_dir, following symlinked subdirs.
+
+    ``docs_corpus/back-office`` is a symlink to ``knowledge/guide-headed/…``;
+    ``Path.rglob`` does not descend into symlinked directories on Python 3.13."""
+    for root, _dirs, files in os.walk(corpus_dir, followlinks=True):
+        root_path = Path(root)
+        for name in sorted(files):
+            if name.lower().endswith(".md"):
+                yield root_path / name
+
+
 def iter_corpus_chunks(corpus_dir: Path = CORPUS_DIR):
     """(source_file, heading_path, text) for every .md file under
-    corpus_dir -- rglob follows the symlinks 04_assemble_docs_corpus.py
-    sets up, so back-office/front-office's real directories are walked."""
-    for path in sorted(corpus_dir.rglob("*.md")):
+    corpus_dir -- walks symlinked back-office/front-office trees set up by
+    04_assemble_docs_corpus.py."""
+    for path in sorted(_iter_corpus_md_files(corpus_dir)):
         text = path.read_text(errors="replace")
         rel = path.relative_to(corpus_dir)
         for heading_path, body in _chunks(text):

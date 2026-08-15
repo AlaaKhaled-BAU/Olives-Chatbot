@@ -15,6 +15,19 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 GUIDE_HEADED = REPO_ROOT / "knowledge" / "guide-headed"
 
 
+def test_iter_corpus_follows_symlinked_back_office(tmp_path):
+    src = tmp_path / "headed" / "back-office"
+    src.mkdir(parents=True)
+    (src / "customers.md").write_text("# 4.8 Customers - Assign Customers for Salesman\nbody\n")
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "back-office").symlink_to(src)
+    chunks = list(docs.iter_corpus_chunks(corpus))
+    assert len(chunks) == 1
+    assert chunks[0][0] == "back-office/customers.md"
+    assert "4.8" in chunks[0][1]
+
+
 def test_chunks_splits_flat_text_with_no_headings():
     assert list(docs._chunks("just a paragraph, no headings at all")) == \
         [("", "just a paragraph, no headings at all")]
