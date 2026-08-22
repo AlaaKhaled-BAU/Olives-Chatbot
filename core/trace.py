@@ -19,6 +19,19 @@ REQUESTS = Counter("chatbot_requests_total", "Total agent turns", ["client", "ev
 TURN_LATENCY = Histogram("chatbot_turn_latency_seconds", "Agent turn latency", ["client"])
 CACHE_HITS = Counter("chatbot_cache_hits_total", "Plan-cache hits", ["client"])
 GATE_REJECTIONS = Counter("chatbot_gate_rejections_total", "SQL gate rejections", ["client"])
+TABLE_USES = Counter(
+    "chatbot_table_uses_total",
+    "Business tables referenced by executed SQL (plan TRACK B: schema-trimming evidence)",
+    ["client", "table"],
+)
+
+
+def record_table_uses(client: str, tables) -> None:
+    """Count every t.* table an executed query referenced. Bounded label
+    space (~450 views per client); fuels the keep-full-schema-vs-hybrid
+    decision with data instead of taste."""
+    for table in set(tables or []):
+        TABLE_USES.labels(client=client, table=table).inc()
 
 
 def observe_latency(client: str, seconds: float) -> None:

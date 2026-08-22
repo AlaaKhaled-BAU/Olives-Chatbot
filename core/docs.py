@@ -188,8 +188,10 @@ def build_index(client: str, corpus_dir: Path = CORPUS_DIR) -> dict:
                 excluded += 1
                 continue
             conn.execute(
+                # TRACK C: index-time normalization must mirror query-time
+                # normalize_ar() or trigram units never line up.
                 "INSERT INTO docs (source_file, heading_path, text) VALUES (?, ?, ?)",
-                (source_file, heading_path, text),
+                (source_file, heading_path, normalize_ar(text)),
             )
             indexed += 1
         conn.commit()
@@ -246,6 +248,24 @@ def _strip_ar_diacritics(text: str) -> str:
     return "".join(c for c in text if unicodedata.category(c) != "Mn")
 
 
+_ALEF_VARIANTS = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ى": "ي"})
+
+
+def _unify_alef(text: str) -> str:
+    """TRACK C: fold alef seat variants (أإآ→ا) and alef maqsura (ى→ي) so
+    trigram matching survives spelling drift («أضيف» vs «اضيف»). Applied to
+    BOTH index-time and query-time text when DOCS_AR_NORM=1. ة is NOT folded
+    (folding it into ه swaps real word identities)."""
+    if not os.environ.get("DOCS_AR_NORM"):
+        return text
+    return text.translate(_ALEF_VARIANTS)
+
+
+def normalize_ar(text: str) -> str:
+    """Single normalization pipeline used by indexer and searcher alike."""
+    return _unify_alef(_strip_ar_diacritics(text))
+
+
 def _path_priority(source_file: str) -> int:
     sf = source_file.replace("\\", "/").lower()
     if "back-office/" in sf:
@@ -290,7 +310,7 @@ def _is_noise_chunk(heading_path: str, text: str) -> bool:
 
 def _question_tokens(question: str) -> set[str]:
     tokens: set[str] = set()
-    for w in _WORD_RE.findall(_strip_ar_diacritics(question)):
+    for w in _WORD_RE.findall(normalize_ar(question)):
         tokens.add(w.lower())
         if w.startswith(_AL_PREFIX) and len(w) >= 4:
             tokens.add(w[len(_AL_PREFIX) :].lower())
@@ -311,7 +331,7 @@ def _fts_query(question: str, locale: str | None = None) -> str:
     When locale is ``ar``, up to three synonym groups expand for tokens
     present in the question (after ``ال`` strip). Total quoted terms are
     capped at original term count + 6."""
-    words = _WORD_RE.findall(_strip_ar_diacritics(question))
+    words = _WORD_RE.findall(normalize_ar(question))
     if not words:
         return '""'
     terms, seen = [], set()

@@ -16,6 +16,7 @@ import datetime
 import hashlib
 import json
 import re
+import threading
 import time
 from pathlib import Path
 
@@ -35,6 +36,26 @@ MODEL_ALIAS = "chatbot"  # cache-key namespace for plan/result keys (kept stable
 # (_retry_empty_final), never a streaming interactive turn.
 DEFAULT_GEAR = "t1"
 DOCS_GEAR = "f0"
+
+
+class TurnCancelled(Exception):
+    """Client disconnected mid-turn (plan TRACK D): stop spending tokens,
+    unwind silently — nobody is listening."""
+
+
+# TRACK F2: analyst intent. Asymmetric-safe router — firing it only upgrades
+# thinking (t2) and appends the analyst pack; nothing is ever hidden.
+_ANALYSIS_HINT_RE = re.compile(
+    r"توقع|المتوقعة|توقعات|القادم|المقبل|الأسبوع القادم|تحليل|اتجاه|نمو|"
+    r"انصحني|أنصحك|ماذا تفعل|وش نفعل|خطة|predict|forecast|next week|trend|growth",
+    re.IGNORECASE,
+)
+
+# Conversation memory (TRACK F1): bounded rolling window injected as ONE
+# system block after the byte-stable prefix.
+MAX_HISTORY_TURNS = 4
+_HISTORY_TURN_CHARS = 220
+_HISTORY_BLOCK_CHARS = 1200
 # C4: replaces the old binary "results_in_context" latch. That made period-
 # over-period comparison, drill-down, and verification-against-a-second-
 # query structurally impossible -- exactly what a "data master" (vs a
@@ -70,10 +91,59 @@ def _user_id(client: str, company_id, subject: str | None) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
 
-def _initial_gear(question: str, *, howto_path: bool, report_path: bool, fast_count: bool) -> str:
+def _initial_gear(question: str, *, howto_path: bool, report_path: bool,
+                  fast_count: bool, analysis_intent: bool = False) -> str:
+    if analysis_intent:
+        return "t2"
     if howto_path or report_path or fast_count:
         return DOCS_GEAR
     return DEFAULT_GEAR
+
+
+_HISTORY_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def _compress_for_history(text: str | None, cap: int = _HISTORY_TURN_CHARS) -> str:
+    """Collapse whitespace, trim at the last sentence end before the cap."""
+    flat = _HISTORY_WHITESPACE_RE.sub(" ", (text or "")).strip()
+    if len(flat) <= cap:
+        return flat
+    cut = flat.rfind(".", 0, cap)
+    if cut < cap // 2:
+        cut = cap
+    return flat[:cut].rstrip(".,؛") + "…"
+
+
+def _path_flags(question: str, client: str) -> str:
+    """Compact router-decision record for trace events (miss-mining fuel):
+    fc=fast_count ht=howto rp=report an=analysis."""
+    return (f"fc{int(_is_fast_count_path(question))},"
+            f"ht{int(_is_howto_path(question, client))},"
+            f"rp{int(_is_report_path(question, client))},"
+            f"an{int(bool(_ANALYSIS_HINT_RE.search(question)))}")
+
+
+def _conversation_block(history: list[dict] | None) -> str | None:
+    """TRACK F1: rolling memory of recent turns so follow-ups («والمقبل؟»)
+    resolve against what was just answered. One bounded block, injected
+    AFTER every stable/dynamic block and BEFORE the user message. None when
+    history is empty — fresh sessions keep byte-identical prompts."""
+    if not history:
+        return None
+    lines = ["## سياق المحادثة الحالية (آخر الأسئلة والأجوبة — استخدمه لفهم الضمائر والمتابعات)"]
+    for h in history[-MAX_HISTORY_TURNS:]:
+        line = f"- س: {_compress_for_history(h.get('q'), _HISTORY_TURN_CHARS)}"
+        a = _compress_for_history(h.get("a"))
+        if a:
+            line += f" ← ج: {a}"
+        sql = (h.get("sql") or "").strip()
+        if sql:
+            line += f" | SQL: {_compress_for_history(sql, 160)}"
+        lines.append(line)
+    block = "\n".join(lines)
+    if len(block) > _HISTORY_BLOCK_CHARS:
+        block = block[:_HISTORY_BLOCK_CHARS].rsplit("\n", 1)[0]
+    return block
 
 
 def _schema_block(cache: dict) -> str:
@@ -273,17 +343,19 @@ def _still_buffering_tool_syntax(buffer: str) -> bool:
     return False
 
 
-def _stream_turn(messages, tools, gear: str = DEFAULT_GEAR, user_id: str | None = None):
-    """Runs one LLM completion with stream=True in the requested gear. Yields
-    {"type": "answer_chunk", "text": ...} live as content tokens arrive (C7:
-    'stream the final answer token-by-token'). Tool-call deltas are
-    reconstructed silently from fragments and NEVER yielded (C7: 'do not
-    stream tool-call arguments... to the client UI'). DeepSeek thinking-mode
-    `reasoning_content` deltas are accumulated but never yielded either.
-    The turn's reconstructed message dict is yielded last as {"type":
-    "_turn_done", "message": ...}; when reasoning was produced it rides on
-    that message because the API REQUIRES echoing it back on any subsequent
-    tools+thinking request (HTTP 400 otherwise)."""
+def _stream_turn(messages, tools, gear: str = DEFAULT_GEAR, user_id: str | None = None,
+                 cancel: threading.Event | None = None):
+    """Runs one LLM completion with stream=True in the requested gear.
+    Yields {"type": "answer_chunk", "text": ...} live as content tokens
+    arrive (C7). Tool-call deltas are reconstructed silently and NEVER
+    yielded. DeepSeek thinking-mode `reasoning_content` deltas are
+    accumulated but never yielded either; they ride on the reconstructed
+    message because the API REQUIRES echoing them back on any subsequent
+    tools+thinking request (HTTP 400 otherwise).
+
+    `cancel` (TRACK D): a threading.Event checked between chunks — set it
+    when the client disconnects and this raises TurnCancelled promptly,
+    closing the upstream HTTP stream instead of generating for nobody."""
     stream = llm.complete(messages, gear=gear, tools=tools, stream=True, user_id=user_id)
     buffer = ""
     reasoning = ""
@@ -291,6 +363,9 @@ def _stream_turn(messages, tools, gear: str = DEFAULT_GEAR, user_id: str | None 
     assembling_tools = False
     tool_calls = {}
     for chunk in stream:
+        if cancel is not None and cancel.is_set():
+            stream.close()
+            raise TurnCancelled("client disconnected")
         if not chunk.choices:
             continue
         delta = chunk.choices[0].delta
@@ -399,16 +474,24 @@ TOOLS = [
         "function": {
             "name": "analyze",
             "description": (
-                "Compute an exact derived value (percent change, difference, or ratio) from two "
-                "numbers already in your context -- e.g. comparing this month's total against "
-                "last month's. Does not touch the database and never counts against the query "
-                "budget. Use this instead of doing the arithmetic yourself in prose -- it's exact, "
-                "prose arithmetic isn't guaranteed to be."
+                "Exact computation offload. Arithmetic: percent_change, difference, ratio "
+                "(before/after). Trend analysis for forecasts: trend_direction (pass 'series' "
+                "= oldest-to-newest weekly/monthly numbers from ONE grouped query; returns "
+                "direction, slope %/step, and projected_next_bucket_estimate labeled ESTIMATE), "
+                "growth_compare (before/after), top_movers ({label:value} dicts for current vs "
+                "previous period). Never touches the database, never counts against the query "
+                "budget. Use this instead of computing in prose -- it's exact and the forecast "
+                "numbers it emits are honest estimates with stated basis."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "operation": {"type": "string", "enum": ["percent_change", "difference", "ratio"]},
+                    "operation": {"type": "string",
+                                  "enum": ["percent_change", "difference", "ratio",
+                                           "trend_direction", "growth_compare", "top_movers"]},
+                    "series": {"type": "array", "items": {"type": "number"}},
+                    "current": {"type": "object", "additionalProperties": {"type": "number"}},
+                    "previous": {"type": "object", "additionalProperties": {"type": "number"}},
                     "before": {"type": "number"},
                     "after": {"type": "number"},
                 },
@@ -934,10 +1017,67 @@ def _resolve_final_text(final_text: str | None, messages: list, state: dict) -> 
 
 
 def _analyze(args: dict) -> dict:
-    """C4: exact arithmetic the model can offload instead of computing (and
-    potentially getting slightly wrong) in prose -- no DB access, doesn't
-    touch state at all, so it never counts against MAX_QUERIES."""
+    """C4 + TRACK F3: exact arithmetic/trend computation the model can
+    offload instead of computing (and potentially getting slightly wrong)
+    in prose -- no DB access, doesn't touch state, so it never counts
+    against MAX_QUERIES. Trend ops are DETERMINISTIC helpers; any number
+    they emit is labeled an estimate by the analyst pack, never a promise."""
     op = args.get("operation")
+    if op == "trend_direction":
+        series = args.get("series")
+        if not isinstance(series, list) or len(series) < 2:
+            return {"error": "series must be a list of >=2 numbers (oldest to newest)"}
+        try:
+            values = [float(v) for v in series]
+        except (TypeError, ValueError):
+            return {"error": "series must contain only numbers"}
+        n = len(values)
+        # Least-squares slope on bucket index -> % of mean per step.
+        mean = sum(values) / n
+        if mean == 0:
+            return {"direction": "flat", "slope_pct_per_step": 0.0,
+                    "note": "mean is 0 -- no trend computable"}
+        denom = sum((i - (n - 1) / 2) ** 2 for i in range(n))
+        slope = sum((i - (n - 1) / 2) * (v - mean) for i, v in enumerate(values)) / denom
+        slope_pct = slope / mean * 100
+        window = min(3, n)
+        moving_avg = sum(values[-window:]) / window
+        projected = max(0.0, moving_avg * (1 + slope_pct / 100))
+        direction = "up" if slope_pct > 1 else ("down" if slope_pct < -1 else "flat")
+        return {"direction": direction,
+                "slope_pct_per_step": round(slope_pct, 2),
+                "last_value": values[-1],
+                "moving_average_last3": round(moving_avg, 4),
+                "projected_next_bucket_estimate": round(projected, 4),
+                "basis_buckets": n,
+                "estimate_label": "ESTIMATE -- not a guarantee"}
+    if op == "growth_compare":
+        try:
+            before, after = float(args["before"]), float(args["after"])
+        except (KeyError, TypeError, ValueError):
+            return {"error": "before/after must both be numbers"}
+        if before == 0:
+            return {"error": "before is 0 -- growth is undefined"}
+        pct = (after - before) / before * 100
+        return {"delta": after - before, "growth_pct": round(pct, 2)}
+    if op == "top_movers":
+        current, previous = args.get("current"), args.get("previous")
+        if not isinstance(current, dict) or not isinstance(previous, dict):
+            return {"error": "current/previous must be {label: number} dicts"}
+        movers = []
+        for label, val in current.items():
+            try:
+                v = float(val)
+                p = float(previous.get(label, 0))
+            except (TypeError, ValueError):
+                continue
+            delta = v - p
+            pct = (delta / p * 100) if p else None
+            movers.append({"label": label, "value": v, "previous": p,
+                           "delta": round(delta, 4),
+                           "pct_change": round(pct, 2) if pct is not None else "new"})
+        movers.sort(key=lambda m: -abs(m["delta"]))
+        return {"movers": movers[:10]}
     try:
         before, after = float(args["before"]), float(args["after"])
     except (KeyError, TypeError, ValueError):
@@ -952,7 +1092,8 @@ def _analyze(args: dict) -> dict:
         if not before:
             return {"error": "before is 0 -- percent change is undefined"}
         return {"result": (after - before) / before * 100}
-    return {"error": f"unknown operation {op!r} -- use percent_change, difference, or ratio"}
+    return {"error": f"unknown operation {op!r} -- use percent_change, difference, ratio, "
+                     f"trend_direction, growth_compare, or top_movers"}
 
 
 def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, client, state):
@@ -1174,7 +1315,8 @@ def _build_envelope(question: str, final_text: str, state: dict) -> dict:
 
 
 def ask_stream(client: str, question: str, conversation: dict = None, role: str = "manager",
-               subject: str | None = None):
+               subject: str | None = None, history: list[dict] | None = None,
+               cancel: threading.Event | None = None):
     """Generator form of ask() (C7). Yields progress/content events as they
     happen:
       {"type": "step", "step": str}          -- e.g. "searching schema"
@@ -1274,7 +1416,10 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             elif answer:
                 answer = answer.strip()
             trace.record_cache_hit(client)
-            trace.log_event(client, question, event="answer", subject=subject, company_id=company_id, source="plan_cache")
+            trace.log_event(client, question, event="answer", subject=subject,
+                            company_id=company_id, source="plan_cache",
+                            path=_path_flags(question, client))
+            trace.record_table_uses(client, _SOURCE_TABLE_RE.findall("; ".join(queries)))
             _record_latency()
             # C3: cache_key/answer_sql returned so /feedback can act on THIS
             # turn without recomputing anything or trusting client input --
@@ -1367,6 +1512,21 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         confirm_note = _calendar_confirm_system_note(client, company_id)
         if confirm_note:
             messages.append({"role": "system", "content": confirm_note})
+    analysis_intent = bool(_ANALYSIS_HINT_RE.search(question))
+    if analysis_intent:
+        analyst_pack = BASE_DIR / "prompts" / "analyst.md"
+        if analyst_pack.exists():
+            messages.append({"role": "system",
+                             "content": "## وضع المحلل\n" + analyst_pack.read_text()})
+        messages.append({
+            "role": "system",
+            "content": ("Analysis/forecast question — retrieve a bucketed series (GROUP BY week/month) "
+                        "in ONE query instead of many single-number queries, then use the analyze tool's "
+                        "trend_direction for the projection. Never invent numbers."),
+        })
+    conv_block = _conversation_block(history)
+    if conv_block:
+        messages.append({"role": "system", "content": conv_block})
     messages.append({"role": "user", "content": question})
 
     # C4: "queries" replaces the old single answer_sql/results_in_context
@@ -1393,16 +1553,25 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         "question": question,
         # A3: gear routing + escalation counters. Interactive turns never use
         # gear p (C5) — p is reserved for the empty-final rescue completion.
-        "gear": _initial_gear(question, howto_path=howto_path, report_path=report_path, fast_count=fast_count),
+        "gear": _initial_gear(question, howto_path=howto_path, report_path=report_path,
+                              fast_count=fast_count,
+                              analysis_intent=bool(_ANALYSIS_HINT_RE.search(question))),
         "gate_errors": 0,
         "_user_id": _user_id(client, company_id, subject),
+        "_path_flags": (
+            f"fc{int(fast_count)},ht{int(howto_path)},rp{int(report_path)},"
+            f"an{int(bool(_ANALYSIS_HINT_RE.search(question)))}"
+        ),
     }
     final_text = None
 
     for _ in range(MAX_TURNS):
+        if cancel is not None and cancel.is_set():
+            raise TurnCancelled("client disconnected")
         tools = _active_tools(state)
         msg = None
-        for event in _stream_turn(messages, tools, gear=state["gear"], user_id=state["_user_id"]):
+        for event in _stream_turn(messages, tools, gear=state["gear"],
+                                  user_id=state["_user_id"], cancel=cancel):
             if event["type"] == "_turn_done":
                 msg = event["message"]
             else:
@@ -1422,6 +1591,8 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             break
 
         for tc in tool_calls:
+            if cancel is not None and cancel.is_set():
+                raise TurnCancelled("client disconnected")
             name = tc["function"]["name"]
             try:
                 args = json.loads(tc["function"]["arguments"] or "{}")
@@ -1501,10 +1672,15 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         envelope = {"table": None, "chart": None, "sources": [], "followups": [], "doc_search_count": state.get("doc_searches", 0)}
     else:
         final_text = final_text.strip()
-        trace.log_event(client, question, event="answer", subject=subject, company_id=company_id)
+        trace.log_event(client, question, event="answer", subject=subject,
+                        company_id=company_id, path=state.get("_path_flags"))
         if state["queries"] and not state.get("report_path"):
             memory.set_plan(key, client, {"queries": state["queries"]})
         envelope = _build_envelope(question, final_text, state)
+
+    # TRACK B: which tables did this turn actually touch?
+    used_tables = _SOURCE_TABLE_RE.findall(_answer_sql(state) or "")
+    trace.record_table_uses(client, used_tables)
 
     _record_latency()
     # answer_sql stays a single joined string for external consumers

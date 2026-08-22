@@ -1,4 +1,5 @@
 """FastAPI service: POST /ask (SSE), GET /context, GET /health, GET /metrics, static/."""
+import asyncio
 import hashlib
 import json
 import os
@@ -23,7 +24,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from slowapi.util import get_remote_address  # noqa: E402
 
-from core import agent, config, gate, llm, memory, params, sql, trace  # noqa: E402
+from core import agent, config, gate, llm, memory, params, sessions, sql, trace  # noqa: E402
 
 app = FastAPI()
 
@@ -114,18 +115,38 @@ def _with_heartbeat(gen, interval: float = 15.0):
         yield item
 
 
+def _persist_session(session_id: str | None, state: dict) -> None:
+    """TRACK E: write-through to work/sessions.sqlite (minus the hot-cache
+    bookkeeping key) so conversations survive restarts."""
+    if not session_id:
+        return
+    payload = {k: v for k, v in state.items() if k != "_touched"}
+    try:
+        sessions.save(session_id, payload)
+    except Exception:  # noqa: BLE001 — persistence is best-effort, never break a turn
+        pass
+
+
 def _touch_session(session_id: str, default_factory) -> dict:
     now = time.time()
     for sid in [sid for sid, s in SESSIONS.items() if now - s["_touched"] > SESSION_IDLE_SECONDS]:
         del SESSIONS[sid]
+        sessions.delete(sid)
+    sessions.sweep()
     if session_id in SESSIONS:
         SESSIONS.move_to_end(session_id)
         SESSIONS[session_id]["_touched"] = now
     else:
-        SESSIONS[session_id] = default_factory()
-        SESSIONS[session_id]["_touched"] = now
+        persisted = sessions.load(session_id)
+        state = persisted if isinstance(persisted, dict) else default_factory()
+        state["_touched"] = now
+        state.setdefault("conversation", {})
+        state.setdefault("pending_ask", None)
+        state.setdefault("history", [])
+        SESSIONS[session_id] = state
         while len(SESSIONS) > SESSION_MAX:
-            SESSIONS.popitem(last=False)
+            old_sid, _ = SESSIONS.popitem(last=False)
+            sessions.delete(old_sid)
     return SESSIONS[session_id]
 
 
@@ -244,7 +265,7 @@ def set_context(req: ContextSetRequest):
 
 @app.post("/ask")
 @limiter.limit("30/minute")
-def ask(request: Request, req: AskRequest):
+async def ask(request: Request, req: AskRequest):
     client = pinned_client()  # env-pinned; body client field ignored
     subject = hashlib.sha256((req.session_id or "anon").encode()).hexdigest()[:12]
 
@@ -252,16 +273,24 @@ def ask(request: Request, req: AskRequest):
         if req.session_id else {"conversation": {}, "pending_ask": None}
     _apply_pending_answer(session, req.question, client)
 
+    cancel = threading.Event()  # TRACK D: set on client disconnect
+
     def stream():
         result = None
         try:
-            for event in agent.ask_stream(client, req.question, conversation=session["conversation"], subject=subject):
+            for event in agent.ask_stream(client, req.question,
+                                          conversation=session["conversation"],
+                                          subject=subject,
+                                          history=session.get("history") or [],
+                                          cancel=cancel):
                 if event["type"] == "step":
                     yield f"data: {json.dumps({'step': event['step']})}\n\n"
                 elif event["type"] == "answer_chunk":
                     yield f"data: {json.dumps({'answer_chunk': event['text']})}\n\n"
                 elif event["type"] == "done":
                     result = event
+        except agent.TurnCancelled:
+            return  # client gone mid-turn — no frames to send, tokens already stopped
         except llm.ProviderUnavailableError as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
             yield "data: [DONE]\n\n"
@@ -286,17 +315,67 @@ def ask(request: Request, req: AskRequest):
                     "answer_sql": result.get("answer_sql"),
                     "cache_key": result.get("cache_key"),
                 }
+                # TRACK F1: rolling conversation memory for follow-ups.
+                if answer:
+                    hist = session.setdefault("history", [])
+                    hist.append({
+                        "q": req.question,
+                        "a": str(answer)[:400],
+                        "sql": (result.get("answer_sql") or "")[:200],
+                    })
+                    del hist[:-agent.MAX_HISTORY_TURNS]
             yield f"data: {json.dumps({
                 'answer': answer,
                 'answer_sql': result.get('answer_sql'),
                 'report_name': result.get('report_name'),
                 'table': result.get('table'), 'chart': result.get('chart'),
                 'followups': result.get('followups') or [], 'sources': result.get('sources') or [],
+                'confidence': result.get('confidence'),
             }, default=str)}\n\n"
         yield "data: [DONE]\n\n"
+        _persist_session(req.session_id, session)
+
+    async def asgi_stream():
+        """TRACK D: pump the sync generator on a thread; between every item
+        (and every silent second) poll for client disconnect. On disconnect
+        we set the cancel Event — the agent stops generating within one
+        chunk/tool-call — and close silently."""
+        q: queue.Queue = queue.Queue()
+        sentinel = object()
+
+        def _pump():
+            try:
+                for item in stream():
+                    q.put(item)
+            except BaseException as e:  # noqa: BLE001 — forwarded to consumer
+                q.put(e)
+            finally:
+                q.put(sentinel)
+
+        threading.Thread(target=_pump, daemon=True).start()
+        loop = asyncio.get_running_loop()
+        while True:
+            try:
+                item = await asyncio.wait_for(loop.run_in_executor(None, q.get), timeout=15.0)
+            except asyncio.TimeoutError:
+                if await request.is_disconnected():
+                    cancel.set()
+                    return
+                yield ": keep-alive\n\n"
+                continue
+            if await request.is_disconnected():
+                cancel.set()
+                return
+            if item is sentinel:
+                return
+            if isinstance(item, agent.TurnCancelled):
+                return
+            if isinstance(item, BaseException):
+                raise item
+            yield item
 
     return StreamingResponse(
-        _with_heartbeat(stream()),
+        asgi_stream(),
         media_type="text/event-stream",
         headers={"X-Accel-Buffering": "no", "Cache-Control": "no-transform"},
     )

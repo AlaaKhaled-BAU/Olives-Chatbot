@@ -272,6 +272,24 @@ def run_isolation():
     return leaks
 
 
+def run_golden_exec():
+    """TRACK A: execution accuracy — candidate SQL's RESULT ROWS must equal
+    the stored gold rows. Wording-proof; the strongest signal we have."""
+    from evals.golden_rows import load_cases, run_suite
+    cases = load_cases(BASE_DIR / "evals" / "exec_golden.jsonl")
+    if not cases:
+        print("  (no golden cases — run evals/build_golden.py first)")
+        return
+    passed, total = run_suite(
+        cases,
+        agent_ask=lambda client, question, conversation: agent.ask(
+            client, question, conversation=conversation),
+        run_select=lambda sql_text, company, client: sql.run_select(sql_text, company, client),
+    )
+    pct = 100 * passed / total if total else 0
+    print(f"golden exec-accuracy: {passed}/{total} ({pct:.0f}%)")
+
+
 _SUITE_RUNNERS = {
     "accuracy": ("=== accuracy ===", run_accuracy),
     "docs": ("=== docs accuracy ===", run_docs_accuracy),
@@ -279,6 +297,7 @@ _SUITE_RUNNERS = {
     "wave5": ("=== wave5 accuracy (ar, client 105 / CompanyID 2) ===", run_wave5_accuracy),
     "hard_en": ("=== hard_en regression (en, client 105 / CompanyID 2, informational) ===", run_hard_en_regression),
     "isolation": ("=== isolation (release gate) ===", run_isolation),
+    "golden": ("=== golden execution-accuracy (TRACK A release gate) ===", run_golden_exec),
 }
 
 _DEFAULT_SUITES = ("accuracy", "docs", "wave5", "isolation")
