@@ -28,7 +28,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # guesses before switching to a broader INFORMATION_SCHEMA LIKE search. That's
 # the right recovery strategy, it just needs more room to get there.
 MAX_TURNS = 12
-MODEL_ALIAS = "chatbot"  # the one name the gateway maps to Claude/Gemini
+MODEL_ALIAS = "chatbot"  # cache-key namespace for plan/result keys (kept stable deliberately)
+# DeepSeek gears (core/llm.GEARS): f0 = flash non-thinking (docs/envelope/fast
+# paths), t1 = flash think-low (standard NL2SQL), t2 = flash think-high
+# (escalated joins/compound), p = pro think-high — rescue path ONLY
+# (_retry_empty_final), never a streaming interactive turn.
+DEFAULT_GEAR = "t1"
+DOCS_GEAR = "f0"
 # C4: replaces the old binary "results_in_context" latch. That made period-
 # over-period comparison, drill-down, and verification-against-a-second-
 # query structurally impossible -- exactly what a "data master" (vs a
@@ -40,6 +46,104 @@ MAX_QUERIES = 4
 # P0: search_docs is free vs MAX_QUERIES but still thrashes without its own cap.
 MAX_DOC_SEARCHES = 3
 MAX_VAULT_SEARCHES = 3
+
+# E1: structured final-answer contract. The last completion carries NO tools
+# (golden rule 9 becomes structural) and must return a JSON object. Its
+# answer_md never replaces the evidence-derived final_text — numbers shown to
+# users stay verbatim from tool output; the contract only enriches the
+# envelope (followups/confidence/refusal flag).
+_CONTRACT_SYSTEM = (
+    "You format chatbot answers. Return ONLY a JSON object with exactly these keys: "
+    '"answer_md": the given Arabic answer lightly polished (keep ALL numbers, names and '
+    "figures verbatim), "
+    '"refusal": boolean (true only if the answer declines to provide data), '
+    '"confidence": "high" | "medium" | "low", '
+    '"followups": array of 2-3 short natural Arabic follow-up questions for the user.'
+)
+
+
+def _user_id(client: str, company_id, subject: str | None) -> str:
+    """DeepSeek user_id (regex [a-zA-Z0-9_-]+): per-user KV-cache isolation,
+    scheduling isolation and audit-trail alignment. Hash of tenant scope +
+    session hash — no PII by construction."""
+    raw = f"{client}|{company_id}|{subject or 'anon'}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:32]
+
+
+def _initial_gear(question: str, *, howto_path: bool, report_path: bool, fast_count: bool) -> str:
+    if howto_path or report_path or fast_count:
+        return DOCS_GEAR
+    return DEFAULT_GEAR
+
+
+def _schema_block(cache: dict) -> str:
+    """A4/C1: full queryable-schema block. Byte-stable for a given
+    schema_cache.json — only t.-view tables when the view map exists."""
+    views = cache.get("has_tenant_view") or {}
+    tables = cache.get("tables") or {}
+    lines = [
+        "## Full schema of queryable tenant views",
+        "Every table below is a `t.*` view automatically scoped to the session CompanyID.",
+        "Write SQL directly against these; introspect_schema is only for anything NOT listed here.",
+    ]
+    for name in sorted(tables):
+        if views and not views.get(name, False):
+            continue
+        cols = tables[name] or []
+        rendered = ", ".join(
+            f"{c.get('column')}:{c.get('type')}" + ("?" if c.get("nullable") else "")
+            for c in cols if isinstance(c, dict)
+        )
+        lines.append(f"- {name}({rendered})")
+    return "\n".join(lines)
+
+
+def _all_cards_block(client: str) -> str:
+    """A4/C1: every compiled vault card in one byte-stable block (table cards
+    compact; relation cards carry join semantics). Empty string when the
+    client has no compiled cards DB."""
+    try:
+        cards = vault._load_cards(client)
+    except Exception:  # noqa: BLE001 — missing/corrupt cards DB must not kill a turn
+        return ""
+    if not cards:
+        return ""
+    lines = ["## Vault knowledge cards (compiled schema memory)"]
+    for card in sorted(cards, key=lambda c: (c.get("kind", ""), c.get("name", ""))):
+        if card.get("kind") == "relation":
+            lines.append(f"- REL {card.get('parent')}→{card.get('referenced')}: "
+                         f"{str(card.get('columns', ''))[:120]}"
+                         + (f" — {str(card.get('business_meaning'))[:100]}" if card.get("business_meaning") else ""))
+        else:
+            purpose = str(card.get("purpose", ""))[:110]
+            pk = str(card.get("primary_key", ""))[:60]
+            fk = str(card.get("foreign_keys", ""))[:80]
+            line = f"- TBL {card.get('name')}"
+            if purpose:
+                line += f" — {purpose}"
+            if pk:
+                line += f" | PK {pk}"
+            if fk:
+                line += f" | FK {fk}"
+            lines.append(line)
+    return "\n".join(lines)
+
+
+def _static_prefix(client: str, cache: dict) -> list[dict]:
+    """Messages [0..n] whose bytes NEVER change across turns for this client.
+    DeepSeek disk-caches whole prefix units, so stable content goes first and
+    dynamic content strictly after (plan C1)."""
+    base = (BASE_DIR / "prompts" / "system.md").read_text()
+    base = base.replace("{{CLIENT}}", client).replace("{{MAX_QUERIES}}", str(MAX_QUERIES))
+    playbook = BASE_DIR / "prompts" / "join_playbook.md"
+    if playbook.exists():
+        base += "\n\n## Join playbook\n" + playbook.read_text()
+    msgs = [{"role": "system", "content": base}]
+    msgs.append({"role": "system", "content": _schema_block(cache)})
+    cards = _all_cards_block(client)
+    if cards:
+        msgs.append({"role": "system", "content": cards})
+    return msgs
 
 _DOCS_ONLY_SCHEMA_TOOLS = frozenset({
     "introspect_schema", "search_schema_notes", "read_schema_note", "get_joins",
@@ -169,18 +273,20 @@ def _still_buffering_tool_syntax(buffer: str) -> bool:
     return False
 
 
-def _stream_turn(messages, tools):
-    """Runs one LLM completion with stream=True. Yields {"type":
-    "answer_chunk", "text": ...} live as content tokens arrive (C7: 'stream
-    the final answer token-by-token'). Tool-call deltas are reconstructed
-    silently from fragments and NEVER yielded (C7: 'do not stream tool-call
-    arguments... to the client UI'). The turn's reconstructed message dict
-    -- same shape as msg.model_dump() would produce, trimmed to the fields
-    the caller actually uses -- is yielded last as {"type": "_turn_done",
-    "message": ...}; the caller filters this event out, it never reaches
-    api/server.py."""
-    stream = llm.complete(messages, tools=tools, stream=True)
+def _stream_turn(messages, tools, gear: str = DEFAULT_GEAR, user_id: str | None = None):
+    """Runs one LLM completion with stream=True in the requested gear. Yields
+    {"type": "answer_chunk", "text": ...} live as content tokens arrive (C7:
+    'stream the final answer token-by-token'). Tool-call deltas are
+    reconstructed silently from fragments and NEVER yielded (C7: 'do not
+    stream tool-call arguments... to the client UI'). DeepSeek thinking-mode
+    `reasoning_content` deltas are accumulated but never yielded either.
+    The turn's reconstructed message dict is yielded last as {"type":
+    "_turn_done", "message": ...}; when reasoning was produced it rides on
+    that message because the API REQUIRES echoing it back on any subsequent
+    tools+thinking request (HTTP 400 otherwise)."""
+    stream = llm.complete(messages, gear=gear, tools=tools, stream=True, user_id=user_id)
     buffer = ""
+    reasoning = ""
     forwarding = False
     assembling_tools = False
     tool_calls = {}
@@ -188,6 +294,9 @@ def _stream_turn(messages, tools):
         if not chunk.choices:
             continue
         delta = chunk.choices[0].delta
+        rc = getattr(delta, "reasoning_content", None)
+        if rc:
+            reasoning += rc  # scratch work — internal only, never streamed to users
         if delta.tool_calls:
             assembling_tools = True
         if delta.content:
@@ -212,6 +321,8 @@ def _stream_turn(messages, tools):
     if not forwarding and not assembling_tools and buffer and not _looks_like_malformed_tool_syntax(buffer):
         yield {"type": "answer_chunk", "text": buffer}  # short response, never crossed the buffering threshold
     message = {"role": "assistant", "content": buffer or None}
+    if reasoning:
+        message["reasoning_content"] = reasoning
     if tool_calls:
         message["tool_calls"] = [tool_calls[i] for i in sorted(tool_calls)]
     yield {"type": "_turn_done", "message": message}
@@ -798,11 +909,13 @@ def _build_arabic_stub(state: dict) -> str:
     return "تعذر صياغة الإجابة من البيانات المتاحة."
 
 
-def _retry_empty_final(messages: list) -> str | None:
-    """One extra completion with tools=None after successful tools yielded empty content."""
+def _retry_empty_final(messages: list, user_id: str | None = None) -> str | None:
+    """One extra completion with tools=None after successful tools yielded
+    empty content. Gear p (pro think-high): this is the rescue path — rare,
+    non-streamed, worth heavy-model quality; never used for streaming turns."""
     retry_messages = messages + [{"role": "system", "content": _EMPTY_FINAL_RETRY_NUDGE}]
     try:
-        resp = llm.complete(retry_messages, tools=None, stream=False)
+        resp = llm.complete(retry_messages, tools=None, stream=False, gear="p", user_id=user_id)
         return _sanitize_final_text(resp.choices[0].message.content)
     except Exception:  # noqa: BLE001
         return None
@@ -814,7 +927,7 @@ def _resolve_final_text(final_text: str | None, messages: list, state: dict) -> 
         return final_text.strip()
     if not _has_evidence(state):
         return final_text or ""
-    retried = _retry_empty_final(messages)
+    retried = _retry_empty_final(messages, state.get("_user_id"))
     if not _is_blank(retried):
         return retried.strip()
     return _build_arabic_stub(state)
@@ -1007,27 +1120,32 @@ def _build_sources(queries: list, doc_source_pairs: list[tuple[str, str]]) -> li
     return tables + _format_doc_sources(doc_source_pairs)
 
 
-def _suggest_followups(question: str, answer: str) -> list:
-    """C8: 2-3 model-proposed next questions -- the one envelope piece that
-    genuinely needs judgment, not mechanically derivable from data already
-    in hand ('this is what turns a query box into an analyst'). A small,
-    non-streamed, best-effort extra call: never blocks or breaks the real
-    answer if it errors or the model doesn't cooperate."""
+def _final_contract(question: str, final_text: str, user_id: str | None) -> dict | None:
+    """E1: one structured f0 completion (NO tools — golden rule 9 made
+    structural). Returns {followups, confidence, refusal, answer_md} or None
+    on any failure; the envelope degrades gracefully to the legacy shape."""
     try:
-        resp = llm.complete([
-            {"role": "system", "content": (
-                "Suggest 2-3 short, natural follow-up questions a business user might ask next, given "
-                "this question and answer. Reply with ONLY a JSON array of strings, nothing else."
-            )},
-            {"role": "user", "content": f"Question: {question}\nAnswer: {answer}"},
-        ])
-        text = (resp.choices[0].message.content or "[]").strip()
-        if text.startswith("```"):
-            text = text.strip("`").removeprefix("json").strip()
-        items = json.loads(text)
-        return [str(x) for x in items][:3] if isinstance(items, list) else []
-    except Exception:  # noqa: BLE001 - cosmetic extra, must never break the real answer
-        return []
+        resp = llm.complete(
+            [
+                {"role": "system", "content": _CONTRACT_SYSTEM},
+                {"role": "user", "content": f"Question: {question}\n\nDraft answer:\n{final_text}"},
+            ],
+            gear=DOCS_GEAR,
+            response_format={"type": "json_object"},
+            user_id=user_id,
+        )
+        data = json.loads(resp.choices[0].message.content or "{}")
+        if not isinstance(data, dict):
+            return None
+        followups = data.get("followups")
+        return {
+            "answer_md": data.get("answer_md"),
+            "refusal": bool(data.get("refusal", False)),
+            "confidence": data.get("confidence") if data.get("confidence") in ("high", "medium", "low") else None,
+            "followups": [str(x)[:120] for x in followups][:3] if isinstance(followups, list) else [],
+        }
+    except Exception:  # noqa: BLE001 - cosmetic enrichment, must never break the real answer
+        return None
 
 
 def _answer_sql(state: dict) -> str | None:
@@ -1036,17 +1154,20 @@ def _answer_sql(state: dict) -> str | None:
 
 
 def _build_envelope(question: str, final_text: str, state: dict) -> dict:
-    """C8: assembles the structured pieces the plan asks /ask to return
-    alongside the prose answer. Everything except followups is derived
-    from data this turn already produced -- never a second, potentially
-    inconsistent ask to the model for numbers/names it already gave."""
+    """C8/E1: assembles the structured pieces /ask returns alongside the
+    prose. Everything is derived from data this turn already produced plus
+    the optional JSON contract (followups/confidence); never a second ask
+    for numbers the tools already returned."""
     table = _build_table(state["last_rows"])
-    out = {
+    contract = _final_contract(question, final_text, state.get("_user_id")) if final_text else None
+    out: dict = {
         "table": table,
         "chart": _build_chart(table),
         "sources": _build_sources(state["queries"], state["doc_source_pairs"]),
-        "followups": _suggest_followups(question, final_text) if final_text else [],
+        "followups": (contract or {}).get("followups") or [],
     }
+    if contract and not contract["refusal"] and contract["confidence"]:
+        out["confidence"] = contract["confidence"]
     if state.get("report_name"):
         out["report_name"] = state["report_name"]
     return out
@@ -1112,8 +1233,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             queries = cached_plan.get("queries") or ([cached_plan["sql"]] if cached_plan.get("sql") else [])
             raw_results = [sql.run_select(q, company_id, client, allowed_procs=allowed_proc_names) for q in queries]
             results = [_cap_for_context(r) for r in raw_results]
-            messages = [
-                {"role": "system", "content": _system_prompt(client, company_id, question=question)},
+            messages = _static_prefix(client, cache) + [
                 {"role": "user", "content": question},
                 {
                     "role": "user",
@@ -1122,7 +1242,8 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                 },
             ]
             answer = None
-            for event in _stream_turn(messages, None):
+            for event in _stream_turn(messages, None, gear=DOCS_GEAR,
+                                      user_id=_user_id(client, company_id, subject)):
                 if event["type"] == "_turn_done":
                     answer = event["message"]["content"]
                 else:
@@ -1164,7 +1285,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         yield {"type": "done", "answer": None, "needs_ask": calendar_ask}
         return
 
-    messages = [{"role": "system", "content": _system_prompt(client, company_id, question=question)}]
+    messages = _static_prefix(client, cache)
     shots = memory.few_shots(client, company_id, question, limit=3)
     if shots:
         examples = "\n".join(f'- "{s["question"]}" -> `{s["proc_or_sql"]}`' for s in shots)
@@ -1260,13 +1381,18 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         "howto_path": howto_path,
         "report_name": None,
         "question": question,
+        # A3: gear routing + escalation counters. Interactive turns never use
+        # gear p (C5) — p is reserved for the empty-final rescue completion.
+        "gear": _initial_gear(question, howto_path=howto_path, report_path=report_path, fast_count=fast_count),
+        "gate_errors": 0,
+        "_user_id": _user_id(client, company_id, subject),
     }
     final_text = None
 
     for _ in range(MAX_TURNS):
         tools = _active_tools(state)
         msg = None
-        for event in _stream_turn(messages, tools):
+        for event in _stream_turn(messages, tools, gear=state["gear"], user_id=state["_user_id"]):
             if event["type"] == "_turn_done":
                 msg = event["message"]
             else:
@@ -1309,6 +1435,14 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                 result = {"error": str(e)}
             except Exception as e:  # noqa: BLE001 - a tool error goes back to the model, not a crash
                 result = {"error": str(e)}
+
+            if isinstance(result, dict) and result.get("error"):
+                # A3: a failed tool attempt means the current gear is not
+                # coping — escalate once interactively (t1→t2). Gear p stays
+                # reserved for the empty-final rescue (C5).
+                state["gate_errors"] += 1
+                if state["gate_errors"] >= 1 and state["gear"] == DEFAULT_GEAR:
+                    state["gear"] = "t2"
 
             messages.append({
                 "role": "tool",

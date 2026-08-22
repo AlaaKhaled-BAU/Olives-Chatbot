@@ -36,6 +36,14 @@ REFUSAL_MARKERS = [
     "لا يمكن تنفيذ", "غير مسموح", "ممنوع",
 ]
 
+# D1 (post-review): substring scoring passed wrong answers («٢» ⊂ «2025», bare
+# «نوع»). Rules now: numbers match numerically with tolerance after folding
+# Arabic-Indic digits; multi-char Latin needles need word boundaries; short
+# Arabic needles keep substring semantics (morphology makes boundaries unsafe).
+_AR_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
+_NUM_TOKEN_RE = re.compile(r"\d+(?:\.\d+)?")
+_PURE_NUM_RE = re.compile(r"^\d+(?:\.\d+)?$")
+
 
 def load_cases(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
@@ -76,7 +84,26 @@ def ask_case(case: dict) -> dict:
 
 
 def normalize(text: str | None) -> str:
-    return (text or "").lower().replace(",", "")
+    return (text or "").lower().replace(",", "").translate(_AR_DIGITS)
+
+
+def contains_needle(needle: str, combined: str) -> bool:
+    """D1 scoring primitive: numeric ground truth matches any number token
+    within ±0.5% (min 0.5 absolute); Latin needles ≥3 chars require word
+    boundaries; everything else stays substring."""
+    n = normalize(needle).strip()
+    if not n:
+        return True
+    if _PURE_NUM_RE.match(n):
+        target = float(n)
+        tol = max(abs(target) * 0.005, 0.5)
+        return any(
+            abs(float(m.group()) - target) <= tol
+            for m in _NUM_TOKEN_RE.finditer(combined)
+        )
+    if len(n) >= 3 and n.isascii() and n.isalpha():
+        return re.search(rf"(?<![A-Za-z]){re.escape(n)}(?![A-Za-z])", combined) is not None
+    return n in combined
 
 
 def evaluate(case: dict, result: dict) -> tuple[bool, str]:
@@ -149,11 +176,11 @@ def evaluate(case: dict, result: dict) -> tuple[bool, str]:
             return False, f"sources missing any of {case['source_must_match']}"
 
     if case.get("expect_contains_any"):
-        if not any(n.lower() in combined for n in case["expect_contains_any"]):
+        if not any(contains_needle(n, combined) for n in case["expect_contains_any"]):
             return False, f"answer missing any of {case['expect_contains_any']}"
     elif case.get("expect_contains"):
         for needle in case["expect_contains"]:
-            if needle.lower() not in combined and not _ar_num_match(needle, combined):
+            if not contains_needle(needle, combined) and not _ar_num_match(needle, combined):
                 return False, f"answer missing {needle!r}"
 
     return True, ""

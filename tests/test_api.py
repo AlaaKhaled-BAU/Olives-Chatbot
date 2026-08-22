@@ -29,20 +29,14 @@ def test_health_reports_pinned_client():
         assert "nullable_companyid_rows" in status
 
 
-def test_health_gateway_probes_models_not_liveliness():
-    """OmniRoute exposes /v1/models (200) but not /health/liveliness."""
-    from contextlib import contextmanager
-
-    @contextmanager
-    def fake_urlopen(url, timeout=5):
-        assert url.endswith("/models")
-        yield types.SimpleNamespace(status=200)
-
-    with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+def test_health_provider_probe_via_llm_module():
+    """/health asks core.llm.provider_health (DeepSeek /models) — no gateway."""
+    with patch("api.server.llm.provider_health", return_value=True):
         resp = client.get("/health")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["gateway"] is True
+    assert body["provider"] is True
+    assert "gateway" not in body
 
 
 def test_context_endpoint_returns_shape():
@@ -122,16 +116,30 @@ def test_metrics_is_prometheus_text_format():
     assert "chatbot_requests_total" in resp.text
 
 
-def test_ask_gateway_unavailable_returns_arabic_error():
+def test_ask_provider_unavailable_returns_arabic_error_and_done_sentinel():
     def boom(*args, **kwargs):
-        raise llm.GatewayUnavailableError(llm.GATEWAY_UNAVAILABLE_AR)
+        raise llm.ProviderUnavailableError(llm.PROVIDER_UNAVAILABLE_AR)
 
     with patch("api.server.agent.ask_stream", side_effect=boom):
         resp = client.post("/ask", json={"question": "test", "session_id": "gw-down"})
     assert resp.status_code == 200
+    assert resp.headers["x-accel-buffering"] == "no"
     lines = [line for line in resp.text.split("\n\n") if line.startswith("data: ") and line != "data: [DONE]"]
     frames = [json.loads(line[len("data: "):]) for line in lines]
-    assert frames[0]["error"] == llm.GATEWAY_UNAVAILABLE_AR
+    assert frames[0]["error"] == llm.PROVIDER_UNAVAILABLE_AR
+    # B1: the [DONE] sentinel must close EVERY stream, including error paths.
+    assert "data: [DONE]" in resp.text
+
+
+def test_ask_generic_error_also_closes_with_done_sentinel():
+    def boom(*args, **kwargs):
+        raise RuntimeError("internal detail that must never leak")
+
+    with patch("api.server.agent.ask_stream", side_effect=boom):
+        resp = client.post("/ask", json={"question": "test", "session_id": "generic-err"})
+    assert resp.status_code == 200
+    assert "internal detail" not in resp.text
+    assert resp.text.rstrip().endswith("data: [DONE]")
 
 
 def test_static_index_served_at_root():

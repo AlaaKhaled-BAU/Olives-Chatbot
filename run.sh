@@ -1,21 +1,14 @@
 #!/bin/bash
-# Starts the Olives chatbot stack: SQL Server (optional), OmniRoute gateway check, API.
+# Starts the Olives chatbot API (DeepSeek direct; no gateway since 2026-08).
 set -e
 export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$PATH"
 cd "$(dirname "$0")"
 
 echo "Using SQL Server at ${DB_HOST:-127.0.0.1}:${DB_PORT:-1433} (set in .env)"
 
-if curl -sf http://localhost:20128/v1/models >/dev/null 2>&1; then
-  echo "OmniRoute gateway OK on :20128"
-else
-  echo "Starting OmniRoute on :20128..."
-  omniroute serve --port 20128 --no-open --daemon 2>/dev/null || true
-  sleep 2
-  curl -sf http://localhost:20128/v1/models >/dev/null || {
-    echo "ERROR: OmniRoute not reachable. Run: omniroute serve --port 20128"
-    exit 1
-  }
+if ! grep -q "^DEEPSEEK_API_KEY=..*" .env 2>/dev/null; then
+  echo "ERROR: DEEPSEEK_API_KEY not set in .env"
+  exit 1
 fi
 
 echo "Starting chatbot API on :8100 (127.0.0.1)..."
@@ -28,6 +21,6 @@ xdg-open http://localhost:8100 >/dev/null 2>&1 &
 
 echo ""
 echo "Olives Chatbot: http://localhost:8100"
-echo "Gateway: $GATEWAY_URL (set in .env)"
+echo "Provider: DeepSeek (${CHATBOT_MODEL_FAST:-deepseek-v4-flash} / rescue ${CHATBOT_MODEL_HEAVY:-deepseek-v4-pro})"
 echo "Press Ctrl+C to stop the API server."
 wait

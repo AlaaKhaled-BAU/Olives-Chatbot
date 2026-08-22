@@ -48,11 +48,9 @@ def _resp(message):
 
 
 def _plain_resp(content):
-    """C8: _suggest_followups() calls llm.complete() WITHOUT stream=True
-    (its output is a short JSON array, never shown token-by-token) -- a
-    real non-streaming response shape, unlike every other mocked call in
-    this file (which go through _stream_turn and need _resp()'s stream
-    shape instead)."""
+    """Non-streaming response shape for envelope/contract calls
+    (_final_contract) — unlike the streamed calls mocked elsewhere in this
+    file, which need _resp()'s streaming chunk shape."""
     return types.SimpleNamespace(choices=[types.SimpleNamespace(message=types.SimpleNamespace(content=content))])
 
 
@@ -193,30 +191,53 @@ def test_build_sources_ignores_information_schema_and_empty_input():
     assert agent._build_sources([], []) == []
 
 
-def test_suggest_followups_parses_a_clean_json_array(monkeypatch):
-    monkeypatch.setattr(agent.llm, "complete", lambda *a, **k: _plain_resp('["Q1?", "Q2?"]'))
-    assert agent._suggest_followups("q", "a") == ["Q1?", "Q2?"]
+def test_final_contract_parses_a_clean_json_object(monkeypatch):
+    payload = '{"answer_md": "النتيجة 3", "refusal": false, "confidence": "high", "followups": ["Q1?", "Q2?"]}'
+    monkeypatch.setattr(agent.llm, "complete", lambda *a, **k: _plain_resp(payload))
+    out = agent._final_contract("q", "a", None)
+    assert out["followups"] == ["Q1?", "Q2?"]
+    assert out["confidence"] == "high"
+    assert out["refusal"] is False
 
 
-def test_suggest_followups_strips_a_markdown_fence():
-    with patch.object(agent.llm, "complete", return_value=_plain_resp('```json\n["Q1?"]\n```')):
-        assert agent._suggest_followups("q", "a") == ["Q1?"]
+def test_final_contract_caps_followups_at_three():
+    payload = '{"followups": ["a", "b", "c", "d", "e"], "confidence": "low", "refusal": true}'
+    with patch.object(agent.llm, "complete", return_value=_plain_resp(payload)):
+        out = agent._final_contract("q", "a", None)
+    assert len(out["followups"]) == 3
+    assert out["refusal"] is True
 
 
-def test_suggest_followups_caps_at_three():
-    with patch.object(agent.llm, "complete", return_value=_plain_resp('["a", "b", "c", "d", "e"]')):
-        assert agent._suggest_followups("q", "a") == ["a", "b", "c"]
+def test_final_contract_rejects_bad_confidence_values():
+    payload = '{"followups": [], "confidence": "cosmic"}'
+    with patch.object(agent.llm, "complete", return_value=_plain_resp(payload)):
+        assert agent._final_contract("q", "a", None)["confidence"] is None
 
 
-def test_suggest_followups_never_raises_on_a_bad_reply():
-    """Cosmetic extra -- must degrade to [] on non-JSON, a non-list JSON
-    value, or the LLM call itself failing, never break the real answer."""
+def test_final_contract_never_raises_on_a_bad_reply():
+    """Cosmetic enrichment — must degrade to None on non-JSON, non-dict JSON,
+    or the LLM call itself failing, never break the real answer."""
     with patch.object(agent.llm, "complete", return_value=_plain_resp("not json at all")):
-        assert agent._suggest_followups("q", "a") == []
-    with patch.object(agent.llm, "complete", return_value=_plain_resp('{"not": "a list"}')):
-        assert agent._suggest_followups("q", "a") == []
-    with patch.object(agent.llm, "complete", side_effect=RuntimeError("gateway down")):
-        assert agent._suggest_followups("q", "a") == []
+        assert agent._final_contract("q", "a", None) is None
+    with patch.object(agent.llm, "complete", return_value=_plain_resp('{"not": "relevant"}')):
+        assert agent._final_contract("q", "a", None)["followups"] == []
+    with patch.object(agent.llm, "complete", side_effect=RuntimeError("provider down")):
+        assert agent._final_contract("q", "a", None) is None
+
+
+def test_final_contract_call_carries_no_tools_and_json_mode():
+    captured = {}
+
+    def fake_complete(messages, **kwargs):
+        captured.update(kwargs)
+        return _plain_resp('{"followups": []}')
+
+    with patch.object(agent.llm, "complete", side_effect=fake_complete):
+        agent._final_contract("q", "a", "uid123")
+    # Golden rule 9 made structural: the final formatting call has NO tools.
+    assert "tools" not in captured
+    assert captured["response_format"] == {"type": "json_object"}
+    assert captured.get("user_id") == "uid123"
 
 
 def test_build_envelope_skips_followups_when_there_is_no_final_text():
@@ -462,12 +483,11 @@ def test_malformed_tool_syntax_is_retried_not_returned_as_answer(monkeypatch, tm
     monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
     garbled = _resp(_msg(content="<｜｜DSML｜｜tool_calls>garbage"))
     clean = _resp(_msg(content="There are 3 companies."))
-    # C8: a real final answer also triggers one extra, non-streaming
-    # llm.complete() call for _suggest_followups -- a real 3rd mock item,
-    # not just an accepted StopIteration, so this test still proves the
-    # actual number of calls the retry logic itself makes (2) plus the one
-    # unrelated call C8 adds on top.
-    followups = _plain_resp("[]")
+    # E1: a real final answer also triggers one extra, non-streaming
+    # llm.complete() call for the JSON answer contract (_final_contract) --
+    # a real 3rd mock item, so this test still proves the number of calls
+    # the retry logic itself makes (2) plus the contract call on top.
+    followups = _plain_resp('{"followups": [], "confidence": "high", "refusal": false}')
     with patch.object(agent.llm, "complete", side_effect=[garbled, clean, followups]) as mock_complete:
         result = agent.ask("morec", "how many companies?", conversation=SCOPE)
 

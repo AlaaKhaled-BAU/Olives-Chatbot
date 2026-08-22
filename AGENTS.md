@@ -10,7 +10,7 @@ Standalone repo at `/media/alaa/data/client-chatbot/`.
 
 1. **Python 3.13 only** — never `python3`.
 2. **Never use SA or IIS `cds` from the running app** — only `chatbot_ro` + `t.` views + `SESSION_CONTEXT`.
-3. **LLM keys never in `core/` or `api/`** — OmniRoute holds provider keys; app sends `GATEWAY_API_KEY` from `.env`.
+3. **LLM keys never in `core/` or `api/`** — `DEEPSEEK_API_KEY` lives in the gitignored `.env`; only `core/llm.py` reads it.
 4. **Tenant pinned in env** — `CHATBOT_CLIENT` selects `clients/*.yaml`; browser cannot switch yaml client.
 5. **One SQL path:** `core/sql.py` + `core/gate.py` (shared by agent and `sqlmcp/`).
 6. **Never return procedure bodies** to the model or user.
@@ -29,7 +29,7 @@ Browser → static/ + api/server.py (POST /ask, SSE)
               → core/agent.py
                     ├─ search_docs → core/docs.py (FTS5 over work/<client>/docs.sqlite)
                     ├─ introspect_schema / run_select → core/sql.py + core/gate.py
-                    └─ core/llm.py → OmniRoute (GATEWAY_URL) → provider models
+                    └─ core/llm.py → DeepSeek direct (gears: f0/t1/t2/p)
 
 Setup (SA, not runtime):
   native_bootstrap.py → 03_apply_db_sql → 02_introspect → 04_assemble → 05_index_docs
@@ -48,7 +48,7 @@ Future (not wired yet):
 | `core/docs.py` | FTS5 doc search (not vault MCP at runtime today) |
 | `core/catalog.py` | Per-client proc allow-list metadata |
 | `core/memory.py` | SQLite plan/result cache |
-| `core/llm.py` | Thin OpenAI client → `GATEWAY_URL`, model from `CHATBOT_MODEL` |
+| `core/llm.py` | Thin OpenAI client → DeepSeek; gear = model × thinking × effort × timeout |
 | `db/01_readonly_login.sql` | Creates `chatbot_ro` (no base-table grants) |
 | `db/02_tenant_views.sql` | Schema `t.` views scoped by `SESSION_CONTEXT('CompanyID')` |
 | `obsidian/olives/` | Live Obsidian vault (tables, procs, relations, runbooks) |
@@ -66,9 +66,9 @@ Copy from `.env.example`. Required for local dev:
 
 | Variable | Purpose |
 |----------|---------|
-| `GATEWAY_URL` | OmniRoute OpenAI-compatible base (default `http://localhost:20128/v1`) |
-| `GATEWAY_API_KEY` | Client key OmniRoute accepts (`Authorization: Bearer …`) |
-| `CHATBOT_MODEL` | Model alias routed by OmniRoute (e.g. `auto/best-coding`) |
+| `DEEPSEEK_API_KEY` | DeepSeek API key (secret — `.env` only) |
+| `CHATBOT_MODEL_FAST` | Interactive gear model (default `deepseek-v4-flash`) |
+| `CHATBOT_MODEL_HEAVY` | Rescue/async gear model (default `deepseek-v4-pro`) |
 | `DB_HOST` | SQL Server host (default `127.0.0.1`) |
 | `DB_PORT` | **1433** native / production-like; **14330** legacy drift-tool Docker only |
 | `DB_SA_USER` | SA login for setup scripts only (default `sa`) |
@@ -76,7 +76,7 @@ Copy from `.env.example`. Required for local dev:
 | `SQL_SNAPSHOT_MOUNT` | Path SQL Server sees for `.bak` files (default `/snapshots`) |
 | `CHATBOT_CLIENT` | Pinned tenant name matching `clients/<name>.yaml` (required at startup) |
 
-Provider keys (Gemini, OpenRouter, etc.) live in **OmniRoute** (`omniroute keys list`), not in this repo.
+The DeepSeek key lives in `.env` (gitignored), read only by `core/llm.py`. See `plans/deepseek_swap_parallel_plan.md` for gear semantics and API contracts (thinking echo, KV-cache prefix stability).
 
 ---
 
@@ -151,14 +151,13 @@ Multi-company clients: user must specify `CompanyID`; session memory resolves al
 
 ---
 
-## LLM gateway (OmniRoute)
+## LLM provider (DeepSeek direct)
 
-```bash
-omniroute serve --port 20128          # or: omniroute serve --daemon --no-open
-```
-
-App calls `GATEWAY_URL` with `GATEWAY_API_KEY`. Model name from `CHATBOT_MODEL`.  
-See `gateway/README.md`. LiteLLM (`gateway/litellm.config.yaml`) is an optional fallback.
+App calls `https://api.deepseek.com` with `DEEPSEEK_API_KEY`. Gears in `core/llm.GEARS`:
+`f0` flash non-thinking · `t1` flash think-low · `t2` flash think-high · `p` pro think-high
+(rescue/async only). Thinking mode + tools require echoing `reasoning_content` back each turn
+(handled in `core/agent._stream_turn`). Stable prompt prefix (system+playbook / full schema /
+vault cards) is byte-stable by design to maximize DeepSeek disk-cache hits.
 
 ---
 

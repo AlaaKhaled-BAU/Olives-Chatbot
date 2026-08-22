@@ -107,11 +107,27 @@ def _run_accuracy_corpus(cases, label: str, promote: bool = True):
         print(f"  [{'PASS' if ok else 'FAIL'}] {case['name']}{lang_tag}: {case['question']!r} -> {answer[:120]!r}")
         passed += int(ok)
         if promote and ok and not case.get("expect_refusal") and result.get("answer_sql"):
-            memory.promote_verified_query(
-                case["client"], case.get("company_id", 1), case["question"],
-                result["answer_sql"], source="eval",
-            )
-            promoted += 1
+            # D2: verify-before-promote — a passing eval must never write SQL
+            # into the live few-shot pool that the gate itself would reject
+            # (EXEC, multi-statement, cross-company literals, stale tables).
+            sql_text = result["answer_sql"]
+            company = case.get("company_id", 1)
+            try:
+                cache = json.loads(
+                    (BASE_DIR / "work" / case["client"] / "schema_cache.json").read_text())
+                gate.validate(
+                    sql_text,
+                    allowed_procs=gate.DEFAULT_ALLOWED_PROCS,
+                    company_id=company,
+                    schema_cache=cache,
+                )
+            except Exception as exc:  # noqa: BLE001 — any validation failure blocks promotion
+                print(f"  [SKIP-PROMOTE] {case['name']}: answer_sql failed gate validation ({exc})")
+            else:
+                memory.promote_verified_query(
+                    case["client"], company, case["question"], sql_text, source="eval",
+                )
+                promoted += 1
     pct = 100 * passed / len(cases) if cases else 0
     print(f"{label}: {passed}/{len(cases)} ({pct:.0f}%)")
     if promote:

@@ -3,6 +3,8 @@ import os
 from unittest.mock import patch
 
 os.environ.setdefault("CHATBOT_CLIENT", "morec")
+# Hermetic tests mock llm._client; the key guard only checks presence.
+os.environ.setdefault("DEEPSEEK_API_KEY", "test-key-dummy")
 
 # Tenant pack live probes call sql.run_select; keep agent tests deterministic.
 patch("core.tenant_pack._live_facts", return_value={}).start()

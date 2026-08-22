@@ -2,11 +2,11 @@
 import hashlib
 import json
 import os
+import queue
 import re
 import sys
+import threading
 import time
-import urllib.error
-import urllib.request
 from collections import OrderedDict
 from pathlib import Path
 
@@ -23,7 +23,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from slowapi.util import get_remote_address  # noqa: E402
 
-from core import agent, config, llm, memory, params, sql, trace  # noqa: E402
+from core import agent, config, gate, llm, memory, params, sql, trace  # noqa: E402
 
 app = FastAPI()
 
@@ -81,6 +81,37 @@ SESSIONS: OrderedDict = OrderedDict()
 SESSION_MAX = 500
 SESSION_IDLE_SECONDS = 3600
 _NUMBER_RE = re.compile(r"\d+")
+
+
+def _with_heartbeat(gen, interval: float = 15.0):
+    """SSE keep-alive during silent phases: long LLM thinking turns emit no
+    frames, and proxies (ARR/nginx) buffer or idle-timeout quiet streams.
+    Pumps gen on a daemon thread; on queue timeout yields an SSE comment
+    line, which is spec-legal and ignored by SSE parsers."""
+    q: queue.Queue = queue.Queue()
+    sentinel = object()
+
+    def _pump():
+        try:
+            for item in gen:
+                q.put(item)
+        except BaseException as e:  # noqa: BLE001 — re-raised in consumer thread
+            q.put(e)
+        finally:
+            q.put(sentinel)
+
+    threading.Thread(target=_pump, daemon=True).start()
+    while True:
+        try:
+            item = q.get(timeout=interval)
+        except queue.Empty:
+            yield ": keep-alive\n\n"
+            continue
+        if item is sentinel:
+            return
+        if isinstance(item, BaseException):
+            raise item
+        yield item
 
 
 def _touch_session(session_id: str, default_factory) -> dict:
@@ -231,11 +262,13 @@ def ask(request: Request, req: AskRequest):
                     yield f"data: {json.dumps({'answer_chunk': event['text']})}\n\n"
                 elif event["type"] == "done":
                     result = event
-        except llm.GatewayUnavailableError as e:
+        except llm.ProviderUnavailableError as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
             return
         except Exception:  # noqa: BLE001 — never leak raw exception text (may contain tool XML)
             yield f"data: {json.dumps({'error': 'عذراً، حدث خطأ أثناء معالجة طلبك. يرجى المحاولة مرة أخرى.'})}\n\n"
+            yield "data: [DONE]\n\n"
             return
 
         session["pending_ask"] = "CompanyID" if result["needs_ask"] else None
@@ -262,7 +295,11 @@ def ask(request: Request, req: AskRequest):
             }, default=str)}\n\n"
         yield "data: [DONE]\n\n"
 
-    return StreamingResponse(stream(), media_type="text/event-stream")
+    return StreamingResponse(
+        _with_heartbeat(stream()),
+        media_type="text/event-stream",
+        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-transform"},
+    )
 
 
 @app.post("/feedback")
@@ -282,10 +319,25 @@ def feedback(req: FeedbackRequest):
         raise HTTPException(status_code=400, detail="CompanyID not resolved for this session")
 
     if req.helpful:
-        if turn.get("answer_sql"):
-            memory.promote_verified_query(
-                client, company_id, turn["question"], turn["answer_sql"], source="user_feedback",
-            )
+        sql_text = turn.get("answer_sql")
+        if sql_text:
+            # Verify-before-promote: a thumbs-up must never write SQL into
+            # the few-shot pool that the gate itself would reject on the
+            # next turn (EXEC, multi-statement, cross-company literals).
+            try:
+                cache = json.loads((config.work_dir(client) / "schema_cache.json").read_text())
+                gate.validate(
+                    sql_text,
+                    allowed_procs=gate.DEFAULT_ALLOWED_PROCS,
+                    company_id=company_id,
+                    schema_cache=cache,
+                )
+            except Exception:  # noqa: BLE001 — GateError/missing cache both mean "don't promote"
+                trace.log_event(client, turn["question"], event="feedback_invalid_sql", subject=subject)
+            else:
+                memory.promote_verified_query(
+                    client, company_id, turn["question"], sql_text, source="user_feedback",
+                )
     else:
         if turn.get("cache_key"):
             memory.delete_plan(turn["cache_key"])
@@ -303,14 +355,7 @@ def _client_names() -> list:
 
 @app.get("/health")
 def health():
-    gateway_url = os.environ.get("GATEWAY_URL", "http://localhost:20128/v1").rstrip("/")
-    models_url = gateway_url if gateway_url.endswith("/models") else f"{gateway_url}/models"
-    gateway_ok = False
-    try:
-        with urllib.request.urlopen(models_url, timeout=5) as resp:
-            gateway_ok = getattr(resp, "status", 200) == 200
-    except (urllib.error.URLError, TimeoutError):
-        pass
+    provider_ok = llm.provider_health(timeout=5)
 
     clients = {}
     for name in _client_names():
@@ -337,8 +382,8 @@ def health():
         }
 
     return {
-        "gateway": gateway_ok,
-        "ok": gateway_ok and clients.get(PINNED_CLIENT, {}).get("db", False),
+        "provider": provider_ok,
+        "ok": provider_ok and clients.get(PINNED_CLIENT, {}).get("db", False),
         "pinned_client": PINNED_CLIENT,
         "clients": clients,
     }
