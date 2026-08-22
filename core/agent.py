@@ -1222,7 +1222,24 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     schema_version = _schema_version(cache)
     key = memory.cache_key(client, company_id, role, MODEL_ALIAS, question, schema_version)
     report_path = _is_report_path(question, client)
-    cached_plan = memory.get_plan(key)
+
+    # Live-proven (post-swap extreme test, q13): the calendar guard MUST run
+    # BEFORE plan-cache replay. «كم مبيعات هذا الشهر؟» had a cached July-2025
+    # plan that replayed as "this month" — stale-date answers.
+    #
+    # The guard itself applies to ALL questions (relative-date included: its
+    # whole job is offering last-posting-period when "this month" is empty).
+    # What relative-date / all-companies questions must NEVER do is REPLAY a
+    # plan — cached SQL bakes in dates resolved on a previous day.
+    calendar_ask = _empty_calendar_needs_ask(question, client, company_id)
+    if calendar_ask:
+        trace.log_event(client, question, event="needs_ask", subject=subject, param="calendar_period")
+        _record_latency()
+        yield {"type": "done", "answer": None, "needs_ask": calendar_ask}
+        return
+
+    skip_plan_cache = _needs_honesty_preamble(question)
+    cached_plan = memory.get_plan(key) if not skip_plan_cache else None
     if cached_plan and not report_path:
         try:
             # C4a: plan_cache now stores an ORDERED LIST of queries (one
@@ -1277,13 +1294,6 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             return
         except gate.GateError:
             pass  # cached plan no longer validates -- fall through to a full turn
-
-    calendar_ask = _empty_calendar_needs_ask(question, client, company_id)
-    if calendar_ask:
-        trace.log_event(client, question, event="needs_ask", subject=subject, param="calendar_period")
-        _record_latency()
-        yield {"type": "done", "answer": None, "needs_ask": calendar_ask}
-        return
 
     messages = _static_prefix(client, cache)
     shots = memory.few_shots(client, company_id, question, limit=3)

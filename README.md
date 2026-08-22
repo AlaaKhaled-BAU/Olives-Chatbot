@@ -12,14 +12,14 @@ Full build steps: **[PLAN.md](PLAN.md)**. Tool decisions: **[TOOLS-REVIEW.md](TO
 
 ## Run
 
-1. `cp .env.example .env` — set `DB_SA_PASSWORD`, `GATEWAY_API_KEY`, tenant tokens
+1. `cp .env.example .env` — set `DEEPSEEK_API_KEY`, `DB_SA_PASSWORD`, tenant tokens
 2. `set -a && source .env && set +a`
 3. Bootstrap the DB (skip if already done):
    - **DB already exists** (`Olives_BO` on your instance):  
      `python3.13 setup/native_bootstrap.py --client morec`
    - **Restore from `.bak` first**:  
      `python3.13 setup/01_db_up.py --mode native --db-name Olives_BO` then bootstrap as above
-4. `./run.sh` or manually: OmniRoute on `:20128` + `uvicorn api.server:app --port 8100`
+4. `./run.sh` or manually: `uvicorn api.server:app --port 8100` (DeepSeek direct — no gateway)
 5. `python3.13 evals/run_evals.py` (optional gate)
 
 > `python3.13` only. App connects as **`chatbot_ro`** + tenant `t.` views — never SA, never IIS `cds`.
