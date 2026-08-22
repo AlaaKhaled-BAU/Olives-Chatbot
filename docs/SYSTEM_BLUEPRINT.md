@@ -6,6 +6,85 @@
 
 ---
 
+# PART 0 — PRODUCT & DOMAIN CONTEXT
+
+## 0.1 What Olives is
+
+Olives is an **Arabic-language ERP suite for FMCG distribution and trading companies**.
+It has a front-office side (field sales / orders) and the back-office system this
+chatbot lives next to: database catalog **`Olives_BO`**, deployed on the customer's own
+infrastructure — IIS web application + SQL Server. The Olives website authenticates
+through SQL login `cds` with a session-bound `CompanyID`; several companies of one
+group share the same instance, so every business table carries `CompanyID` and every
+answer must be scoped to exactly one.
+
+Back-office modules (official user guides under `knowledge/back-office/`):
+customers · items · salespersons · routes · delivery · transactions (sales /
+returns / purchases / transfers) · receipts & checks · promotions · agreements ·
+**competitive items** (rival products tracked per customer store) · dashboards ·
+reports · users & permissions · workflow · settings.
+
+The operating model visible in the data and metric pack is **van-sales distribution**:
+salesmen are assigned routes of shop-customers, vans carry stock (`van_stock`),
+field reps get daily sales packs (`daily_sales_pack`), salesman↔customer assignment
+is explicit (`cfd_assignment`), and orders placed in the field are invoiced back at
+the office (hence the orders-vs-invoices gap reports).
+
+## 0.2 What this chatbot is within it
+
+A **read-only copilot over that estate**. It answers two kinds of Arabic questions:
+
+1. **How-do-I / where-is-it** — from the official user guides only (FTS5 corpus).
+   If the guides don't cover it, it says so («لا يوجد في دليل المستخدم»).
+2. **Verified live-data questions** — generates a read-only `SELECT` against `t.*`
+   views through the five-layer wall, shows its receipt (SQL + rows + freshness),
+   and refuses rather than guesses when evidence is missing or grain is ambiguous.
+
+It never writes to the ERP, never executes procedures, never crosses companies,
+and is not a replacement for any screen — it is the fastest path from question to
+defensible number.
+
+## 0.3 Who uses it
+
+| Persona | Typical asks | What they need |
+|---|---|---|
+| GM / group owner (multi-company) | «مبيعات شركة الاضواء هذا الشهر؟» | correct company scoping; honest "I only see company X" when asked cross-company |
+| Back-office manager | «كم عدد الزبائن النشطين؟», net-sales totals | instant verified KPIs without opening dashboards |
+| Receivables clerk | «سداديات العميل الفلاني خلال يوليو؟», checks status | collection lines per period/customer |
+| Sales supervisor | «مبيعات كل مندوب», orders-vs-invoiced gap | per-salesman accountability numbers |
+| Data-entry clerk | «حركة صنف كذا», transfers/van stock | item movement detail |
+| Helpdesk / support agent | «كيف أضيف عميل؟», screen/option explanations | guide-grounded answers with section citations |
+
+All personas are **Arabic-first RTL users who cannot write SQL**. The common thread:
+they need numbers they can defend to a superior — which is why every number ships
+with its executed query, row count, and data-freshness stamp instead of a bare answer.
+
+## 0.4 Use-case catalog → mechanism map
+
+| Need | Example (ar) | Served by |
+|---|---|---|
+| Daily KPI counts | كم عدد الزبائن النشطين؟ | fast-count path → metric pack / master terms, gear `f0` |
+| Net sales for a period | صافي مبيعات يوليو 2025؟ | NL→SQL via `net_sales` metric / certified report template, gear `t1/t2` |
+| Salesman performance | مبيعات كل مندوب هذا الشهر | `net_sales_by_salesperson` metric + report template |
+| Returns control | نسبة المرتجعات إلى المبيعات غير الملغاة؟ | returns-ratio NL→SQL (+ `analyze` for arithmetic) |
+| Collections & receipts | سداديات عميل خلال فترة | receipt-collection report templates |
+| Item movement | مبيعات ومرتجعات صنف معين | invoice-line-by-item template |
+| Field-to-office gap | الأوامر مقابل الفواتير لكل مندوب | orders-vs-invoices template |
+| Van / route ops | جرد فان معين، توزيع المناديب على المسارات | `van_stock`, `routes` module knowledge, hot_cache snapshots |
+| Date honesty | كم مبيعات هذا الشهر؟ (period empty) | deterministic calendar guard ask — no model judgment involved |
+| Grain honesty | كم فاتورة عندنا؟ (which type?) | grain-trap disclosure requirement in system prompt + scorer |
+| How-to guidance | كيف أضيف عميل جديد؟ أين خيار كذا؟ | FTS5 over headed user-guide corpus with section citations |
+| Multi-company disambiguation | any question when CompanyID unresolved | `needs_ask` listing REAL companies; pending-answer binding |
+
+## 0.5 Non-goals
+
+No writes to the ERP · no EXEC (allow-list empty until signed audit) · no
+cross-company leakage (the wall, not politeness) · no guessing without sources
+(refusal is a feature) · not a dashboard replacement (Olives has one) · English UI
+is future work (`locale: ar` today).
+
+---
+
 # PART 1 — SYSTEM ARCHITECTURE
 
 ## 1.1 Bird's-eye view
