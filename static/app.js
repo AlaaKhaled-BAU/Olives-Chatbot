@@ -71,7 +71,9 @@ async function loadContext() {
     }
     if (ctx.clients_active && ctx.clients_active.length) {
       const ca = ctx.clients_active[0];
-      clientLabel.textContent = `ClientID: ${ca.ClientID}`;
+      // Hide internal IDs that are empty/zero — meaningless to end users.
+      const cid = Number(ca && ca.ClientID);
+      clientLabel.textContent = cid > 0 ? `ClientID: ${cid}` : "";
     }
     contextAsOf = {
       calendar_today: ctx.calendar_today || null,
@@ -108,6 +110,9 @@ function addMessage(text, role) {
   div.className = `msg ${role}`;
   if (!ARABIC_RE.test(text)) div.classList.add("en");
   div.textContent = text;
+  // Per-paragraph bidi: Arabic-first stays RTL while digit/Latin runs stay
+  // LTR — fixes «25 زور*ت» corruption without touching model output.
+  div.style.unicodeBidi = "plaintext";
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
   return div;
@@ -369,6 +374,7 @@ function addResultChart(bot, chart, table) {
 function addSources(bot, sources) {
   const div = document.createElement("div");
   div.className = "sources-row";
+  div.style.unicodeBidi = "plaintext";
   div.textContent = `المصادر: ${sources.join("، ")}`;
   bot.appendChild(div);
 }
@@ -454,8 +460,9 @@ loadContext();
   }
 
   head.addEventListener("click", () => {
-    const open = body.classList.toggle("hidden") === false;
-    card.classList.toggle("open", open);
+    // .open owns visibility (CSS); hidden class kept for aria/compat only.
+    const open = card.classList.toggle("open");
+    body.classList.toggle("hidden", !open);
     head.setAttribute("aria-expanded", String(open));
   });
 
@@ -487,7 +494,7 @@ loadContext();
     try {
       lastProbe = await jpost("/db/test", payload);
     } catch { setMsg("تعذر الوصول للخدمة", "error"); return; }
-    if (!lastProbe.ok) { setMsg(lastProbe.error || "فشل الاتصال", "error"); saveBtn.disabled = true; return; }
+    if (!lastProbe.ok) { setMsg(lastProbe.error || "فشل الاتصال", "error"); return; }
     const dbs = lastProbe.databases || [];
     if (dbs.length) {
       nameSel.innerHTML = "";
@@ -523,7 +530,8 @@ loadContext();
         setMsg(res.error || "فشل التثبيت", "error");
       } else {
         paintStatus({ source: "live", active: res.active });
-        setMsg(`✓ تم تثبيت المصدر الحي: ${res.probe.server_name} (${res.probe.databases?.length ?? "?"} قاعدة)`, "ok");
+        const n = (lastProbe && Array.isArray(lastProbe.databases)) ? lastProbe.databases.length : null;
+        setMsg(`✓ تم تثبيت المصدر الحي: ${res.probe.server_name}${n !== null ? ` (${n} قاعدة)` : ""}`, "ok");
         try { await loadContext(); } catch {}
       }
     } catch { setMsg("تعذر الوصول للخدمة", "error"); }

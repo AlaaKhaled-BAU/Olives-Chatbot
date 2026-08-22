@@ -79,8 +79,20 @@ _CONTRACT_SYSTEM = (
     "figures verbatim), "
     '"refusal": boolean (true only if the answer declines to provide data), '
     '"confidence": "high" | "medium" | "low", '
-    '"followups": array of 2-3 short natural Arabic follow-up questions for the user.'
+    '"followups": array of EXACTLY 3 short natural Arabic follow-up questions the user '
+    "would plausibly ask next. Never return an empty followups array."
 )
+
+# TRACK F1-era guard (live QA ISSUE-001): unresolved template tokens in a
+# final answer mean the model shipped an unexecuted plan instead of data.
+_UNRESOLVED_TOKEN_RE = re.compile(r"<[a-z_][a-z_0-9]{3,}>", re.IGNORECASE)
+
+# Deterministic fallback when the contract returns no follow-ups.
+_DEFAULT_FOLLOWUPS = [
+    "وزع هذا الرقم حسب المندوبين؟",
+    "ما المقارنة مع الفترة السابقة؟",
+    "وش أكثر الأصناف المساهمة فيه؟",
+]
 
 
 def _user_id(client: str, company_id, subject: str | None) -> str:
@@ -1005,13 +1017,20 @@ def _retry_empty_final(messages: list, user_id: str | None = None) -> str | None
 
 
 def _resolve_final_text(final_text: str | None, messages: list, state: dict) -> str:
-    """Never return whitespace or empty when SQL/docs evidence exists."""
+    """Never return whitespace or empty when SQL/docs evidence exists. A
+    final answer containing unresolved <placeholder_tokens> is treated as
+    blank (live QA catch: the model once shipped
+    `WHERE CompanyID = <pinned_company_id>` as its whole answer) — the
+    rescue/stub path takes over instead of displaying a template."""
     if not _is_blank(final_text):
-        return final_text.strip()
+        if _UNRESOLVED_TOKEN_RE.search(final_text):
+            final_text = None
+        else:
+            return final_text.strip()
     if not _has_evidence(state):
         return final_text or ""
     retried = _retry_empty_final(messages, state.get("_user_id"))
-    if not _is_blank(retried):
+    if not _is_blank(retried) and not _UNRESOLVED_TOKEN_RE.search(retried):
         return retried.strip()
     return _build_arabic_stub(state)
 
@@ -1301,11 +1320,14 @@ def _build_envelope(question: str, final_text: str, state: dict) -> dict:
     for numbers the tools already returned."""
     table = _build_table(state["last_rows"])
     contract = _final_contract(question, final_text, state.get("_user_id")) if final_text else None
+    followups = (contract or {}).get("followups") or []
+    if not followups and final_text:
+        followups = list(_DEFAULT_FOLLOWUPS)
     out: dict = {
         "table": table,
         "chart": _build_chart(table),
         "sources": _build_sources(state["queries"], state["doc_source_pairs"]),
-        "followups": (contract or {}).get("followups") or [],
+        "followups": followups,
     }
     if contract and not contract["refusal"] and contract["confidence"]:
         out["confidence"] = contract["confidence"]

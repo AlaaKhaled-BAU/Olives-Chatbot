@@ -272,7 +272,16 @@ def db_test(req: DbConnectRequest):
 def db_connect(req: DbConnectRequest):
     """Test then persist the runtime override; all subsequent get_conn()
     calls hit this server. Password stored 0600 in gitignored work/ and
-    never echoed back (GETs return bullets)."""
+    never echoed back (GETs return bullets). Empty password reuses the
+    stored one when host+user match — reconnects don't demand retyping."""
+    if not req.password:
+        prev = dblink.raw_override()
+        try:
+            host, _ = dblink.resolve_target(req.server)
+        except dblink.ConnectionTargetError as e:
+            return {"ok": False, "error": str(e)}
+        if prev and prev.get("user") == req.user and prev.get("host") == host:
+            req.password = prev.get("password", "")
     probe = dblink.test_connection(
         req.server, req.user, req.password,
         database=req.database, port=req.port, trusted=req.trusted)

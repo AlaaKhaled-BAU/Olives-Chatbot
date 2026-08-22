@@ -298,6 +298,10 @@ button {
 .db-body {
   padding: 0.75rem;
   border-top: 1px solid #8883;
+}
+/* display lives on .open so the collapsed default can never be defeated by
+   the cascade (qa ISSUE-006) */
+.db-card.open .db-body {
   display: flex; flex-direction: column; gap: 0.65rem;
 }
 .grid4 {
