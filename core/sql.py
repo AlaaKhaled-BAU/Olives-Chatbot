@@ -24,8 +24,37 @@ def _ro_password() -> str:
     return (_SHARED_WORK_DIR / "ro_password.txt").read_text().strip()
 
 
+def _ro_password() -> str:
+    # chatbot_ro is a SERVER-level login (one per SQL Server instance, not
+    # per client database) -- its password is shared, not per-client.
+    return (_SHARED_WORK_DIR / "ro_password.txt").read_text().strip()
+
+
 def get_conn(client: str):
+    """Connection target precedence (operator console, core/dblink.py):
+    runtime override (UI-entered server) > .env snapshot. The tenant wall
+    is NOT bypassable from this console — chatbot_ro/t.* views still apply
+    unless the operator deliberately connects with a different login."""
     db_name = config.load_client(client)["db_name"]
+    override = None
+    try:
+        from . import dblink  # local import: optional module, never a hard dep
+        override = dblink.raw_override()
+    except Exception:  # noqa: BLE001
+        override = None
+    if override:
+        conn_kwargs = dict(
+            server=override["host"],
+            port=int(override.get("port") or 1433),
+            database=override.get("database") or db_name,
+            timeout=30, login_timeout=10,
+        )
+        if override.get("trusted"):
+            conn_kwargs["trusted"] = {"yes"}  # Windows auth, best-effort on Linux
+        else:
+            conn_kwargs["user"] = override.get("user", "")
+            conn_kwargs["password"] = override.get("password", "")
+        return pymssql.connect(**conn_kwargs)
     return pymssql.connect(
         server=os.environ.get("DB_HOST", "127.0.0.1"),
         port=int(os.environ.get("DB_PORT", "1433")),

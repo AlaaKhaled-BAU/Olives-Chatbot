@@ -18,6 +18,51 @@
       <span id="as-of-label" class="as-of-label hidden" aria-label="As-of dates"></span>
     </div>
   </header>
+  <section id="db-console" class="db-card">
+    <button type="button" id="db-toggle" class="db-head" aria-expanded="false">
+      <span id="db-orb" class="orb amber" aria-hidden="true"></span>
+      <span class="db-title">مصدر البيانات</span>
+      <span id="db-badge" class="badge badge-snapshot">نسخة محلية</span>
+      <span id="db-chev" class="chev">▾</span>
+    </button>
+    <div id="db-body" class="db-body hidden">
+      <div class="grid4">
+        <label>الخادم
+          <div class="srv-wrap">
+            <input id="db-server" placeholder="(.) أو host:port" autocomplete="off" spellcheck="false" dir="ltr">
+            <button type="button" id="db-local-chip" class="chip" title="الخادم المحلي">(.)</button>
+          </div>
+        </label>
+        <label>المنفذ
+          <input id="db-port" type="number" min="1" max="65535" value="1433">
+        </label>
+        <label>المستخدم
+          <input id="db-user" autocomplete="username" spellcheck="false" dir="ltr">
+        </label>
+        <label>كلمة المرور
+          <div class="pw-wrap">
+            <input id="db-pass" type="password" autocomplete="current-password" dir="ltr">
+            <button type="button" id="db-eye" class="chip" aria-label="إظهار كلمة المرور">👁</button>
+          </div>
+        </label>
+      </div>
+      <div class="grid4">
+        <label class="span2">قاعدة البيانات
+          <select id="db-name-select" class="hidden"></select>
+          <input id="db-name" placeholder="Olives_BO" spellcheck="false" dir="ltr">
+        </label>
+        <label class="trusted-label">
+          <input type="checkbox" id="db-trusted"> Windows Auth
+        </label>
+        <div class="btn-row">
+          <button type="button" id="db-test" class="ghost-btn">فحص الاتصال</button>
+          <button type="button" id="db-save" class="primary-btn" disabled>اتصال وتثبيت</button>
+          <button type="button" id="db-reset" class="danger-btn hidden">رجوع للنسخة المحلية</button>
+        </div>
+      </div>
+      <div id="db-msg" class="db-msg hidden"></div>
+    </div>
+  </section>
   <main id="messages" aria-live="polite"></main>
   <form id="ask-form">
     <input id="question" type="text" placeholder="اسأل عن بياناتك..." autocomplete="off" required>

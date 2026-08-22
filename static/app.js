@@ -400,3 +400,141 @@ form.addEventListener("submit", (e) => {
 });
 
 loadContext();
+
+
+/* ===== مصدر البيانات — operator connection console ===== */
+(function () {
+  const el = (id) => document.getElementById(id);
+  const card = el("db-console"), head = el("db-toggle"), body = el("db-body");
+  const orb = el("db-orb"), badge = el("db-badge"), chev = el("db-chev");
+  const serverIn = el("db-server"), portIn = el("db-port"), userIn = el("db-user");
+  const passIn = el("db-pass"), eyeBtn = el("db-eye"), chipLocal = el("db-local-chip");
+  const nameSel = el("db-name-select"), nameIn = el("db-name"), trustedChk = el("db-trusted");
+  const testBtn = el("db-test"), saveBtn = el("db-save"), resetBtn = el("db-reset");
+  const msgEl = el("db-msg");
+  let lastProbe = null;
+
+  function setMsg(text, kind) {
+    msgEl.textContent = text || "";
+    msgEl.className = kind ? `db-msg ${kind}` : "db-msg hidden";
+    if (!kind) msgEl.classList.add("hidden");
+  }
+
+  async function jpost(url, payload) {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return r.json();
+  }
+
+  function paintStatus(status) {
+    const live = status.source === "live";
+    orb.className = "orb " + (live ? "green" : "amber");
+    badge.textContent = live ? "متصل مباشرة" : "نسخة محلية";
+    badge.className = "badge " + (live ? "badge-live" : "badge-snapshot");
+    resetBtn.classList.toggle("hidden", !live);
+    if (live && status.active) {
+      serverIn.value = status.active.host || "";
+      portIn.value = status.active.port ?? 1433;
+      userIn.value = status.active.user || "";
+      passIn.value = "";
+      passIn.placeholder = "•••••• (محفوظة)";
+      nameIn.value = status.active.database || "";
+    }
+    setMsg(live
+      ? `مصدر حي: ${status.active.host}:${status.active.port}/${status.active.database}`
+      : "", "");
+  }
+
+  async function refreshStatus() {
+    try { paintStatus(await (await fetch("/db/status")).json()); }
+    catch { /* console is best-effort */ }
+  }
+
+  head.addEventListener("click", () => {
+    const open = body.classList.toggle("hidden") === false;
+    card.classList.toggle("open", open);
+    head.setAttribute("aria-expanded", String(open));
+  });
+
+  chipLocal.addEventListener("click", () => {
+    serverIn.value = "(.)";
+    portIn.value = 1433;
+    userIn.focus();
+  });
+
+  eyeBtn.addEventListener("click", () => {
+    passIn.type = passIn.type === "password" ? "text" : "password";
+  });
+
+  trustedChk.addEventListener("change", () => {
+    const off = trustedChk.checked;
+    userIn.disabled = off; passIn.disabled = off;
+    saveBtn.disabled = true;
+  });
+
+  testBtn.addEventListener("click", async () => {
+    setMsg("جارٍ الفحص…", "");
+    const payload = {
+      server: serverIn.value, port: portIn.value ? Number(portIn.value) : null,
+      user: userIn.value, password: passIn.value,
+      database: nameSel.classList.contains("hidden")
+        ? (nameIn.value || null) : nameSel.value,
+      trusted: trustedChk.checked,
+    };
+    try {
+      lastProbe = await jpost("/db/test", payload);
+    } catch { setMsg("تعذر الوصول للخدمة", "error"); return; }
+    if (!lastProbe.ok) { setMsg(lastProbe.error || "فشل الاتصال", "error"); saveBtn.disabled = true; return; }
+    const dbs = lastProbe.databases || [];
+    if (dbs.length) {
+      nameSel.innerHTML = "";
+      for (const d of dbs) {
+        const o = document.createElement("option");
+        o.value = o.textContent = d;
+        nameSel.appendChild(o);
+      }
+      const want = nameIn.value.trim();
+      if (want && dbs.includes(want)) nameSel.value = want;
+      else if (dbs.length === 1) nameSel.value = dbs[0];
+      nameSel.classList.remove("hidden");
+      nameIn.classList.add("hidden");
+    } else {
+      nameSel.classList.add("hidden"); nameIn.classList.remove("hidden");
+    }
+    saveBtn.disabled = false;
+    setMsg(`✓ ${lastProbe.server_name} — ${lastProbe.version_line}\nقواعد متاحة: ${dbs.length}`, "ok");
+  });
+
+  saveBtn.addEventListener("click", async () => {
+    const database = nameSel.classList.contains("hidden")
+      ? (nameIn.value.trim() || null) : nameSel.value;
+    const payload = {
+      server: serverIn.value, port: portIn.value ? Number(portIn.value) : null,
+      user: userIn.value, password: passIn.value,
+      database, trusted: trustedChk.checked,
+    };
+    saveBtn.disabled = true; saveBtn.textContent = "جارٍ التثبيت…";
+    try {
+      const res = await jpost("/db/connect", payload);
+      if (!res.ok) {
+        setMsg(res.error || "فشل التثبيت", "error");
+      } else {
+        paintStatus({ source: "live", active: res.active });
+        setMsg(`✓ تم تثبيت المصدر الحي: ${res.probe.server_name} (${res.probe.databases?.length ?? "?"} قاعدة)`, "ok");
+        try { await loadContext(); } catch {}
+      }
+    } catch { setMsg("تعذر الوصول للخدمة", "error"); }
+    saveBtn.textContent = "اتصال وتثبيت";
+  });
+
+  resetBtn.addEventListener("click", async () => {
+    await fetch("/db/reset", { method: "POST" });
+    refreshStatus();
+    try { await loadContext(); } catch {}
+  });
+
+  refreshStatus();
+})();

@@ -239,3 +239,128 @@ button {
 .followup-chip:hover {
   background: #2563eb2a;
 }
+
+
+/* ===== Data-source console (مصدر البيانات) — standout operator card ===== */
+@property --spin { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+
+.db-card {
+  position: relative;
+  margin: 0.6rem 0;
+  border-radius: 14px;
+  padding: 1px;                       /* gradient border thickness */
+  background: linear-gradient(#0000, #0000) padding-box,
+              conic-gradient(from var(--spin),
+                #7c5cff66, #22c55e66, #06b6d466, #7c5cff66) border-box;
+  animation: spin-border 8s linear infinite;
+  backdrop-filter: blur(6px);
+}
+@keyframes spin-border { to { --spin: 360deg; } }
+
+.db-card .db-head {
+  width: 100%;
+  display: flex; align-items: center; gap: 0.55rem;
+  background: color-mix(in srgb, CanvasText 4%, transparent);
+  border: none; border-radius: 13px;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer; font: inherit; color: inherit;
+  text-align: right;
+}
+.db-title { font-weight: 600; font-size: 0.92rem; }
+.chev { margin-inline-start: auto; transition: transform .25s ease; opacity:.7 }
+.db-card.open .chev { transform: rotate(180deg); }
+
+.orb {
+  width: 11px; height: 11px; border-radius: 50%;
+  flex: none; position: relative;
+}
+.orb::after {
+  content: ""; position: absolute; inset: -4px;
+  border-radius: 50%; opacity: .35;
+  background: radial-gradient(circle, currentColor 0%, transparent 70%);
+  animation: orb-pulse 2s ease-in-out infinite;
+}
+.orb.amber { background:#f59e0b; color:#f59e0b; }
+.orb.green { background:#22c55e; color:#22c55e; }
+.orb.red   { background:#ef4444; color:#ef4444; animation-duration:.9s; }
+@keyframes orb-pulse { 50% { transform: scale(1.5); opacity:.15 } }
+
+.badge {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: .02em;
+  padding: 0.15rem 0.5rem; border-radius: 999px;
+}
+.badge-snapshot { background:#f59e0b26; color:#b45309; border:1px solid #f59e0b55; }
+.badge-live     { background:#22c55e26; color:#15803d; border:1px solid #22c55e55; }
+@media (prefers-color-scheme: dark) {
+  .badge-snapshot { color:#fbbf24 } .badge-live { color:#4ade80 }
+}
+
+.db-body {
+  padding: 0.75rem;
+  border-top: 1px solid #8883;
+  display: flex; flex-direction: column; gap: 0.65rem;
+}
+.grid4 {
+  display: grid; gap: 0.55rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+.grid4 label, .db-body > label {
+  display: flex; flex-direction: column; gap: 0.25rem;
+  font-size: 0.74rem; opacity: 0.85;
+}
+.span2 { grid-column: span 2; }
+
+.srv-wrap, .pw-wrap { position: relative; display: flex; }
+.srv-wrap input, .pw-wrap input { flex: 1; padding-inline-end: 2.2rem; }
+
+#db-console input, #db-console select {
+  background: color-mix(in srgb, CanvasText 6%, transparent);
+  border: 1px solid #8886; border-radius: 8px;
+  padding: 0.42rem 0.55rem; font-size: 0.86rem; color: inherit;
+  transition: border-color .15s, box-shadow .15s;
+}
+#db-console input:focus, #db-console select:focus {
+  outline: none; border-color: #7c5cffaa;
+  box-shadow: 0 0 0 3px #7c5cff26;
+}
+
+.chip {
+  position: absolute; inset-inline-end: 4px; top: 50%;
+  transform: translateY(-50%);
+  border: none; border-radius: 6px;
+  background: #7c5cff22; color: inherit;
+  font-size: 0.72rem; padding: 0.18rem 0.42rem;
+  cursor: pointer; line-height: 1.4;
+}
+.chip:hover { background: #7c5cff44; }
+
+.btn-row { display: flex; align-items: end; gap: 0.45rem; flex-wrap: wrap; }
+.trusted-label { flex-direction: row !important; align-items: center; gap: 0.35rem; white-space: nowrap; }
+
+.ghost-btn, .primary-btn, .danger-btn {
+  font: inherit; font-size: 0.82rem; cursor: pointer;
+  border-radius: 9px; padding: 0.45rem 0.85rem;
+  border: 1px solid transparent; color: inherit;
+  transition: filter .15s, transform .05s, box-shadow .2s;
+}
+.ghost-btn { background: transparent; border-color: #8888; }
+.primary-btn {
+  background: linear-gradient(135deg, #7c5cff, #06b6d4);
+  color: #fff; font-weight: 700;
+  box-shadow: 0 2px 10px #7c5cff44;
+}
+.primary-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow:none }
+.danger-btn { border-color: #ef444488; color: #dc2626; }
+.primary-btn:not(:disabled):hover, .ghost-btn:hover, .danger-btn:hover { filter: brightness(1.12); }
+.primary-btn:not(:disabled):active { transform: translateY(1px); }
+
+.db-msg {
+  font-size: 0.8rem; border-radius: 9px; padding: 0.5rem 0.7rem;
+  border: 1px solid; white-space: pre-wrap;
+}
+.db-msg.ok    { background:#22c55e18; border-color:#22c55e66; }
+.db-msg.error { background:#ef444418; border-color:#ef444466; animation: shake .35s; }
+@keyframes shake {
+  25% { transform: translateX(4px) } 50% { transform: translateX(-4px) }
+  75% { transform: translateX(3px) }
+}

@@ -24,7 +24,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from slowapi.util import get_remote_address  # noqa: E402
 
-from core import agent, config, gate, llm, memory, params, sessions, sql, trace  # noqa: E402
+from core import agent, config, dblink, gate, llm, memory, params, sessions, sql, trace  # noqa: E402
 
 app = FastAPI()
 
@@ -76,6 +76,15 @@ class FeedbackRequest(BaseModel):
 class ContextSetRequest(BaseModel):
     session_id: str
     company_id: int
+
+
+class DbConnectRequest(BaseModel):
+    server: str          # '(.)' = local default instance
+    port: int | None = None
+    user: str = ""
+    password: str = ""
+    database: str | None = None
+    trusted: bool = False  # Windows auth, best-effort on Linux
 
 
 SESSIONS: OrderedDict = OrderedDict()
@@ -249,6 +258,59 @@ def get_context(session_id: str | None = None):
     session = SESSIONS.get(session_id) if session_id else None
     conversation = session.get("conversation", {}) if session else {}
     return _context_payload(client, conversation)
+
+
+@app.post("/db/test")
+def db_test(req: DbConnectRequest):
+    """Probe a server without persisting — drift-tool's picker semantics."""
+    return dblink.test_connection(
+        req.server, req.user, req.password,
+        database=req.database, port=req.port, trusted=req.trusted)
+
+
+@app.post("/db/connect")
+def db_connect(req: DbConnectRequest):
+    """Test then persist the runtime override; all subsequent get_conn()
+    calls hit this server. Password stored 0600 in gitignored work/ and
+    never echoed back (GETs return bullets)."""
+    probe = dblink.test_connection(
+        req.server, req.user, req.password,
+        database=req.database, port=req.port, trusted=req.trusted)
+    if not probe.get("ok"):
+        return {"ok": False, "error": probe.get("error", "تعذر الاتصال")}
+    if req.database and not probe.get("target_db_ok"):
+        return {"ok": False, "error": f"قاعدة البيانات {req.database!r} غير موجودة أو غير متاحة"}
+    saved = dblink.save_override(
+        req.server, req.user, req.password,
+        req.database or "", port=req.port, trusted=req.trusted)
+    trace.log_event(PINNED_CLIENT, "db_connect", event="db_source_changed",
+                    param=f"{saved['host']}:{saved['port']}/{saved['database']} as {saved['user']}")
+    return {"ok": True, "active": saved, "probe": {
+        k: v for k, v in probe.items() if k != "databases"}}
+
+
+@app.post("/db/reset")
+def db_reset():
+    """Back to the .env snapshot source."""
+    dblink.clear_override()
+    return {"ok": True, "active": None}
+
+
+@app.get("/db/status")
+def db_status():
+    override = dblink.active_override()
+    if override:
+        return {"source": "live", "active": override}
+    return {
+        "source": "snapshot",
+        "active": {
+            "host": os.environ.get("DB_HOST", "127.0.0.1"),
+            "port": int(os.environ.get("DB_PORT", "1433")),
+            "user": "chatbot_ro",
+            "password": "••••••",
+            "database": config.load_client(PINNED_CLIENT)["db_name"],
+        },
+    }
 
 
 @app.post("/context")
