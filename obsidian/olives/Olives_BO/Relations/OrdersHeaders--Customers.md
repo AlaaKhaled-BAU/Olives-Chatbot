@@ -8,6 +8,9 @@ parent_table: [[OrdersHeaders]]
 referenced_table: [[Customers]]
 columns: "OrdersHeaders.CustomerID → Customers.ID"
 ---
+tenant_scoping: "chatbot queries t.-views only; SESSION_CONTEXT('CompanyID')"
+last_verified: 2026-08-22
+---
 
 # OrdersHeaders → Customers
 

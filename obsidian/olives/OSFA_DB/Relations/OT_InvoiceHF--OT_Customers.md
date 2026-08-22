@@ -2,18 +2,27 @@
 type: relation
 database: OSFA_DB
 name: OT_InvoiceHF--OT_Customers
-tags: [#fk, #mobile]
+tags: [#convention, #mobile]
 support_relevance: high
 parent_table: [[OT_InvoiceHF]]
-referenced_table: `"`OT_Customers`"`
-columns: "OT_InvoiceHF.CustomerID → `OT_Customers`.ID"
+referenced_table: [[OT_Customers]]
+columns: "OT_InvoiceHF.CompNo,CustomerNo → OT_Customers.CompNo,CustomerNo"
+last_verified: 2026-08-22
+verified_source: db/vault_graph.json
 ---
 
 # OT_InvoiceHF → OT_Customers
 
-**FK**: OT_InvoiceHF.CustomerID → `OT_Customers`.ID
+**Convention join** (no DB-level FK): OT_InvoiceHF.CompNo+CustomerNo → [[OT_Customers]].CompNo+CustomerNo
 
-**Business meaning**: Mobile counterpart of the BO invoice-to-customer relationship. Links tablet invoices to the customer master synced from BO.
+**Business meaning**: Tablet invoice header points at the customer snapshot row synced to the device. Keyed by CompNo+CustomerNo — the earlier CustomerID claim referenced a column that does not exist on this table (verified against vault_graph.json).
 
-**Source table**: [[OT_InvoiceHF]]
-**Target table**: `OT_Customers`
+## Tenancy
+
+OSFA staging row keyed by CompNo (+SalesmanNo snapshot dimension where present). Informational only: chatbot never queries OSFA_DB.
+
+## See also
+
+- [[OT_InvoiceHF]]
+- [[OT_Customers]]
+- [[Sync-Architecture]]

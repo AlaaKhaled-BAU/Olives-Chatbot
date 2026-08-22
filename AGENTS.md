@@ -14,10 +14,11 @@ Standalone repo at `/media/alaa/data/client-chatbot/`.
 4. **Tenant pinned in env** — `CHATBOT_CLIENT` selects `clients/*.yaml`; browser cannot switch yaml client.
 5. **One SQL path:** `core/sql.py` + `core/gate.py` (shared by agent and `sqlmcp/`).
 6. **Never return procedure bodies** to the model or user.
-7. **Cache keys include client + CompanyID** — exact match only (`core/memory.py`).
-8. **After query results enter model context, no more tool calls** (`core/agent.py` golden rule 6).
-9. **Do not bypass the gate** or grant base-table access to `chatbot_ro`.
-10. **Vault is load-bearing** — do not delete or gitignore `obsidian/olives/` (2659 files including `.obsidian/`).
+7. **EXEC:** allow-listed read-only `Rpt_*` only in a later PR (after SA audit + signed allow-list + GRANT); until then `allowed_procs=[]` and model SQL with EXEC is always `GateError`. Never return procedure bodies.
+8. **Cache keys include client + CompanyID** — exact match only (`core/memory.py`).
+9. **After query results enter model context, no more tool calls** (`core/agent.py` golden rule 6).
+10. **Do not bypass the gate** or grant base-table access to `chatbot_ro`.
+11. **Vault is load-bearing** — do not delete or gitignore `obsidian/olives/` (2659 files including `.obsidian/`).
 
 ---
 

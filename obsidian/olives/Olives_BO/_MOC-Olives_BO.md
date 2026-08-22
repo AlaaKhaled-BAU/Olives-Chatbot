@@ -68,7 +68,6 @@ WHERE type = "relation"
 - [[Contracts--Customers]] — Contracts → Customers
 - [[Customers--PriceLists]] — Customers → PriceLists
 - [[Customers--SalesPersons]] — Customers → SalesPersons
-- [[IntegrationPostedTransactions--TransactionsHeaders]] — Integration → Transactions
 - [[Items--ItemsCategories]] — Items → ItemsCategories
 - [[OrdersHeaders--Customers]] — Order → Customer
 - [[OrdersHeaders--SalesPersons]] — Order → SalesPerson
@@ -92,13 +91,41 @@ WHERE type = "relation"
 - [[Items--ItemsGroups]] — Item → item group
 - [[Items--OT_ItemsMF]] — BO item → tablet item (cross-DB)
 - [[Widget_User_LogAction--Widget_User_LogAction]] — Log action → log action (self-FK)
+- [[BankDepositHF--Companies]]
+- [[Checks--Receipts]]
+- [[Customers--OT_CustomerMF]]
+- [[CustomersFinancialDetails--Customers]]
+- [[CustomersFinancialDetails--RoutesInformation]]
+- [[CustomersVisitActivity--Customers]]
+- [[InvoiceDeliveryHF--Customers]]
+- [[InvoiceDeliveryHF--InvoiceDeliveryDF]]
+- [[InvoiceHistoryHF--Customers]]
+- [[InvoiceHistoryHF--InvoiceHistoryDF]]
+- [[OrdersDetails--Items]]
+- [[OrdersHeaders--OrdersDetails]]
+- [[Receipts_Currency--Receipts]]
+- [[ReturnOrdersHeaders--Customers]]
+- [[ReturnOrdersHeaders--RoutesInformation]]
+- [[ReturnOrdersHeaders--SalesPersons]]
+- [[SalesOrderDeliveryHF--Customers]]
+- [[SalesOrderDeliveryHF--SalesOrderDeliveryDF]]
+- [[SalesPersons--OT_SalesmanMF]]
+- [[SalespersonsGPSTracking--SalesPersons]]
+- [[StoresBalances--Items]]
+- [[TransactionsHeaders--RoutesInformation]]
+- [[TransactionsHeaders--SalesPersons]]
+- [[TransfersOrdersDetails--Items]]
+- [[TransfersOrdersHeaders--TransfersOrdersDetails]]
+- [[VanTransferHeader--VanTransferDetails]]
+- [[WF_SetupDetails--WF_SetupHeader]]
+- [[_RequestTo-Join-Conventions]]
 
 ## Connectivity Stats
 | Metric | Value |
 |--------|-------|
 | Tables | 440 |
 | Procedures | 1722 |
-| Relations | 30 |
+| Relations | 57 |
 
 ## Related
 
@@ -106,9 +133,7 @@ WHERE type = "relation"
 - [[Olives_BO/Tables/ItemsUnitsDetails_1]]
 - [[Olives_BO/Tables/GroupsMenu]]
 - [[Olives_BO/Tables/CustomersFinancialDetails2]]
-- [[Olives_BO/Tables/forupdateonly]]
 - [[Olives_BO/Tables/MultiTargets]]
-- [[Olives_BO/Tables/MMS_ShowRooms]]
 - [[Olives_BO/Tables/Clients]]
 - [[Olives_BO/Tables/Pos_InvoiceOrderHF]]
 - [[Olives_BO/Tables/CustomerSalesByCategory]]
@@ -122,9 +147,7 @@ WHERE type = "relation"
 - [[Olives_BO/Tables/EmpDetails]]
 - [[Olives_BO/Tables/ClientsWFID]]
 - [[Olives_BO/Tables/ItemsInventory]]
-- [[Olives_BO/Tables/MMS_DV_ErrorLog]]
 - [[Olives_BO/Tables/WieghtTargets]]
-- [[Olives_BO/Tables/CustomersFinancialDetails_Old]]
 - [[Olives_BO/Tables/PriceListQtyRanges]]
 - [[Olives_BO/Tables/ScheduleDeliveryOrders]]
 - [[Olives_BO/Tables/LogActions]]
@@ -132,32 +155,12 @@ WHERE type = "relation"
 - [[Olives_BO/Tables/UsersGroupsLink]]
 - [[Olives_BO/Procedures/GetCustomerAssets]]
 - [[Olives_BO/Procedures/Pro_PrintCheque]]
-- [[Olives_BO/Procedures/sp_helpdiagramdefinition]]
 - [[Olives_BO/Procedures/Rpt_VoidOrder]]
 - [[Olives_BO/Procedures/OT_ImportReturnOrderMerch]]
-- [[Olives_BO/Procedures/SP_UPGRADDIAGRAMS]]
 - [[Olives_BO/Procedures/Pro_MonthlySalesPersonsTargets]]
-- [[Olives_BO/Procedures/sp_alterdiagram]]
 - [[Olives_BO/Procedures/DashBoard_ExceptionsIssues]]
 - [[Olives_BO/Procedures/OWMS]]
-- [[Olives_BO/Procedures/RunSQLWebAPI_Integ]]
-- [[Olives_BO/Procedures/EncodeArabicToUTF8DataFromOSFA_API]]
 - [[Olives_BO/Procedures/SMSSEND_ZUMOT]]
-- [[Olives_BO/Procedures/Test_Banks]]
-- [[Olives_BO/Procedures/sp_renamediagram]]
-- [[Olives_BO/Procedures/Alpha_GetCurrRate]]
-- [[Olives_BO/Procedures/Niroukh_VS_MonthlyandQuarter]]
-- [[Olives_BO/Procedures/sp_helpdiagrams]]
-- [[Olives_BO/Procedures/Niroukh_AllCustomersTargets]]
-- [[Olives_BO/Procedures/CopySystemOption]]
-- [[Olives_BO/Procedures/Awtar_Integ_GetDataFromAPI]]
 - [[Olives_BO/Procedures/PRO_REPORT]]
 - [[Olives_BO/Procedures/Rpt_Get_SalesAnalysisPerSalesEmp_Tablet]]
-- [[Olives_BO/Procedures/sp_creatediagram]]
 - [[Olives_BO/Procedures/GetRouteAndCategoryOnline]]
-- [[Olives_BO/Procedures/FIXCORRUPTEDIMAGEGALARY_OSFA]]
-- [[Olives_BO/Procedures/CopySystemOption_Delete_Insert_fromsalesmantosalesman]]
-- [[Olives_BO/Procedures/sp_dropdiagram]]
-- [[Olives_BO/Procedures/Online_RptSalesmanCustomerCategAreaSales_Zumot]]
-- [[Olives_BO/Procedures/Technical_Activate_DeactivateLoginbybarcode_Atieh]]
-- [[Olives_BO/Procedures/Rpt_Hakkak_TargetReportFromAlpha]]

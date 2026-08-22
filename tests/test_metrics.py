@@ -32,6 +32,8 @@ def test_net_sales_sql_has_type_and_void_filters():
     assert "TransactionsDetails" in sql_text
     assert f"th.CompanyID = {COMPANY_ID}" in sql_text
     assert f"td.CompanyID = {COMPANY_ID}" in sql_text
+    assert "COUNT(DISTINCT th.TransactionNo)" not in sql_text
+    assert "COUNT(*)" in sql_text
 
 
 def test_net_sales_by_salesperson_groups_and_filters():
@@ -40,6 +42,8 @@ def test_net_sales_by_salesperson_groups_and_filters():
     assert "SalesPersons sp" in sql_text
     assert "TransactionTypeID = 1" in sql_text
     assert f"sp.CompanyID = {COMPANY_ID}" in sql_text
+    assert "COUNT(DISTINCT th.TransactionNo)" not in sql_text
+    assert "COUNT(*) AS invoice_count" in sql_text
 
 
 def test_returns_sql_has_type_2_and_void_filter():

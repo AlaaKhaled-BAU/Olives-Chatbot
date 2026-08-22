@@ -13016,9 +13016,9 @@
      "type": "bigint",
      "nullable": false,
      "is_pk": false,
-     "is_fk": false,
-     "fk_ref_table": "",
-     "fk_ref_column": ""
+     "is_fk": true,
+     "fk_ref_table": "Menu",
+     "fk_ref_column": "ID"
     },
     {
      "name": "CanRead",
@@ -16176,6 +16176,15 @@
      "is_fk": false,
      "fk_ref_table": "",
      "fk_ref_column": ""
+    },
+    {
+     "name": "ItemGroupID",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": true,
+     "fk_ref_table": "ItemsGroups",
+     "fk_ref_column": "ID"
     }
    ],
    "procedures_reading": [
@@ -79330,6 +79339,2871 @@
    "procedures_writing": [
     "OSFA_DB::OT_VanTransferHF_Insert"
    ]
+  },
+  "Olives_BO::BankDepositDF": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "BankDepositDF",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": true,
+     "fk_ref_table": "BankDepositHF",
+     "fk_ref_column": "CompanyID"
+    },
+    {
+     "name": "VouYear",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": true,
+     "fk_ref_table": "BankDepositHF",
+     "fk_ref_column": "VouYear"
+    },
+    {
+     "name": "VouNo",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": true,
+     "fk_ref_table": "BankDepositHF",
+     "fk_ref_column": "VouNo"
+    },
+    {
+     "name": "RecYear",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "RecType",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "RecNo",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "RecAmount",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::BankDepositHF": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "BankDepositHF",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": true,
+     "fk_ref_table": "Branches",
+     "fk_ref_column": "CompanyID"
+    },
+    {
+     "name": "VouYear",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "VouNo",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "VouDate",
+     "type": "smalldatetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "SalespersonID",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": true,
+     "fk_ref_table": "SalesPersons",
+     "fk_ref_column": "ID"
+    },
+    {
+     "name": "BankNo",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": true,
+     "fk_ref_table": "Branches",
+     "fk_ref_column": "BankID"
+    },
+    {
+     "name": "BranchNo",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": true,
+     "fk_ref_table": "Branches",
+     "fk_ref_column": "ID"
+    },
+    {
+     "name": "Notes",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TrDateTime",
+     "type": "smalldatetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Latitude",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Longitude",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IsPostedToERP",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TabSysID",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Approve",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::CustomersBalanceAging_Inmaa": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "CustomersBalanceAging_Inmaa",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CustomerID",
+     "type": "bigint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "BalanceAge1",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "BalanceAge2",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "BalanceAge3",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "BalanceAge4",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "BalanceAge5",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "BalanceAge6",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "BalanceAge7",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "BalanceAge8",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "BalanceAge9",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "BalanceAge10",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::DiscountEarlyPayByInvoiceRef": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "DiscountEarlyPayByInvoiceRef",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "InvoiceRef",
+     "type": "varchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CustomerID",
+     "type": "bigint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "SalespersonID",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "DiscountPerc",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Ref1",
+     "type": "varchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Ref2",
+     "type": "varchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::EfawateercomPayment": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "EfawateercomPayment",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "GUID",
+     "type": "uniqueidentifier",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TypeID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CustID",
+     "type": "bigint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TimeStp",
+     "type": "datetime",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "DueAmount",
+     "type": "float",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "JsonReq",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "JsonRes",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::ItemCommissions": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "ItemCommissions",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyId",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ItemCode",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CommissionPer",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "BonusPer",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::ItemsCategStockDetails": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "ItemsCategStockDetails",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TransactionTypeID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TransactionYear",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TransactionNo",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CategCode",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "UnitID",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Quantity",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Notes",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::ItemsCategStockHeader": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "ItemsCategStockHeader",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TransactionTypeID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TransactionYear",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TransactionNo",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TransactionDate",
+     "type": "smalldatetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "SalesPersonID",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CustomerID",
+     "type": "bigint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Latitude",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Longitude",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Notes",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "PostedToERP",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "RouteID",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TrDateTime",
+     "type": "smalldatetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ServerDate",
+     "type": "smalldatetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::ItemsGroups": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "ItemsGroups",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": true,
+     "fk_ref_table": "Companies",
+     "fk_ref_column": "ID"
+    },
+    {
+     "name": "ID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Name",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ShortName",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Reference1",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Reference2",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::ItemsMinimumSales": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "ItemsMinimumSales",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ItemCateg",
+     "type": "varchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CustomerGroup",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "MinimumSales",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Reference1",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Reference2",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::ItemsStoreByUser": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "ItemsStoreByUser",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "StoreNo",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ItemCode",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "UserID",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::JSONDataLog": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "JSONDataLog",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TabSysID",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "SalespersonID",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "JSONData",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TrDateTime",
+     "type": "smalldatetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::MaintinanceOrdersApprove": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "MaintinanceOrdersApprove",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "AutoID",
+     "type": "numeric",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "UserID",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "AssignDate",
+     "type": "smalldatetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Approve",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ApproveDate",
+     "type": "smalldatetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Note",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IsPosted",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Lineserial",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::MedicalRepCoaching": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "MedicalRepCoaching",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ID",
+     "type": "bigint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TransDate",
+     "type": "smalldatetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CreatedBy",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "RepNo",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Objective",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CustomerCount",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "DoctorsCount",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "PharmaciesCount",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "AccountsCount",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Appearance",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TerritoryManagement",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TimeManagement",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Discipline",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "PreCallObjective",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CustomerData",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "PharmacyVisit",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "VisualAidsOrganization",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CompetitorIntelligence",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "StrategyAdherence",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ProductKnowledge",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "QuestioningSkills",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ActiveLestining",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "QuickCallDirecting",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IdentifyDoctorNeeds",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "LogicalDataFlow",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "UsingFAB",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "HandlingObjections",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "UsingPromotionalMaterial",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ClosingAndCommitment",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "PhysicianCardFollowIp",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ConstructiveFeedback",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "AbilityToAssessTheCall",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Stop",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Start",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Maintain",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TerritoryTarget",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "PhysicianRelationship",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::MobileVersionSalesmen": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "MobileVersionSalesmen",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "Compno",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::OrdersDetails_Log": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "OrdersDetails_Log",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "OrderYear",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "OrderNo",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ItemCode",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "UnitID",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "UserId",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Quantity",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::PriceListDetailsFromGCI": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "PriceListDetailsFromGCI",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "PriceListID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ItemCode",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "UnitID",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Price",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TaxType",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Tax",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "DiscountPercent",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "UseInReturn",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "UseInSales",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "SellPrice2",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "SellPrice3",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Qty",
+     "type": "money",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TaxType1",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Tax1",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TaxType2",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Tax2",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Reference1",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Reference2",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::PromotionBudget": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "PromotionBudget",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IONumber",
+     "type": "nvarchar",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IODescription",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IODate",
+     "type": "datetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IOLimitValue",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IOValue",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::PromptEmbeddings": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "PromptEmbeddings",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "Id",
+     "type": "int",
+     "nullable": false,
+     "is_pk": true,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "PromptText",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Response",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Embedding",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::RequestToCancelPayment": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "RequestToCancelPayment",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "AutoID",
+     "type": "numeric",
+     "nullable": false,
+     "is_pk": true,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TrYear",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TrType",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TrNo",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "SalesPersonNo",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CustomerNo",
+     "type": "bigint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ReceiptAmount",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ChecksInfo",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "InvoiceInfo",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Notes",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "DiscountAmount",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TrDate",
+     "type": "smalldatetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Latitude",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Longitude",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TabletSysID",
+     "type": "varchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IsAproved",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "OSFA_AutoID",
+     "type": "numeric",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::SalesmanVisitsSummary": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "SalesmanVisitsSummary",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "VisitIDAutoID",
+     "type": "numeric",
+     "nullable": false,
+     "is_pk": true,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TabSysID_Visit",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "SalesmanID",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CustomerID",
+     "type": "bigint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "VisitDate",
+     "type": "smalldatetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "StartTime",
+     "type": "datetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "EndTime",
+     "type": "datetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "RouteID",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "InOrOutRoute",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IsActualVisit",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IsWithSalesmanVisit",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ExitNote",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IsSuccsessVisit",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "StartLogID",
+     "type": "numeric",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "StartData1",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "StartData2",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "StartData3",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "StartData4",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "StartData5",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "EndLogID",
+     "type": "numeric",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "EndData1",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "EndData2",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "EndData3",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "EndData4",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "EndData5",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "LoginMethod",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "LogoutMethod",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "LoginGPSX",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "LoginGPSY",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "LogOutGPSX",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "LogOutGPSY",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "LogInDistance",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "LogOutDistance",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "StartBatteryPerc",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "EndBattaryPerc",
+     "type": "float",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::SalesPersonCustomerCountTargetsDF": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "SalesPersonCustomerCountTargetsDF",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "SalesPersonID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TargetYear",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TargetMonth",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TargetReferenceID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CustomerCount",
+     "type": "nchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::SalesPersonCustomerCountTargetsHF": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "SalesPersonCustomerCountTargetsHF",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "SalesPersonID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TargetYear",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "TargetMonth",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::SalespersonCustomersVisitsByDate": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "SalespersonCustomersVisitsByDate",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "PositionID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CustomerID",
+     "type": "bigint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Date",
+     "type": "date",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Notes",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IsApproved",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::SalespersonsPromotionsExceptions": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "SalespersonsPromotionsExceptions",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "SalespersonID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "PromotionID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::TechnicalFinancialInsertTable_Temp": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "TechnicalFinancialInsertTable_Temp",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "Compno",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CustID",
+     "type": "bigint",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Pos",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "routeID",
+     "type": "nchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::WFMobilePermissionDefinition": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "WFMobilePermissionDefinition",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "ID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "Description",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "IsSysOption",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "UseMultiSelect",
+     "type": "bit",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::WFMobilePermissionLink": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "WFMobilePermissionLink",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompanyID",
+     "type": "smallint",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "PerID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "SalesPersonID",
+     "type": "int",
+     "nullable": false,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "PerValue",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::Widget_Functions": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "Widget_Functions",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompNo",
+     "type": "int",
+     "nullable": false,
+     "is_pk": true,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CompanyName",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "FunctionID",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "FunctionName",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CalledProcedureName",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
+  },
+  "Olives_BO::Widget_User_LogAction": {
+   "database": "Olives_BO",
+   "schema": "dbo",
+   "name": "Widget_User_LogAction",
+   "object_type": "TABLE",
+   "estimated_size": "",
+   "business_purpose": "",
+   "columns": [
+    {
+     "name": "CompNo",
+     "type": "int",
+     "nullable": false,
+     "is_pk": true,
+     "is_fk": true,
+     "fk_ref_table": "Widget_User_LogAction",
+     "fk_ref_column": "CompNo"
+    },
+    {
+     "name": "ActionDate",
+     "type": "datetime",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "UserID",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "FunctionID",
+     "type": "int",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    },
+    {
+     "name": "CalledProcedure",
+     "type": "nvarchar",
+     "nullable": true,
+     "is_pk": false,
+     "is_fk": false,
+     "fk_ref_table": "",
+     "fk_ref_column": ""
+    }
+   ],
+   "procedures_reading": [],
+   "procedures_writing": [],
+   "cross_db": []
   }
  },
  "procedures": {

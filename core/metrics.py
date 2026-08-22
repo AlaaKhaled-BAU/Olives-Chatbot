@@ -3,7 +3,7 @@ Never EXEC procs; never dbo."""
 import re
 from datetime import date
 
-from . import sql
+from . import gate, sql
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -142,7 +142,11 @@ def build_sql(metric: str, filters: dict | None = None, *, company_id: int) -> s
     if metric == "net_sales":
         extra = _invoice_date_filters(filters)
         return (
-            "SELECT COUNT(DISTINCT th.TransactionNo) AS invoice_count, "
+            "SELECT (SELECT COUNT(*) FROM t.TransactionsHeaders thc "
+            "WHERE thc.TransactionTypeID = 1 AND ISNULL(thc.IsVoid, 0) = 0"
+            + _company_id_filter(cid, "thc")
+            + extra.replace("th.", "thc.")
+            + ") AS invoice_count, "
             "SUM(td.Quantity * td.Price) AS gross_amount "
             "FROM t.TransactionsHeaders th "
             "INNER JOIN t.TransactionsDetails td ON "
@@ -154,17 +158,23 @@ def build_sql(metric: str, filters: dict | None = None, *, company_id: int) -> s
         )
     if metric == "net_sales_by_salesperson":
         extra = _invoice_date_filters(filters)
+        extra_gross = extra.replace("th.", "th2.")
         return (
             "SELECT th.SalesPersonID, sp.Name AS SalesPersonName, "
-            "COUNT(DISTINCT th.TransactionNo) AS invoice_count, "
-            "SUM(td.Quantity * td.Price) AS gross_amount "
-            "FROM t.TransactionsHeaders th "
+            "COUNT(*) AS invoice_count, "
+            "(SELECT SUM(td.Quantity * td.Price) FROM t.TransactionsHeaders th2 "
             "INNER JOIN t.TransactionsDetails td ON "
-            "th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID "
-            "AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo "
+            "th2.CompanyID = td.CompanyID AND th2.TransactionTypeID = td.TransactionTypeID "
+            "AND th2.TransactionYear = td.TransactionYear AND th2.TransactionNo = td.TransactionNo "
+            "WHERE th2.SalesPersonID = th.SalesPersonID "
+            "AND th2.TransactionTypeID = 1 AND ISNULL(th2.IsVoid, 0) = 0"
+            + _company_id_filter(cid, "th2", "td")
+            + extra_gross
+            + ") AS gross_amount "
+            "FROM t.TransactionsHeaders th "
             "INNER JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID AND sp.CompanyID = th.CompanyID "
             "WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0"
-            + _company_id_filter(cid, "th", "td", "sp")
+            + _company_id_filter(cid, "th", "sp")
             + extra
             + " GROUP BY th.SalesPersonID, sp.Name "
             "ORDER BY gross_amount DESC"
@@ -268,6 +278,8 @@ def run_metric(
     allowed_procs=None,
     filters: dict | None = None,
 ) -> dict:
+    if allowed_procs is None:
+        allowed_procs = gate.DEFAULT_ALLOWED_PROCS
     canonical = resolve_metric(metric_name)
     if not canonical:
         known = ", ".join(sorted(METRICS))

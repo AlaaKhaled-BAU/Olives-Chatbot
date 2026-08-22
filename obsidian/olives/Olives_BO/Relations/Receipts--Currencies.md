@@ -8,6 +8,10 @@ parent_table: [[Receipts]]
 referenced_table: [[Currencies]]
 columns: "Receipts.CurrencyID → Currencies.ID"
 ---
+tenant_ref: "Currencies is a global reference table (unscoped in t.)"
+tenant_scoping: "chatbot queries t.-views only; SESSION_CONTEXT('CompanyID')"
+last_verified: 2026-08-22
+---
 
 # Receipts → Currencies
 

@@ -51,7 +51,13 @@ def _schema_cache(client: str) -> dict:
     return json.loads((config.work_dir(client) / "schema_cache.json").read_text())
 
 
-def run_select(raw_sql: str, company_id: int, client: str, allowed_procs=None, row_cap: int = gate.DEFAULT_ROW_CAP):
+def run_select(
+    raw_sql: str,
+    company_id: int,
+    client: str,
+    allowed_procs=gate.DEFAULT_ALLOWED_PROCS,
+    row_cap: int = gate.DEFAULT_ROW_CAP,
+):
     """gate -> set tenant -> execute via the t. views. raw_sql is untrusted
     (model-generated); the gate is the only thing standing between it and
     the database, on top of the server-side wall."""

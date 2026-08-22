@@ -74,6 +74,24 @@ def test_allowlisted_exec_allowed():
     assert "GetCustomer" in out
 
 
+def test_exec_denied_when_allowlist_empty():
+    with pytest.raises(GateError, match="not an allow-listed procedure"):
+        validate("EXEC dbo.Rpt_SalesmanSalesSummary @CompanyID = 1", allowed_procs=[])
+
+
+def test_exec_denied_by_default_allowed_procs_constant():
+    from core.gate import DEFAULT_ALLOWED_PROCS
+
+    assert DEFAULT_ALLOWED_PROCS == ()
+    with pytest.raises(GateError):
+        validate("EXEC dbo.GetCustomer @id = 1")
+
+
+def test_xp_denied_even_with_allowlisted_exec():
+    with pytest.raises(GateError, match="xp_"):
+        validate("EXEC xp_cmdshell 'dir'", allowed_procs=["dbo.GetCustomer"])
+
+
 def test_arabic_literal_gets_n_prefixed():
     out = validate("SELECT * FROM t.Customers WHERE Name = 'مرحبا'")
     assert "N'مرحبا'" in out

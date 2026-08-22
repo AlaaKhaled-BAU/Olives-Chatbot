@@ -1,6 +1,7 @@
 """Phase 2 acceptance: the server-side tenant wall isolates and fails closed.
 Requires chatbot_db up with the wall applied (setup/01_db_up.py, setup/03_apply_db_sql.py).
-Assumes the morec pilot fixture: CompanyID 1 exists with Customers rows, CompanyID 2 does not."""
+Assumes the morec pilot fixture: CompanyID 1 exists with Customers rows; a non-existent
+CompanyID (99) must see zero rows. CompanyID 2 may exist on morec (105 snapshot drift)."""
 import sys
 from pathlib import Path
 
@@ -20,12 +21,12 @@ def test_correct_tenant_sees_its_rows():
 
 def test_wrong_tenant_sees_zero_rows():
     conn = sql.get_conn("morec")
-    sql.set_tenant(conn, 2)  # no company 2 in this DB
+    sql.set_tenant(conn, 99)  # non-existent CompanyID — must not see company 1's rows
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM t.Customers")
     count = cur.fetchone()[0]
     conn.close()
-    assert count == 0, "a different CompanyID must never see company 1's rows"
+    assert count == 0, "a non-existent CompanyID must never see another tenant's rows"
 
 
 def test_no_session_context_fails_closed():

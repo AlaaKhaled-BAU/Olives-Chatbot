@@ -183,6 +183,7 @@ async function ask(question) {
         if (data.sources && data.sources.length) addSources(bot, data.sources);
         if (data.followups && data.followups.length) addFollowups(bot, data.followups);
         if (lastAnswerSql) addSqlPanel(bot, lastAnswerSql, data.table);
+        if (data.report_name) addReportPanel(bot, data.report_name);
         const asOfLine = formatAsOfLine(
           asOf.calendar_today || contextAsOf.calendar_today,
           asOf.max_invoice_date || contextAsOf.max_invoice_date,
@@ -234,6 +235,13 @@ function addAsOfPanel(bot, asOfLine) {
   const div = document.createElement("div");
   div.className = "as-of-panel";
   div.textContent = asOfLine;
+  bot.appendChild(div);
+}
+
+function addReportPanel(bot, reportName) {
+  const div = document.createElement("div");
+  div.className = "report-panel en";
+  div.textContent = `Report: ${reportName}`;
   bot.appendChild(div);
 }
 

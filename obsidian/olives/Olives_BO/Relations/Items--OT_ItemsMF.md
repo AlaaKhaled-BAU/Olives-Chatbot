@@ -2,25 +2,30 @@
 type: relation
 database: Olives_BO
 name: Items--OT_ItemsMF
-tags: [#fk, #sync, #cross-db, #items]
+tags: [#sync, #cross-db, #items]
 support_relevance: high
 parent_table: [[Items]]
 referenced_table: [[OT_ItemsMF]]
-columns: "Items.ID ↔ OT_ItemsMF.ItemID (tablet sync replica)"
+columns: "Items.CompanyID,ItemCode ↔ OT_ItemsMF.CompNo(+SalesmanNo),ItemNo"
+sync_driver: "[[OT_SendItemsInfo]] <- [[OT_SendSalesmanData]] (inferred)"
+last_verified: 2026-08-22
+verified_source: db/vault_graph.json
 ---
 
 # Items → OT_ItemsMF
 
-**Sync mapping**: `Items` is the Back-Office item master; `OT_ItemsMF` is its replica on the OSFA tablet (OT_ = Olives Tablet prefix). The tablet reads `OT_ItemsMF` during van custody loading (Upload Order). There is no literal FK — the link is a one-way sync populated by `OT_SendItemsInfo` during "Send Data".
+**Sync mapping** (no literal FK): Olives_BO item master ↔ OSFA tablet replica. BO key = CompanyID+ItemCode; tablet PK = CompNo+SalesmanNo+ItemNo. Value equivalence ItemCode↔ItemNo is `(inferred)` from naming and the OT_InvoiceDF--OT_Items note; column existence verified both sides.
 
-**Business meaning**: New or changed items in BO only appear on the tablet after a successful item sync. A missing item on the tablet almost always means the sync did not push it (see ticket pattern: new items missing in custody loading). Common breakage points in the push chain: `SalesPersonItemsAssignment` (item not assigned to the salesman), `ItemsCategories` / `ItemsUnits` INNER JOINs (missing category or default unit makes the item invisible), and `Items.IsSuspended = 1`.
+**Business meaning**: New or changed items reach a van only after a successful item sync pushed by [[OT_SendItemsInfo]] under [[OT_SendSalesmanData]] (driver attribution `(inferred)` from shard-8 map). A missing item in custody loading almost always means sync skipped it: item not in [[SalesPersonItemsAssignment]], missing category/default-unit INNER JOIN, or Items suspended flag set. Corrects the previous Items.ID ↔ ItemID line — Items has no ID column.
 
-**Source table**: [[Items]] (Olives_BO)
-**Target table**: [[OT_ItemsMF]] (OSFA_DB)
-**Sync driver**: [[OT_SendItemsInfo]] → called by [[OT_SendSalesmanData]]
+## Tenancy
+
+Informational sync mapping only. The chatbot NEVER queries OT_* / OSFA_DB staging tables; all answers come from t. views on Olives_BO. See [[Sync-Architecture]] (shard 8, pending).
 
 ## See also
+
 - [[Items]]
 - [[OT_ItemsMF]]
 - [[OT_SendItemsInfo]]
 - [[SalesPersonItemsAssignment]]
+- [[Sync-Architecture]]

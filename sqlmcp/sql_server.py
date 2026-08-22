@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) 
 from mcp.server.fastmcp import FastMCP  # noqa: E402
 from mcp.server.transport_security import TransportSecuritySettings  # noqa: E402
 
-from core import catalog, config, sql  # noqa: E402
+from core import config, gate, sql  # noqa: E402
 
 # The SDK's own DNS-rebinding guard checks the Host: header against an allowlist
 # (default = localhost only) and 421s anything else. Real deployments reach this
@@ -47,15 +47,10 @@ mcp.settings.host = os.environ.get("MCP_HOST", "0.0.0.0")
 mcp.settings.port = int(os.environ.get("MCP_PORT", "9000"))
 
 
-def _allowed(client: str):
-    cfg = config.load_client(client)
-    return list(catalog.for_client(client, cfg.get("name_aliases", [client])))
-
-
 @mcp.tool()
 def run_select(sql_text: str, company_id: int, client: str) -> str:
     """One gated, tenant-scoped read-only SELECT via the t. views. Returns JSON rows."""
-    rows = sql.run_select(sql_text, company_id, client, allowed_procs=_allowed(client))
+    rows = sql.run_select(sql_text, company_id, client, allowed_procs=gate.DEFAULT_ALLOWED_PROCS)
     return json.dumps(rows, default=str)
 
 

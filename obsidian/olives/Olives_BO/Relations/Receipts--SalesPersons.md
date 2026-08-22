@@ -8,6 +8,9 @@ parent_table: [[Receipts]]
 referenced_table: [[SalesPersons]]
 columns: "Receipts.SalesPersonID → SalesPersons.ID"
 ---
+tenant_scoping: "chatbot queries t.-views only; SESSION_CONTEXT('CompanyID')"
+last_verified: 2026-08-22
+---
 
 # Receipts → SalesPersons
 

@@ -1,0 +1,122 @@
+[
+  {
+    "name": "Rpt_SalesmanSalesSummary",
+    "aliases": [
+      "تقرير مبيعات المندوب",
+      "مبيعات المندوب",
+      "salesman sales summary",
+      "sales by salesman report"
+    ],
+    "purpose": "Net sales invoices grouped by salesperson for a date range.",
+    "params": ["from_date", "to_date", "sales_person_id"],
+    "sql": "SELECT th.SalesPersonID, sp.Name AS SalesPersonName, COUNT(*) AS invoice_count, (SELECT SUM(td.Quantity * td.Price) FROM t.TransactionsHeaders th2 INNER JOIN t.TransactionsDetails td ON th2.CompanyID = td.CompanyID AND th2.TransactionTypeID = td.TransactionTypeID AND th2.TransactionYear = td.TransactionYear AND th2.TransactionNo = td.TransactionNo WHERE th2.SalesPersonID = th.SalesPersonID AND th2.TransactionTypeID = 1 AND ISNULL(th2.IsVoid, 0) = 0{date_filter_th2}{salesperson_filter_th2}) AS gross_amount FROM t.TransactionsHeaders th INNER JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID AND sp.CompanyID = th.CompanyID WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0{date_filter}{salesperson_filter} GROUP BY th.SalesPersonID, sp.Name ORDER BY gross_amount DESC"
+  },
+  {
+    "name": "Rpt_DailyReceiptsDetails",
+    "aliases": [
+      "تقرير التحصيل اليومي",
+      "تحصيل يومي",
+      "daily receipts",
+      "daily collections report"
+    ],
+    "purpose": "Receipt collection lines for a date range (TransactionDate / TransactionNo).",
+    "params": ["from_date", "to_date"],
+    "sql": "SELECT r.TransactionDate, r.TransactionYear, r.TransactionNo, r.CustomerID, c.Name AS CustomerName, r.Amount, r.SalesPersonID FROM t.Receipts r LEFT JOIN t.Customers c ON c.ID = r.CustomerID AND c.CompanyID = r.CompanyID WHERE r.TransactionTypeID = 3{receipt_date_filter} ORDER BY r.TransactionDate DESC, r.TransactionNo"
+  },
+  {
+    "name": "Rpt_CustomersSalesDetails",
+    "aliases": [
+      "تقرير مبيعات العملاء",
+      "مبيعات العملاء",
+      "customer sales details",
+      "customers sales report"
+    ],
+    "purpose": "Invoice line detail by customer for sales invoices.",
+    "params": ["from_date", "to_date", "customer_id"],
+    "sql": "SELECT th.CustomerID, c.Name AS CustomerName, th.TransactionDate, th.TransactionNo, td.ItemCode, td.Quantity, td.Price, td.Quantity * td.Price AS line_amount FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo LEFT JOIN t.Customers c ON c.ID = th.CustomerID AND c.CompanyID = th.CompanyID WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0{date_filter}{customer_filter} ORDER BY th.TransactionDate DESC, th.TransactionNo"
+  },
+  {
+    "name": "Rpt_ItemTransaction",
+    "aliases": [
+      "تقرير حركة الصنف",
+      "حركة الصنف",
+      "item transaction report",
+      "item movement"
+    ],
+    "purpose": "Sales and return invoice lines for one item.",
+    "params": ["from_date", "to_date", "item_code"],
+    "sql": "SELECT th.TransactionDate, th.TransactionTypeID, th.TransactionNo, th.CustomerID, td.ItemCode, td.Quantity, td.Price FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE ISNULL(th.IsVoid, 0) = 0 AND th.TransactionTypeID IN (1, 2){date_filter}{item_filter} ORDER BY th.TransactionDate DESC"
+  },
+  {
+    "name": "Rpt_CollectedReceipts",
+    "aliases": [
+      "تقرير سندات التحصيل",
+      "سندات التحصيل",
+      "collected receipts",
+      "receipts collection report"
+    ],
+    "purpose": "Receipt headers with customer and salesperson for a period.",
+    "params": ["from_date", "to_date"],
+    "sql": "SELECT r.TransactionDate, r.TransactionYear, r.TransactionNo, r.CustomerID, c.Name AS CustomerName, r.SalesPersonID, sp.Name AS SalesPersonName, r.Amount FROM t.Receipts r LEFT JOIN t.Customers c ON c.ID = r.CustomerID AND c.CompanyID = r.CompanyID LEFT JOIN t.SalesPersons sp ON sp.ID = r.SalesPersonID AND sp.CompanyID = r.CompanyID WHERE r.TransactionTypeID = 3{receipt_date_filter} ORDER BY r.TransactionDate DESC, r.TransactionNo"
+  },
+  {
+    "name": "Rpt_SalesAndOrders",
+    "aliases": [
+      "تقرير المبيعات والطلبات",
+      "المبيعات والطلبات",
+      "sales and orders",
+      "orders vs sales report"
+    ],
+    "purpose": "Compare order count and sales invoice count by salesperson.",
+    "params": ["from_date", "to_date"],
+    "sql": "SELECT sp.ID AS SalesPersonID, sp.Name AS SalesPersonName, (SELECT COUNT(*) FROM t.OrdersHeaders oh WHERE oh.SalesPersonID = sp.ID{order_date_filter}) AS order_count, (SELECT COUNT(*) FROM t.TransactionsHeaders th WHERE th.SalesPersonID = sp.ID AND th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0{invoice_date_filter}) AS invoice_count FROM t.SalesPersons sp WHERE 1=1 ORDER BY invoice_count DESC"
+  },
+  {
+    "name": "Rpt_ActiveAndInactiveCustomers",
+    "aliases": [
+      "تقرير العملاء النشطين",
+      "عملاء نشطين وغير نشطين",
+      "active inactive customers",
+      "customer activity report"
+    ],
+    "purpose": "Customers with and without recent sales invoices.",
+    "params": ["from_date", "to_date"],
+    "sql": "SELECT c.ID AS CustomerID, c.Name AS CustomerName, CASE WHEN MAX(th.TransactionDate) IS NULL THEN 0 ELSE 1 END AS is_active, MAX(th.TransactionDate) AS last_sale_date FROM t.Customers c LEFT JOIN t.TransactionsHeaders th ON th.CustomerID = c.ID AND th.CompanyID = c.CompanyID AND th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0{date_filter_on_th} GROUP BY c.ID, c.Name ORDER BY is_active DESC, last_sale_date DESC"
+  },
+  {
+    "name": "Rpt_ItemsNotSold",
+    "aliases": [
+      "تقرير الأصناف التي لم تباع",
+      "أصناف لم تباع",
+      "items not sold",
+      "unsold items report"
+    ],
+    "purpose": "Items with no sales invoice lines in the period.",
+    "params": ["from_date", "to_date"],
+    "sql": "SELECT i.ItemCode, i.Name AS ItemName FROM t.Items i WHERE NOT EXISTS (SELECT 1 FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE td.ItemCode = i.ItemCode AND td.CompanyID = i.CompanyID AND th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0{date_filter_exists}) ORDER BY i.ItemCode"
+  },
+  {
+    "name": "Rpt_Coverage",
+    "aliases": [
+      "تقرير التغطية",
+      "تغطية الزيارات",
+      "coverage report",
+      "customer visit coverage"
+    ],
+    "purpose": "CFD RouteID assignment vs DeliveryRoute visit rows (CompNo, SalesmanNo, CustomerID, RouteDate).",
+    "params": [],
+    "sql": "SELECT cfd.RouteID, COUNT(DISTINCT cfd.CustomerID) AS assigned_customers, COUNT(DISTINCT dr.CustomerID) AS visited_customers FROM t.CustomersFinancialDetails cfd LEFT JOIN t.DeliveryRoute dr ON dr.CustomerID = cfd.CustomerID AND dr.CompNo = cfd.CompanyID GROUP BY cfd.RouteID ORDER BY assigned_customers DESC"
+  },
+  {
+    "name": "Rpt_CashSummary",
+    "aliases": [
+      "تقرير ملخص النقدية",
+      "ملخص النقدية",
+      "cash summary",
+      "cash collections summary"
+    ],
+    "purpose": "Total receipts amount by TransactionDate for a period.",
+    "params": ["from_date", "to_date"],
+    "sql": "SELECT CAST(r.TransactionDate AS date) AS receipt_day, COUNT(*) AS receipt_count, SUM(r.Amount) AS total_amount FROM t.Receipts r WHERE r.TransactionTypeID = 3{receipt_date_filter} GROUP BY CAST(r.TransactionDate AS date) ORDER BY receipt_day DESC"
+  }
+]

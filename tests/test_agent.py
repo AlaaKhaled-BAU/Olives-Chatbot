@@ -556,7 +556,7 @@ def test_run_proc_tool_not_offered():
     names = {t["function"]["name"] for t in agent.TOOLS}
     assert "run_proc" not in names
     assert names == {
-        "introspect_schema", "run_select", "run_metric", "ask_user", "analyze", "search_docs",
+        "introspect_schema", "run_select", "run_metric", "run_report", "ask_user", "analyze", "search_docs",
         "search_schema_notes", "read_schema_note", "get_joins", "lookup_hot",
     }
 
@@ -789,3 +789,201 @@ def test_calendar_confirm_skips_empty_month_gate(monkeypatch, tmp_path):
         result = agent.ask("morec", "نعم احسب آخر شهر قيد", conversation=SCOPE)
     assert result["answer"]
     assert result["needs_ask"] is None
+
+
+def test_docs_only_never_calls_run_select(monkeypatch, tmp_path):
+    """Pure how-to questions must not offer or invoke run_select."""
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call("c1", "search_docs", '{"query": "assign customers"}')])),
+        _resp(_msg(content="Assign via screen 4.8.")),
+    ]
+    followups = _plain_resp("[]")
+    with patch.object(agent.llm, "complete", side_effect=calls + [followups]) as mock_complete, \
+         patch.object(agent.docs, "search", return_value=[{"source": "g.md", "heading": "4.8", "excerpt": "..."}]), \
+         patch.object(agent.sql, "run_select") as mock_run_select:
+        result = agent.ask("morec", "كيف أعيّن زبائن لمندوب؟", conversation=SCOPE)
+    assert result["answer"] == "Assign via screen 4.8."
+    mock_run_select.assert_not_called()
+    tools_after_docs = mock_complete.call_args_list[1].kwargs["tools"]
+    names = {t["function"]["name"] for t in tools_after_docs}
+    assert "run_select" not in names
+    assert "run_metric" not in names
+
+
+def test_metric_questions_skip_docs(monkeypatch, tmp_path):
+    """Count/metric questions must not offer search_docs on the first turn."""
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call(
+            "c1", "run_metric",
+            '{"metric": "net_sales", "filters": {"from_date": "2025-07-01", "to_date": "2025-07-31"}}',
+        )])),
+        _resp(_msg(content="مبيعات يوليو.")),
+    ]
+    followups = _plain_resp("[]")
+    with patch.object(agent.llm, "complete", side_effect=calls + [followups]) as mock_complete, \
+         patch.object(agent.metrics, "run_metric", return_value={"rows": [{"net_sales": 1}], "sql": "SELECT 1"}), \
+         patch.object(agent.docs, "search") as mock_search:
+        agent.ask("morec", "كم مبيعات يوليو؟", conversation=SCOPE)
+    first_tools = mock_complete.call_args_list[0].kwargs["tools"]
+    names = {t["function"]["name"] for t in first_tools}
+    assert "search_docs" not in names
+    mock_search.assert_not_called()
+
+
+def test_report_questions_use_run_report_not_docs_thrash(monkeypatch, tmp_path):
+    """Named report path should call run_report once, not search_docs repeatedly."""
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call(
+            "c1", "run_report",
+            '{"name": "Rpt_SalesmanSalesSummary", "params": {"from_date": "2025-07-01", "to_date": "2025-07-31"}}',
+        )])),
+        _resp(_msg(content="تقرير مبيعات المندوب جاهز.")),
+    ]
+    followups = _plain_resp("[]")
+    with patch.object(agent.llm, "complete", side_effect=calls + [followups]) as mock_complete, \
+         patch.object(agent.reports, "run_report", return_value={
+             "report": "Rpt_SalesmanSalesSummary",
+             "sql": "SELECT 1",
+             "rows": [{"SalesPersonName": "Imad", "gross_amount": 100}],
+         }) as mock_run_report, \
+         patch.object(agent.docs, "search") as mock_search:
+        result = agent.ask("morec", "تقرير مبيعات المندوب لشهر يوليو", conversation=SCOPE)
+    assert result["answer"] == "تقرير مبيعات المندوب جاهز."
+    assert result.get("report_name") == "Rpt_SalesmanSalesSummary"
+    mock_run_report.assert_called_once()
+    mock_search.assert_not_called()
+    first_tools = mock_complete.call_args_list[0].kwargs["tools"]
+    names = {t["function"]["name"] for t in first_tools}
+    assert "search_docs" not in names
+    assert "run_select" not in names
+    assert "run_report" in names
+
+
+def test_vault_search_cap_increments_and_blocks(monkeypatch, tmp_path):
+    """Fourth vault tool call must be refused by omitting vault tools."""
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call("c0", "search_schema_notes", '{"pattern": "CFD"}')])),
+        _resp(_msg(tool_calls=[_tool_call("c1", "read_schema_note", '{"name": "Customers"}')])),
+        _resp(_msg(tool_calls=[_tool_call("c2", "get_joins", '{"table": "Customers"}')])),
+    ]
+    calls.append(_resp(_msg(content="Joined via CFD.")))
+    followups = _plain_resp("[]")
+    with patch.object(agent.llm, "complete", side_effect=calls + [followups]) as mock_complete, \
+         patch.object(agent.vault, "search_schema_notes", return_value={"results": []}), \
+         patch.object(agent.vault, "read_schema_note", return_value={"name": "Customers"}), \
+         patch.object(agent.vault, "get_joins", return_value={"joins": []}):
+        result = agent.ask("morec", "customers joined to salesperson via CFD", conversation=SCOPE)
+    assert result["answer"] == "Joined via CFD."
+    tools_on_fourth = mock_complete.call_args_list[agent.MAX_VAULT_SEARCHES].kwargs["tools"]
+    names = {t["function"]["name"] for t in tools_on_fourth}
+    assert "search_schema_notes" not in names
+    assert "get_joins" not in names
+
+
+def test_run_report_path1_uses_empty_allowlist():
+    state = {"queries": [], "last_rows": None, "doc_source_pairs": []}
+    with patch.object(agent.reports, "run_report_select", return_value={
+        "report": "Rpt_SalesmanSalesSummary", "sql": "SELECT 1", "rows": [],
+    }) as mock_select:
+        result = agent._run_tool(
+            "run_report",
+            {"name": "Rpt_SalesmanSalesSummary", "params": {}},
+            {}, {}, [], 2, "105", state,
+        )
+    mock_select.assert_called_once()
+    assert mock_select.call_args.kwargs["allowed_procs"] == []
+    assert result["sql"] == "SELECT 1"
+    assert state["report_name"] == "Rpt_SalesmanSalesSummary"
+
+
+def test_run_report_path3_not_certified():
+    state = {"queries": [], "last_rows": None, "doc_source_pairs": []}
+    with patch.object(agent.reports, "build_report_sql", return_value=None), \
+         patch.object(agent.reports, "_catalog_card", return_value={"name": "Rpt_Foo", "purpose": "Foo purpose"}):
+        result = agent._run_tool(
+            "run_report",
+            {"name": "Rpt_Foo"},
+            {}, {}, [], 2, "105", state,
+        )
+    assert result["status"] == "not_certified"
+    assert "not certified" in result["message"]
+    assert result["purpose"] == "Foo purpose"
+    assert state["queries"] == []
+
+
+def test_is_report_path_detects_arabic_alias():
+    assert agent._is_report_path("تقرير مبيعات المندوب", "105")
+
+
+def test_report_path_first_tools_tight_for_sales_and_orders():
+    """Report path must offer run_report only — not run_select or search_docs."""
+    question = "اعرض تقرير المبيعات والطلبات لمقارنة المناديب"
+    assert agent._is_report_path(question, "105")
+    state = {
+        "queries": [],
+        "report_path": True,
+        "howto_path": False,
+        "fast_count": False,
+        "doc_searches": 0,
+        "vault_searches": 0,
+        "docs_only": False,
+        "question": question,
+    }
+    names = {t["function"]["name"] for t in agent._active_tools(state)}
+    assert "run_report" in names
+    assert "run_select" not in names
+    assert "search_docs" not in names
+    assert names <= {"run_report", "ask_user", "analyze"}
+
+
+def test_report_path_bypasses_poisoned_plan_cache(monkeypatch, tmp_path):
+    """Named report questions must not replay plan_cache run_select — use run_report."""
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    question = "اعرض تقرير المبيعات والطلبات لمقارنة المناديب"
+    scope = {"CompanyID": 2}
+    cache = agent._schema_cache("105")
+    key = memory.cache_key("105", 2, "manager", agent.MODEL_ALIAS, question, agent._schema_version(cache))
+    poison_sql = "SELECT COUNT(DISTINCT th.TransactionNo) FROM t.TransactionsHeaders th"
+    memory.set_plan(key, "105", {"queries": [poison_sql]})
+
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call(
+            "c1", "run_report",
+            '{"name": "Rpt_SalesAndOrders", "params": {}}',
+        )])),
+        _resp(_msg(content="تقرير المبيعات والطلبات جاهز.")),
+    ]
+    followups = _plain_resp("[]")
+    with patch.object(agent.llm, "complete", side_effect=calls + [followups]) as mock_complete, \
+         patch.object(agent.reports, "run_report", return_value={
+             "report": "Rpt_SalesAndOrders",
+             "sql": "SELECT 1",
+             "rows": [{"SalesPersonName": "Imad", "invoice_count": 130}],
+         }) as mock_run_report, \
+         patch.object(agent.sql, "run_select", side_effect=AssertionError("plan_cache replay must not run")):
+        result = agent.ask("105", question, conversation=scope)
+
+    mock_run_report.assert_called_once()
+    assert result.get("report_name") == "Rpt_SalesAndOrders"
+    assert result["answer"] == "تقرير المبيعات والطلبات جاهز."
+    assert memory.get_plan(key) == {"queries": [poison_sql]}
+    first_tools = mock_complete.call_args_list[0].kwargs["tools"]
+    names = {t["function"]["name"] for t in first_tools}
+    assert "run_report" in names
+    assert "run_select" not in names
+
+
+def test_is_howto_path_excludes_counts():
+    assert agent._is_howto_path("كيف أعيّن زبائن لمندوب؟", "105")
+    assert not agent._is_howto_path("كم عدد العملاء؟", "105")
+
+
+def test_vault_tool_increments_counter():
+    state = {"queries": [], "last_rows": None, "doc_source_pairs": [], "vault_searches": 0}
+    with patch.object(agent.vault, "get_joins", return_value={"joins": []}):
+        agent._run_tool("get_joins", {"table": "Customers"}, {}, {}, [], 1, "105", state)
+    assert state["vault_searches"] == 1

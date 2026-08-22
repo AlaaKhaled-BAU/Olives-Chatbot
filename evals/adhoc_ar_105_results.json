@@ -1,0 +1,716 @@
+{
+  "summary": {
+    "timestamp": "2026-08-15 19:53 UTC",
+    "total": 30,
+    "passed": 30,
+    "pct": 96.66666666666667,
+    "total_elapsed_s": 1087.440004514996,
+    "by_category": {
+      "grain": {
+        "pass": 1,
+        "fail": 0
+      },
+      "grain_trap": {
+        "pass": 1,
+        "fail": 0
+      },
+      "orders": {
+        "pass": 2,
+        "fail": 0
+      },
+      "receipts": {
+        "pass": 1,
+        "fail": 0
+      },
+      "returns": {
+        "pass": 1,
+        "fail": 0
+      },
+      "master": {
+        "pass": 7,
+        "fail": 0
+      },
+      "cfd": {
+        "pass": 2,
+        "fail": 0
+      },
+      "payment": {
+        "pass": 2,
+        "fail": 0
+      },
+      "temporal": {
+        "pass": 5,
+        "fail": 0
+      },
+      "temporal_trap": {
+        "pass": 1,
+        "fail": 0
+      },
+      "insight": {
+        "pass": 2,
+        "fail": 0
+      },
+      "activity": {
+        "pass": 1,
+        "fail": 0
+      },
+      "items": {
+        "pass": 1,
+        "fail": 0
+      },
+      "transfer": {
+        "pass": 1,
+        "fail": 0
+      },
+      "void": {
+        "pass": 0,
+        "fail": 1
+      },
+      "compound": {
+        "pass": 1,
+        "fail": 0
+      }
+    },
+    "partial": false
+  },
+  "results": [
+    {
+      "id": "a01",
+      "category": "grain",
+      "purpose": "فواتير بيع صحيحة",
+      "question": "كم عدد فواتير المبيعات غير الملغاة من نوع 1؟",
+      "ground_truth": "238",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "عدد فواتير المبيعات غير الملغاة من النوع 1 هو 238 فاتورة.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS total_sales_invoices\nFROM t.TransactionsHeaders\nWHERE TransactionTypeID = 1\n  AND ISNULL(IsVoid, 0) = 0",
+      "report_name": null,
+      "sources": [
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 8.3,
+      "error": null
+    },
+    {
+      "id": "a02",
+      "category": "grain_trap",
+      "purpose": "فخ 261 — unfiltered TH count is NOT sales; must refuse or give 238 with type=1+IsVoid",
+      "question": "كم سجل في جدول رؤوس المعاملات TransactionsHeaders بدون أي فلتر؟",
+      "ground_truth": "grain trap — 238 sales invoices (type=1, IsVoid=0) vs 261 all headers; never treat 261 alone as success",
+      "validation": "grain_trap",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "إجمالي عدد السجلات في جدول رؤوس المعاملات (TransactionsHeaders) بدون فلاتر هو **261** سجلًا، وذلك بناءً على مجموع نتائج المبيعات (238) والمرتجعات (23) المقدمة.",
+      "needs_ask": null,
+      "answer_sql": "SELECT \n    CASE \n        WHEN TransactionTypeID = 1 THEN N'مبيعات'\n        WHEN TransactionTypeID = 2 THEN N'مرتجعات'\n        ELSE N'أنواع أخرى'\n    END AS TransactionType,\n    COUNT(*) AS RecordCount\nFROM t.TransactionsHeaders\nWHERE ISNULL(IsVoid, 0) = 0\nGROUP BY TransactionTypeID",
+      "report_name": null,
+      "sources": [
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 8.7,
+      "error": null
+    },
+    {
+      "id": "a03",
+      "category": "orders",
+      "purpose": "طلبات غير مسلمة",
+      "question": "كم عدد طلبات البيع غير المسلمة؟",
+      "ground_truth": "132",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "عدد طلبات البيع غير المسلمة هو 132 طلبًا.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS total_orders, SUM(CASE WHEN ISNULL(oh.IsDelivered, 0) = 0 THEN 1 ELSE 0 END) AS undelivered_orders FROM t.OrdersHeaders oh WHERE 1=1 AND oh.CompanyID = 2 AND ISNULL(oh.IsDelivered, 0) = 0",
+      "report_name": null,
+      "sources": [
+        "OrdersHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 6.6,
+      "error": null
+    },
+    {
+      "id": "a04",
+      "category": "orders",
+      "purpose": "كل الطلبات",
+      "question": "كم إجمالي عدد طلبات البيع في النظام؟",
+      "ground_truth": "132",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "إجمالي عدد طلبات البيع في النظام هو 132 طلبًا.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS total_orders FROM t.OrdersHeaders",
+      "report_name": null,
+      "sources": [
+        "OrdersHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 6.7,
+      "error": null
+    },
+    {
+      "id": "a05",
+      "category": "receipts",
+      "purpose": "سندات قبض نوع 3",
+      "question": "كم عدد سندات القبض غير الملغاة؟",
+      "ground_truth": "213",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "عدد سندات القبض غير الملغاة هو 213.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS non_void_receipts_count\nFROM t.Receipts\nWHERE ISNULL(IsVoid, 0) = 0",
+      "report_name": null,
+      "sources": [
+        "Receipts"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 6.4,
+      "error": null
+    },
+    {
+      "id": "a06",
+      "category": "returns",
+      "purpose": "مرتجعات مبيعات",
+      "question": "كم عدد فواتير مرتجعات المبيعات غير الملغاة؟",
+      "ground_truth": "23",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "عدد فواتير مرتجعات المبيعات غير الملغاة: **23 فاتورة**.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS sales_return_invoices_count\nFROM t.TransactionsHeaders th\nWHERE th.TransactionTypeID = 2\n  AND ISNULL(th.IsVoid, 0) = 0;",
+      "report_name": null,
+      "sources": [
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 110.3,
+      "error": null
+    },
+    {
+      "id": "a07",
+      "category": "master",
+      "purpose": "عدد العملاء",
+      "question": "كم عدد العملاء المسجلين في الشركة؟",
+      "ground_truth": "25",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "عدد العملاء المسجلين في الشركة هو **25 عميل**.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS CustomerCount FROM t.Customers WHERE CompanyID = 2",
+      "report_name": null,
+      "sources": [
+        "Customers"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 15.7,
+      "error": null
+    },
+    {
+      "id": "a08",
+      "category": "master",
+      "purpose": "عدد المناديب",
+      "question": "كم عدد مندوبي المبيعات؟",
+      "ground_truth": "7",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "عدد مندوبي المبيعات هو **7**.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS total_salespersons FROM t.SalesPersons",
+      "report_name": null,
+      "sources": [
+        "SalesPersons"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 140.1,
+      "error": null
+    },
+    {
+      "id": "a09",
+      "category": "master",
+      "purpose": "عدد الأصناف",
+      "question": "كم عدد الأصناف في النظام؟",
+      "ground_truth": "15",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "يوجد **15 صنفاً** في النظام.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS ItemCount FROM t.Items",
+      "report_name": null,
+      "sources": [
+        "Items"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 15.6,
+      "error": null
+    },
+    {
+      "id": "a10",
+      "category": "master",
+      "purpose": "قوائم الأسعار",
+      "question": "كم عدد قوائم الأسعار المعرفة؟",
+      "ground_truth": "2",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "**2** قائمة أسعار معرفة في النظام.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS PriceListCount FROM t.PriceLists WHERE CompanyID = 2",
+      "report_name": null,
+      "sources": [
+        "PriceLists"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 45.6,
+      "error": null
+    },
+    {
+      "id": "a11",
+      "category": "cfd",
+      "purpose": "عملاء عماد",
+      "question": "كم عدد العملاء المرتبطين بمندوب عماد عبر المنصب في التفاصيل المالية؟",
+      "ground_truth": "17",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "يبلغ عدد العملاء المرتبطين بمندوب المبيعات \"عماد\" عبر المنصب في التفاصيل المالية للعملاء 17 عميلاً.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(DISTINCT cfd.CustomerID) AS CustomerCount\nFROM t.CustomersFinancialDetails cfd\nJOIN t.SalesPersons sp ON sp.CompanyID = cfd.CompanyID AND sp.PositionID = cfd.PositionsID\nWHERE sp.ID = 1",
+      "report_name": null,
+      "sources": [
+        "CustomersFinancialDetails",
+        "SalesPersons"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 98.0,
+      "error": null
+    },
+    {
+      "id": "a12",
+      "category": "cfd",
+      "purpose": "عملاء وائل",
+      "question": "كم عدد العملاء المرتبطين بمندوب وائل عبر المنصب في التفاصيل المالية؟",
+      "ground_truth": "16",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "**16 عميل** مرتبطين بالمندوب وائل عبر المنصب في التفاصيل المالية.",
+      "needs_ask": null,
+      "answer_sql": "SELECT ID, Name FROM t.SalesPersons WHERE Name LIKE N'%وائل%' AND CompanyID = 2; SELECT ID, Name FROM t.SalesPersons WHERE CompanyID = 2; SELECT COUNT(DISTINCT cfd.CustomerID) AS CustomerCount\nFROM t.CustomersFinancialDetails cfd\nJOIN t.SalesPersons sp ON sp.CompanyID = cfd.CompanyID AND sp.PositionID = cfd.PositionsID\nWHERE sp.ID = 4 AND cfd.CompanyID = 2",
+      "report_name": null,
+      "sources": [
+        "CustomersFinancialDetails",
+        "SalesPersons"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 20.3,
+      "error": null
+    },
+    {
+      "id": "a13",
+      "category": "payment",
+      "purpose": "فواتير نقدية",
+      "question": "كم عدد فواتير البيع النقدية CreditCash=1 غير الملغاة؟",
+      "ground_truth": "228",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "عدد فواتير البيع النقدية (CreditCash=1) غير الملغاة هو **228** فاتورة.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS total_cash_sales_invoices\nFROM t.TransactionsHeaders\nWHERE TransactionTypeID = 1\n  AND CreditCash = 1\n  AND ISNULL(IsVoid, 0) = 0",
+      "report_name": null,
+      "sources": [
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 5.9,
+      "error": null
+    },
+    {
+      "id": "a14",
+      "category": "payment",
+      "purpose": "فواتير آجلة",
+      "question": "كم عدد فواتير البيع الآجلة CreditCash=0 غير الملغاة؟",
+      "ground_truth": "10",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "عدد فواتير البيع الآجلة (CreditCash=0) غير الملغاة هو **10** فواتير.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS credit_sales_invoices_count\nFROM t.TransactionsHeaders th\nWHERE th.CompanyID = 2\n  AND th.TransactionTypeID = 1\n  AND th.CreditCash = 0\n  AND ISNULL(th.IsVoid, 0) = 0",
+      "report_name": null,
+      "sources": [
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 7.8,
+      "error": null
+    },
+    {
+      "id": "a15",
+      "category": "temporal",
+      "purpose": "طلبات يونيو 2025",
+      "question": "كم عدد طلبات البيع في يونيو 2025؟",
+      "ground_truth": "9",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "عدد طلبات البيع في شهر يونيو 2025 هو 9 طلبات، وجميعها (9 طلبات) غير مسلّمة.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS total_orders, SUM(CASE WHEN ISNULL(oh.IsDelivered, 0) = 0 THEN 1 ELSE 0 END) AS undelivered_orders FROM t.OrdersHeaders oh WHERE oh.OrderDate >= '2025-06-01' AND oh.OrderDate <= '2025-06-30'",
+      "report_name": null,
+      "sources": [
+        "OrdersHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 7.5,
+      "error": null
+    },
+    {
+      "id": "a16",
+      "category": "temporal",
+      "purpose": "فواتير يونيو 2025",
+      "question": "كم عدد فواتير المبيعات غير الملغاة في يونيو 2025؟",
+      "ground_truth": "8",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "عدد فواتير المبيعات غير الملغاة في شهر يونيو 2025 هو **8** فواتير.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS sales_invoices_count\nFROM t.TransactionsHeaders th\nWHERE th.TransactionTypeID = 1\n  AND th.TransactionDate >= '2025-06-01' AND th.TransactionDate < '2025-07-01'\n  AND ISNULL(th.IsVoid, 0) = 0",
+      "report_name": null,
+      "sources": [
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 7.3,
+      "error": null
+    },
+    {
+      "id": "a17",
+      "category": "temporal",
+      "purpose": "فواتير 15 يوليو",
+      "question": "كم عدد فواتير المبيعات يوم 15 يوليو 2025؟",
+      "ground_truth": "2",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "عدد فواتير المبيعات يوم 15 يوليو 2025 هو 2 فاتورة.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS total_sales_invoices FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0 AND TransactionDate >= '2025-07-15' AND TransactionDate < '2025-07-16'",
+      "report_name": null,
+      "sources": [
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 7.4,
+      "error": null
+    },
+    {
+      "id": "a18",
+      "category": "temporal",
+      "purpose": "مبيعات 15 يوليو",
+      "question": "ما إجمالي مبيعات يوم 15 يوليو 2025 من بنود الفواتير غير الملغاة؟",
+      "ground_truth": "432.58",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "إجمالي مبيعات يوم **15 يوليو 2025** من بنود الفواتير غير الملغاة:\n\n- **عدد الفواتير:** 2\n- **إجمالي المبلغ (بنود الفواتير):** 432.58",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(DISTINCT th.TransactionNo) AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-15' AND th.TransactionDate <= '2025-07-15'",
+      "report_name": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 88.7,
+      "error": null
+    },
+    {
+      "id": "a19",
+      "category": "temporal",
+      "purpose": "آخر تاريخ فاتورة",
+      "question": "ما آخر تاريخ لفاتورة مبيعات غير ملغاة؟",
+      "ground_truth": "2025-07-15",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "آخر تاريخ لفاتورة مبيعات غير ملغاة هو **2025-07-15**.",
+      "needs_ask": null,
+      "answer_sql": "SELECT MAX(th.TransactionDate) AS last_sales_invoice_date\nFROM t.TransactionsHeaders th\nWHERE th.TransactionTypeID = 1\n  AND ISNULL(th.IsVoid, 0) = 0",
+      "report_name": null,
+      "sources": [
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 21.1,
+      "error": null
+    },
+    {
+      "id": "a20",
+      "category": "temporal_trap",
+      "purpose": "أغسطس 2026 فارغ",
+      "question": "كم عدد فواتير المبيعات في أغسطس 2026؟",
+      "ground_truth": "0",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "**أغسطس 2026 لا يحتوي على فواتير مبيعات** — البيانات متاحة فقط حتى **15 يوليو 2025** (آخر تاريخ ترحيل فعلي).\n\nهل تريد عدد الفواتير في **آخر فترة متاحة** (يوليو 2025) بدلاً من ذلك؟",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS total_sales_invoices\nFROM t.TransactionsHeaders\nWHERE TransactionTypeID = 1\n  AND ISNULL(IsVoid, 0) = 0\n  AND TransactionDate >= '2026-08-01'\n  AND TransactionDate < '2026-09-01'",
+      "report_name": null,
+      "sources": [
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 41.5,
+      "error": null
+    },
+    {
+      "id": "a21",
+      "category": "master",
+      "purpose": "زبائن بلا فواتير",
+      "question": "كم عدد الزبائن الذين لم تُصدر لهم أي فاتورة بيع غير ملغاة؟",
+      "ground_truth": "13",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "**13 زبوناً** لم تُصدر لهم أي فاتورة بيع غير ملغاة (نوع 1).",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS customers_without_sales_invoices\nFROM t.Customers c\nWHERE NOT EXISTS (\n    SELECT 1\n    FROM t.TransactionsHeaders th\n    WHERE th.CustomerID = c.ID\n      AND th.TransactionTypeID = 1\n      AND ISNULL(th.IsVoid, 0) = 0\n);",
+      "report_name": null,
+      "sources": [
+        "Customers",
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 82.8,
+      "error": null
+    },
+    {
+      "id": "a22",
+      "category": "master",
+      "purpose": "زبائن معلقين",
+      "question": "كم عدد الزبائن المعلقين IsSuspended؟",
+      "ground_truth": "9",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "9 زبائن لديهم `IsSuspended = 1`.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS SuspendedCustomerCount FROM t.Customers WHERE CompanyID = 2 AND ISNULL(IsSuspended, 0) = 1",
+      "report_name": null,
+      "sources": [
+        "Customers"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 26.8,
+      "error": null
+    },
+    {
+      "id": "a23",
+      "category": "master",
+      "purpose": "زبائن مطعم",
+      "question": "كم عدد الزبائن الذين يحتوي اسمهم على كلمة مطعم؟",
+      "ground_truth": "3",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "**3 زبائن** يحتوي اسمهم على كلمة «مطعم».",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS CustomerCount\nFROM t.Customers\nWHERE (Name LIKE N'%مطعم%' OR CommercialName LIKE N'%مطعم%')",
+      "report_name": null,
+      "sources": [
+        "Customers"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 16.9,
+      "error": null
+    },
+    {
+      "id": "a24",
+      "category": "insight",
+      "purpose": "فواتير عماد — COUNT(*) headers type=1 IsVoid=0 = 130 (130+108=238 company-wide)",
+      "question": "كم عدد فواتير البيع غير الملغاة للمندوب Imad؟",
+      "ground_truth": "130",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "**130** فاتورة بيع غير ملغاة للمندوب Imad.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS sales_invoices_count\nFROM t.TransactionsHeaders th\nWHERE th.TransactionTypeID = 1\n  AND ISNULL(th.IsVoid, 0) = 0\n  AND th.SalesPersonID = 1",
+      "report_name": null,
+      "sources": [
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 16.2,
+      "error": null
+    },
+    {
+      "id": "a25",
+      "category": "insight",
+      "purpose": "فواتير وائل — COUNT(*) headers type=1 IsVoid=0 = 108",
+      "question": "كم عدد فواتير البيع غير الملغاة للمندوب wael؟",
+      "ground_truth": "108",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "عدد فواتير البيع غير الملغاة للمندوب wael هو 108 فاتورة.",
+      "needs_ask": null,
+      "answer_sql": "SELECT sp.Name AS SalesPersonName, COUNT(*) AS SalesInvoicesCount\nFROM t.TransactionsHeaders th\nJOIN t.SalesPersons sp ON th.SalesPersonID = sp.ID AND th.CompanyID = sp.CompanyID\nWHERE th.TransactionTypeID = 1\n  AND ISNULL(th.IsVoid, 0) = 0\n  AND LOWER(sp.Name) LIKE N'%wael%'\n  AND th.CompanyID = 2\nGROUP BY sp.Name",
+      "report_name": null,
+      "sources": [
+        "SalesPersons",
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 93.6,
+      "error": null
+    },
+    {
+      "id": "a26",
+      "category": "activity",
+      "purpose": "عملاء نشطين",
+      "question": "كم عدد الزبائن الذين لديهم على الأقل فاتورة بيع واحدة غير ملغاة؟",
+      "ground_truth": "12",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "عدد الزبائن الذين لديهم على الأقل فاتورة بيع واحدة غير ملغاة هو **12 زبونًا**.\n\n> ملاحظة: هذه النتيجة تعتمد على آخر فترة ترحيل متاحة (حتى 15/07/2025).",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(DISTINCT CustomerID) AS CustomersWithSalesInvoices\nFROM t.TransactionsHeaders\nWHERE TransactionTypeID = 1\n  AND ISNULL(IsVoid, 0) = 0",
+      "report_name": null,
+      "sources": [
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 28.8,
+      "error": null
+    },
+    {
+      "id": "a27",
+      "category": "items",
+      "purpose": "أصناف لم تباع",
+      "question": "كم عدد الأصناف التي لم تُبَع في أي فاتورة بيع غير ملغاة؟",
+      "ground_truth": "5",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "**5 أصناف** لم تُبَع في أي فاتورة بيع غير ملغاة.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS NotSoldItemsCount\nFROM t.Items\nWHERE CompanyID = 2\nAND ItemCode NOT IN (\n    SELECT DISTINCT td.ItemCode\n    FROM t.TransactionsDetails td\n    INNER JOIN t.TransactionsHeaders th\n        ON td.CompanyID = th.CompanyID\n        AND td.TransactionYear = th.TransactionYear\n        AND td.TransactionNo = th.TransactionNo\n    WHERE td.CompanyID = 2\n        AND th.TransactionTypeID = 1\n        AND ISNULL(th.IsVoid, 0) = 0\n);",
+      "report_name": null,
+      "sources": [
+        "Items",
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 17.2,
+      "error": null
+    },
+    {
+      "id": "a28",
+      "category": "transfer",
+      "purpose": "تحويلات مخزنية",
+      "question": "كم عدد أوامر التحويل المخزني TransfersOrders؟",
+      "ground_truth": "16",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "**16 أمر تحويل مخزني** (TransfersOrders) مسجلة في قاعدة البيانات.",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS TransferOrderCount FROM t.TransfersOrdersHeaders",
+      "report_name": null,
+      "sources": [
+        "TransfersOrdersHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 40.9,
+      "error": null
+    },
+    {
+      "id": "a29",
+      "category": "void",
+      "purpose": "فواتير ملغاة",
+      "question": "كم عدد فواتير المبيعات الملغاة IsVoid=1؟",
+      "ground_truth": "0",
+      "validation": "sql",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "صفر (0) فواتير مبيعات ملغاة (`IsVoid = 1`).",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS total_cancelled_sales_invoices\nFROM t.TransactionsHeaders\nWHERE TransactionTypeID = 1\n  AND ISNULL(IsVoid, 0) = 1",
+      "report_name": null,
+      "sources": [
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 53.0,
+      "error": null
+    },
+    {
+      "id": "a30",
+      "category": "compound",
+      "purpose": "طلبات مقابل فواتير",
+      "question": "كم عدد طلبات البيع وكم عدد فواتير المبيعات غير الملغاة عندنا؟",
+      "ground_truth": "132 طلب، 238 فاتورة",
+      "validation": "compound",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "- **طلبات البيع**: 132 طلب\n- **فواتير المبيعات غير الملغاة**: 238 فاتورة",
+      "needs_ask": null,
+      "answer_sql": "SELECT COUNT(*) AS total_orders, SUM(CASE WHEN ISNULL(oh.IsDelivered, 0) = 0 THEN 1 ELSE 0 END) AS undelivered_orders FROM t.OrdersHeaders oh WHERE 1=1 AND oh.CompanyID = 2; SELECT COUNT(*) AS sales_invoices_count FROM t.TransactionsHeaders WHERE CompanyID = 2 AND TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0; SELECT COUNT(*) AS sales_invoices_count FROM t.TransactionsHeaders WHERE CompanyID = 2 AND TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0",
+      "report_name": null,
+      "sources": [
+        "OrdersHeaders",
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 78.5,
+      "error": null
+    }
+  ]
+}

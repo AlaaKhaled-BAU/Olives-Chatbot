@@ -2,18 +2,27 @@
 type: relation
 database: OSFA_DB
 name: OT_OrderHF--OT_Customers
-tags: [#fk, #mobile]
+tags: [#convention, #mobile]
 support_relevance: high
 parent_table: [[OT_OrderHF]]
-referenced_table: `"`OT_Customers`"`
-columns: "OT_OrderHF.CustomerID → `OT_Customers`.ID"
+referenced_table: [[OT_Customers]]
+columns: "OT_OrderHF.CompNo,CustomerNo → OT_Customers.CompNo,CustomerNo"
+last_verified: 2026-08-22
+verified_source: db/vault_graph.json
 ---
 
 # OT_OrderHF → OT_Customers
 
-**FK**: OT_OrderHF.CustomerID → `OT_Customers`.ID
+**Convention join** (no DB-level FK): OT_OrderHF.CompNo+CustomerNo → [[OT_Customers]].CompNo+CustomerNo
 
-**Business meaning**: Mobile order headers belong to a customer. Synced to BO OrdersHeaders during posting.
+**Business meaning**: Tablet order header points at the customer snapshot row synced to the device. Keyed by CompNo+CustomerNo — the earlier CustomerID claim referenced a column that does not exist on this table (verified against vault_graph.json).
 
-**Source table**: [[OT_OrderHF]]
-**Target table**: `OT_Customers`
+## Tenancy
+
+OSFA staging row keyed by CompNo (+SalesmanNo snapshot dimension where present). Informational only: chatbot never queries OSFA_DB.
+
+## See also
+
+- [[OT_OrderHF]]
+- [[OT_Customers]]
+- [[Sync-Architecture]]

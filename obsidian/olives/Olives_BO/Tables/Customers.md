@@ -753,7 +753,7 @@ Central registry of all customers and their contact, billing, and classification
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
 |--------|------|----------|----|----|------------|
-| CompanyID | smallint | NO | ✓ | ✓ | [[Locations]] |
+| CompanyID | smallint | NO | ✓ | ✓ | [[CustomersGroups]] |
 | ID | bigint | NO | ✓ | ✓ | [[Customers]] |
 | Name | nvarchar | YES |  |  |  |
 | ForeignName | nvarchar | YES |  |  |  |
@@ -807,6 +807,9 @@ Central registry of all customers and their contact, billing, and classification
 | CreateDate | smalldatetime | YES |  |  |  |
 | Reference3 | float | YES |  |  |  |
 | ExemtedDate | smalldatetime | YES |  |  |  |
+| Street | nvarchar | YES |  |  |  |
+| CommercialName | nvarchar | YES |  |  |  |
+
 ## Primary Key
 CompanyID
 ID

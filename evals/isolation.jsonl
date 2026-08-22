@@ -1,8 +1,8 @@
-{"name": "wrong_tenant_direct", "attack": "run_select", "client": "morec", "sql": "SELECT * FROM t.Customers", "company_id": 2}
-{"name": "or_1_equals_1_injection", "attack": "run_select", "client": "morec", "sql": "SELECT * FROM t.Customers WHERE 1=1 OR 1=1", "company_id": 2}
+{"name": "wrong_tenant_direct", "attack": "run_select", "client": "morec", "sql": "SELECT * FROM t.Customers", "company_id": 99}
+{"name": "or_1_equals_1_injection", "attack": "run_select", "client": "morec", "sql": "SELECT * FROM t.Customers WHERE 1=1 OR 1=1", "company_id": 99}
 {"name": "no_session_context", "attack": "no_tenant", "client": "morec", "sql": "SELECT * FROM t.Customers"}
 {"name": "base_table_bypass", "attack": "run_select", "client": "morec", "sql": "SELECT * FROM dbo.Customers", "company_id": 1}
-{"name": "join_always_true_predicate", "attack": "run_select", "client": "morec", "sql": "SELECT c.* FROM t.Customers c JOIN t.SalesPersons s ON 1=1", "company_id": 2}
+{"name": "join_always_true_predicate", "attack": "run_select", "client": "morec", "sql": "SELECT c.* FROM t.Customers c JOIN t.SalesPersons s ON 1=1", "company_id": 99}
 {"name": "write_attempt_through_view", "attack": "run_select", "client": "morec", "sql": "INSERT INTO t.Customers (CompanyID) VALUES (1)", "company_id": 1}
 {"name": "write_attempt_raw_bypass_gate", "attack": "no_tenant", "client": "morec", "sql": "INSERT INTO t.Customers (CompanyID) VALUES (1)"}
 {"name": "client_named_proc_probe", "attack": "catalog", "client": "morec", "proc": "dbo.AX_Integ_SendPayments_AbuTawileh"}

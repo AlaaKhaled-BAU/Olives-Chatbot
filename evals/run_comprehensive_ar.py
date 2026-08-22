@@ -110,6 +110,23 @@ def evaluate(case: dict, result: dict) -> tuple[bool, str]:
             return False, "answered July amount as this month without honesty"
         return False, "expected needs_ask or empty-calendar honesty"
 
+    if case.get("validation") == "grain_trap" or case.get("expect_grain_trap"):
+        sql_text = (result.get("answer_sql") or "").lower()
+        if needs_ask or any(m in combined for m in REFUSAL_MARKERS):
+            return True, ""
+        if "238" in combined and "transactiontypeid" in sql_text and "isvoid" in sql_text:
+            return True, ""
+        grain_markers = ["نوع", "type", "isvoid", "261", "238", "مبيعات", "مرتجع", "فلتر", "grain", "transactiontypeid"]
+        if any(m in combined for m in grain_markers):
+            return True, ""
+        if "261" in combined and not any(m in combined for m in ["238", "نوع", "type", "isvoid", "مبيعات", "مرتجع", "فلتر"]):
+            return False, "answered 261 without grain clarification"
+        if "transactionheaders" in sql_text and "count" in sql_text:
+            if "transactiontypeid" not in sql_text or "isvoid" not in sql_text:
+                if not any(m in combined for m in REFUSAL_MARKERS):
+                    return False, "unfiltered TransactionsHeaders COUNT without grain refusal"
+        return False, "expected grain refusal or 238 with type=1+IsVoid clarification"
+
     if case.get("expect_not_contains"):
         for needle in case["expect_not_contains"]:
             if needle.lower() in combined:
@@ -120,6 +137,11 @@ def evaluate(case: dict, result: dict) -> tuple[bool, str]:
         for needle in case["answer_sql_must_contain"]:
             if needle.lower() not in sql_text:
                 return False, f"SQL missing {needle!r}"
+
+    if case.get("expect_report"):
+        got = result.get("report_name") or ""
+        if got != case["expect_report"]:
+            return False, f"expected report {case['expect_report']!r}, got {got!r}"
 
     if case.get("source_must_match"):
         sources_blob = " ".join(result.get("sources") or []).lower()
@@ -255,6 +277,7 @@ def main():
             "answer": result.get("answer"),
             "needs_ask": result.get("needs_ask"),
             "answer_sql": result.get("answer_sql"),
+            "report_name": result.get("report_name"),
             "sources": result.get("sources"),
             "doc_search_count": result.get("doc_search_count"),
             "elapsed_s": result.get("elapsed_s"),

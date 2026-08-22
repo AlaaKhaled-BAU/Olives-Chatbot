@@ -8,6 +8,9 @@ parent_table: [[Checks]]
 referenced_table: [[Customers]]
 columns: "Checks.CustomerID → Customers.ID"
 ---
+tenant_scoping: "chatbot queries t.-views only; SESSION_CONTEXT('CompanyID')"
+last_verified: 2026-08-22
+---
 
 # Checks → Customers
 

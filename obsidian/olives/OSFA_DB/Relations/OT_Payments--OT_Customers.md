@@ -2,18 +2,27 @@
 type: relation
 database: OSFA_DB
 name: OT_Payments--OT_Customers
-tags: [#fk, #mobile]
+tags: [#convention, #mobile]
 support_relevance: high
 parent_table: [[OT_Payments]]
-referenced_table: `"`OT_Customers`"`
-columns: "OT_Payments.CustomerID → `OT_Customers`.ID"
+referenced_table: [[OT_Customers]]
+columns: "OT_Payments.CompNo,CustomerNo → OT_Customers.CompNo,CustomerNo"
+last_verified: 2026-08-22
+verified_source: db/vault_graph.json
 ---
 
 # OT_Payments → OT_Customers
 
-**FK**: OT_Payments.CustomerID → `OT_Customers`.ID
+**Convention join** (no DB-level FK): OT_Payments.CompNo+CustomerNo → [[OT_Customers]].CompNo+CustomerNo
 
-**Business meaning**: Mobile payment records link to the customer who made the payment. Synced back to BO Receipts.
+**Business meaning**: Tablet payment header points at the customer snapshot row synced to the device. Keyed by CompNo+CustomerNo — the earlier CustomerID claim referenced a column that does not exist on this table (verified against vault_graph.json).
 
-**Source table**: [[OT_Payments]]
-**Target table**: `OT_Customers`
+## Tenancy
+
+OSFA staging row keyed by CompNo (+SalesmanNo snapshot dimension where present). Informational only: chatbot never queries OSFA_DB.
+
+## See also
+
+- [[OT_Payments]]
+- [[OT_Customers]]
+- [[Sync-Architecture]]

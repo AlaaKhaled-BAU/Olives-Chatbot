@@ -72,6 +72,15 @@ header h1 {
   background: #8881;
 }
 
+.report-panel {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  opacity: 0.85;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.35rem;
+  background: #2563eb14;
+}
+
 .sql-text {
   background: #8881;
   padding: 0.5rem;

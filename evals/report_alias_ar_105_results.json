@@ -1,0 +1,242 @@
+{
+  "summary": {
+    "timestamp": "2026-08-15 14:54 UTC",
+    "total": 10,
+    "passed": 10,
+    "pct": 100.0,
+    "total_elapsed_s": 608.5657766619988,
+    "by_category": {
+      "report_alias": {
+        "pass": 10,
+        "fail": 0
+      }
+    },
+    "partial": false
+  },
+  "results": [
+    {
+      "id": "r01",
+      "category": "report_alias",
+      "purpose": "مبيعات المندوب",
+      "question": "أعطني تقرير مبيعات المندوب لشهر يوليو 2025",
+      "ground_truth": "Rpt_SalesmanSalesSummary — Imad أعلى إجمالي",
+      "validation": "report",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "إليك تقرير مبيعات المناديب لشهر يوليو 2025:\n\n*   **المندوب:** Imad\n*   **عدد الفواتير:** 2\n*   **إجمالي المبيعات:** 432.58\n\nإذا كنت ترغب في تحليل هذه المبيعات بشكل أكبر، أو الاطلاع على فواتير مندوب معين، فأنا في خدمتك.",
+      "needs_ask": null,
+      "answer_sql": "SELECT th.SalesPersonID, sp.Name AS SalesPersonName, COUNT(*) AS invoice_count, (SELECT SUM(td.Quantity * td.Price) FROM t.TransactionsHeaders th2 INNER JOIN t.TransactionsDetails td ON th2.CompanyID = td.CompanyID AND th2.TransactionTypeID = td.TransactionTypeID AND th2.TransactionYear = td.TransactionYear AND th2.TransactionNo = td.TransactionNo WHERE th2.SalesPersonID = th.SalesPersonID AND th2.TransactionTypeID = 1 AND ISNULL(th2.IsVoid, 0) = 0 AND th2.TransactionDate >= '2025-07-01' AND th2.TransactionDate <= '2025-07-31') AS gross_amount FROM t.TransactionsHeaders th INNER JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID AND sp.CompanyID = th.CompanyID WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate <= '2025-07-31' GROUP BY th.SalesPersonID, sp.Name ORDER BY gross_amount DESC",
+      "report_name": "Rpt_SalesmanSalesSummary",
+      "sources": [
+        "SalesPersons",
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 100.7,
+      "error": null
+    },
+    {
+      "id": "r02",
+      "category": "report_alias",
+      "purpose": "تحصيل يومي",
+      "question": "أريد تقرير التحصيل اليومي لشهر يوليو 2025",
+      "ground_truth": "Rpt_DailyReceiptsDetails — 2 سندات في يوليو",
+      "validation": "report",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "إليك تقرير التحصيل اليومي لشهر يوليو 2025:\n\n| تاريخ العملية | رقم الإيصال | اسم العميل | المبلغ |\n| :--- | :--- | :--- | :--- |\n| 2025-07-15 | 10000033 | مطعم سي | 1000 |\n| 2025-07-09 | 10000032 | دكتور اسامة عكة | 1000 |\n\nتم استخراج هذه البيانات بناءً على تقرير `Rpt_DailyReceiptsDetails`.",
+      "needs_ask": null,
+      "answer_sql": "SELECT r.TransactionDate, r.TransactionYear, r.TransactionNo, r.CustomerID, c.Name AS CustomerName, r.Amount, r.SalesPersonID FROM t.Receipts r LEFT JOIN t.Customers c ON c.ID = r.CustomerID AND c.CompanyID = r.CompanyID WHERE r.TransactionTypeID = 3 AND r.TransactionDate >= '2025-07-01' AND r.TransactionDate <= '2025-07-31' ORDER BY r.TransactionDate DESC, r.TransactionNo",
+      "report_name": "Rpt_DailyReceiptsDetails",
+      "sources": [
+        "Customers",
+        "Receipts"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 9.7,
+      "error": null
+    },
+    {
+      "id": "r03",
+      "category": "report_alias",
+      "purpose": "مبيعات العملاء",
+      "question": "اعرض تقرير مبيعات العملاء لشهر يونيو 2025",
+      "ground_truth": "Rpt_CustomersSalesDetails",
+      "validation": "report",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "إليك تفاصيل مبيعات العملاء خلال شهر يونيو 2025:\n\n| العميل | التاريخ | رقم الحركة | الصنف | الكمية | السعر | الإجمالي (line_amount) |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n| دكتور اسامة عكة | 2025-06-23 | 10000048 | Item_1 | -0.42 | -3.48 | 1.45 |\n| دكتور اسامة عكة | 2025-06-23 | 10000048 | Item_2 | 0 | 0 | 0 |\n| دكتور اسامة عكة | 2025-06-23 | 10000048 | Item_3 | -0.42 | -255.2 | 106.33 |\n| مطعم نيكست ليفل | 2025-06-15 | 10000046 | Item_1 | -0.04 | -0.35 | 0.01 |\n| مطعم نيكست ليفل | 2025-06-15 | 10000046 | Item_1 | -10 | -83.52 | 835.2 |\n| مطعم سي | 2025-06-14 | 10000044 | Item_1 | -10 | -83.52 | 835.2 |\n| مطعم سي | 2025-06-14 | 10000044 | Item_2 | -10 | -6.38 | 63.8 |\n| مطعم سي | 2025-06-14 | 10000044 | Item_2 | -0.42 | -208.8 | 87 |\n| مطعم سي | 2025-06-14 | 10000044 | Item_5 | 0 | 0 | 0 |\n| مطعم سي | 2025-06-14 | 10000045 | Item_1 | -1 | -8.35 | 8.35 |\n| دكتور اسامة عكة | 2025-06-11 | 10000043 | Item_3 | 0 | 0 | 0 |\n| دكتور اسامة عكة | 2025-06-11 | 10000043 | Item_4 | -12 | -17.4 | 208.8 |\n| دكتور اسامة عكة | 2025-06-11 | 10000043 | Item_4 | 0 | 0 | 0 |\n| دكتور اسامة عكة | 2025-06-11 | 10000043 | Item_5 | -20 | -46.4 | 928 |\n| دكتور اسامة عكة | 2025-06-11 | 10000043 | Item_5 | 0 | 0 | 0 |\n| ماركت الساعة | 2025-06-02 | 10000041 | Item_1 | -10 | -83.52 | 835.2 |\n| ماركت الساعة | 2025-06-02 | 10000041 | Item_2 | -10 | -6.38 | 63.8 |\n| ماركت الساعة | 2025-06-02 | 10000042 | Item_3 | -4 | -1.74 | 6.96 |\n| ماركت الساعة | 2025-06-01 | 10000040 | Item_1 | -10 | -83.52 | 835.2 |\n| ماركت الساعة | 2025-06-01 | 10000040 | Item_2 | -6 | -3.83 | 22.97 |\n\n*ملاحظة: هذا التقرير يعرض فواتير المبيعات (Type 1) غير الملغاة لشهر يونيو 2025.*",
+      "needs_ask": null,
+      "answer_sql": "SELECT th.CustomerID, c.Name AS CustomerName, th.TransactionDate, th.TransactionNo, td.ItemCode, td.Quantity, td.Price, td.Quantity * td.Price AS line_amount FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo LEFT JOIN t.Customers c ON c.ID = th.CustomerID AND c.CompanyID = th.CompanyID WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 AND th.TransactionDate >= '2025-06-01' AND th.TransactionDate <= '2025-06-30' ORDER BY th.TransactionDate DESC, th.TransactionNo",
+      "report_name": "Rpt_CustomersSalesDetails",
+      "sources": [
+        "Customers",
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 11.7,
+      "error": null
+    },
+    {
+      "id": "r04",
+      "category": "report_alias",
+      "purpose": "حركة الصنف",
+      "question": "أحتاج تقرير حركة الصنف Item_1 لشهر يوليو 2025",
+      "ground_truth": "Rpt_ItemTransaction",
+      "validation": "report",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "**تقرير حركة الصنف `Item_1` — يوليو 2025**\n\n| التاريخ | نوع الحركة | رقم الفاتورة | العميل | الكمية | السعر |\n|----------|------------|--------------|--------|--------|-------|\n| 2025-07-15 | فاتورة مبيعات (1) | 10000049 | 2 | -0.417 | -3.48 |\n| 2025-07-15 | فاتورة مبيعات (1) | 10000050 | 2 | -0.833 | -6.96 |\n\n**ملاحظات:**\n- الحركتان في نفس اليوم (15 يوليو) لنفس العميل.\n- الكمية والسعر سالبان في كلا السطرين، مما يعطي قيمة موجبة (استرجاع أو تصحيح).\n- لا توجد حركات مرتجعات (TransactionTypeID = 2) في هذا الشهر لهذا الصنف.\n\n**مصدر البيانات:** تقرير `Rpt_ItemTransaction` على `t.TransactionsHeaders` ⋈ `t.TransactionsDetails`، مفلتر على `ItemCode = 'Item_1'` وتاريخ يوليو 2025، غير ملغى.",
+      "needs_ask": null,
+      "answer_sql": "SELECT th.TransactionDate, th.TransactionTypeID, th.TransactionNo, th.CustomerID, td.ItemCode, td.Quantity, td.Price FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE ISNULL(th.IsVoid, 0) = 0 AND th.TransactionTypeID IN (1, 2) AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate <= '2025-07-31' AND td.ItemCode = 'Item_1' ORDER BY th.TransactionDate DESC",
+      "report_name": "Rpt_ItemTransaction",
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 138.4,
+      "error": null
+    },
+    {
+      "id": "r05",
+      "category": "report_alias",
+      "purpose": "سندات التحصيل",
+      "question": "أعطني تقرير سندات التحصيل لشهر يوليو 2025",
+      "ground_truth": "Rpt_CollectedReceipts",
+      "validation": "report",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "إليك تقرير سندات التحصيل لشهر يوليو 2025:\n\n| رقم السند | التاريخ | العميل | المندوب | المبلغ |\n| :--- | :--- | :--- | :--- | :--- |\n| 10000033 | 2025-07-15 | مطعم سي | Imad | 1,000 |\n| 10000032 | 2025-07-09 | دكتور اسامة عكة | Imad | 1,000 |\n\n**إجمالي التحصيلات لشهر يوليو:** 2,000.",
+      "needs_ask": null,
+      "answer_sql": "SELECT r.TransactionDate, r.TransactionYear, r.TransactionNo, r.CustomerID, c.Name AS CustomerName, r.SalesPersonID, sp.Name AS SalesPersonName, r.Amount FROM t.Receipts r LEFT JOIN t.Customers c ON c.ID = r.CustomerID AND c.CompanyID = r.CompanyID LEFT JOIN t.SalesPersons sp ON sp.ID = r.SalesPersonID AND sp.CompanyID = r.CompanyID WHERE r.TransactionTypeID = 3 AND r.TransactionDate >= '2025-07-01' AND r.TransactionDate <= '2025-07-31' ORDER BY r.TransactionDate DESC, r.TransactionNo",
+      "report_name": "Rpt_CollectedReceipts",
+      "sources": [
+        "Customers",
+        "Receipts",
+        "SalesPersons"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 9.5,
+      "error": null
+    },
+    {
+      "id": "r06",
+      "category": "report_alias",
+      "purpose": "المبيعات والطلبات",
+      "question": "اعرض تقرير المبيعات والطلبات لمقارنة المناديب",
+      "ground_truth": "Rpt_SalesAndOrders — 132 طلب و238 فاتورة",
+      "validation": "report",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "تقرير المبيعات والطلبات للمناديب للفترة من 01-01-2026 إلى 15-06-2026:\n\n| المندوب | عدد الطلبات | عدد الفواتير |\n| :--- | :--- | :--- |\n| Imad | 6 | 0 |\n| husam | 0 | 0 |\n| Amjad Hijazi | 0 | 0 |\n| wael | 0 | 0 |\n| Sharif | 0 | 0 |\n| rakan | 0 | 0 |\n| Ali | 0 | 0 |\n\nملاحظة: يظهر التقرير نشاطاً في الطلبات للمندوب Imad خلال هذه الفترة، بينما لم يتم تسجيل فواتير مبيعات (TransactionTypeID=1) في هذا النطاق الزمني المحدد.",
+      "needs_ask": null,
+      "answer_sql": "SELECT sp.ID AS SalesPersonID, sp.Name AS SalesPersonName, (SELECT COUNT(*) FROM t.OrdersHeaders oh WHERE oh.SalesPersonID = sp.ID AND oh.OrderDate >= '2026-01-01' AND oh.OrderDate <= '2026-06-15') AS order_count, (SELECT COUNT(*) FROM t.TransactionsHeaders th WHERE th.SalesPersonID = sp.ID AND th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 AND th.TransactionDate >= '2026-01-01' AND th.TransactionDate <= '2026-06-15') AS invoice_count FROM t.SalesPersons sp WHERE 1=1 ORDER BY invoice_count DESC",
+      "report_name": "Rpt_SalesAndOrders",
+      "sources": [
+        "OrdersHeaders",
+        "SalesPersons",
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 8.6,
+      "error": null
+    },
+    {
+      "id": "r07",
+      "category": "report_alias",
+      "purpose": "عملاء نشطين",
+      "question": "أريد تقرير العملاء النشطين وغير النشطين",
+      "ground_truth": "Rpt_ActiveAndInactiveCustomers — 12 نشط",
+      "validation": "report",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "إليك تقرير العملاء النشطين (بناءً على وجود مبيعات مسجلة):\n\n| اسم العميل | الحالة | تاريخ آخر عملية بيع |\n| :--- | :--- | :--- |\n| مطعم سي | نشط | 2025-07-15 |\n| دكتور اسامة عكة | نشط | 2025-06-23 |\n| مطعم نيكست ليفل | نشط | 2025-06-15 |\n| ماركت الساعة | نشط | 2025-06-02 |\n| أسواق السدحان - حي الصحافة | نشط | 2023-10-05 |\n| أسواق الجزيرة - حي الصحافة | نشط | 2023-01-23 |\n| Ministry of Health | نشط | 2022-11-29 |\n| كارفور - طريق ديراب | نشط | 2022-11-29 |\n| كارفور - طريق خريص | نشط | 2022-11-29 |\n| أسواق عبدالله العثيم - حي السويدي | نشط | 2021-12-29 |\n| أسواق الجزيرة | نشط | 2021-10-17 |\n| مطعم علي باريس | نشط | 2020-09-14 |\n\n*ملاحظة: تم اعتبار العميل نشطاً إذا تمت له عملية بيع واحدة على الأقل.*",
+      "needs_ask": null,
+      "answer_sql": "SELECT c.ID AS CustomerID, c.Name AS CustomerName, CASE WHEN MAX(th.TransactionDate) IS NULL THEN 0 ELSE 1 END AS is_active, MAX(th.TransactionDate) AS last_sale_date FROM t.Customers c LEFT JOIN t.TransactionsHeaders th ON th.CustomerID = c.ID AND th.CompanyID = c.CompanyID AND th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 GROUP BY c.ID, c.Name ORDER BY is_active DESC, last_sale_date DESC",
+      "report_name": "Rpt_ActiveAndInactiveCustomers",
+      "sources": [
+        "Customers",
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 18.9,
+      "error": null
+    },
+    {
+      "id": "r08",
+      "category": "report_alias",
+      "purpose": "أصناف لم تباع",
+      "question": "اعرض تقرير الأصناف التي لم تباع",
+      "ground_truth": "Rpt_ItemsNotSold — 5 أصناف",
+      "validation": "report",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "نتائج تقرير **الأصناف التي لم تُبَع** — الأصناف التي لم يُسجَّل عليها أي فاتورة مبيعات (نوع معاملة 1، غير ملغاة) حتى تاريخ أحدث فاتورة (2025-07-15):\n\n| # | كود الصنف | اسم الصنف |\n|---|-----------|-----------|\n| 1 | Item_11 | White Chocolate |\n| 2 | Item_12 | Stroop Wafel |\n| 3 | Item_13 | كونلي - نكهة الحار و الليمون |\n| 4 | Item_14 | فيب معسل عنب و نعناع |\n| 5 | Item_15 | فيب معسل عنب و نعناع |\n\n**عدد الأصناف غير المُباعة:** 5\n\n> ⚠️ ملاحظة: التقرير يعتمد على آخر تاريخ فاتورة مسجّل (2025-07-15). آخر البيانات متوقفة عند ذلك التاريخ، أي أن هذه الأصناف لم تظهر في أي فاتورة مبيعات خلال الفترة المتوفرة في النظام.\n\nSQL المستخدم:\n```sql\nSELECT i.ItemCode, i.Name AS ItemName\nFROM t.Items i\nWHERE NOT EXISTS (\n    SELECT 1\n    FROM t.TransactionsHeaders th\n    INNER JOIN t.TransactionsDetails td\n        ON th.CompanyID = td.CompanyID\n       AND th.TransactionTypeID = td.TransactionTypeID\n       AND th.TransactionYear = td.TransactionYear\n       AND th.TransactionNo = td.TransactionNo\n    WHERE td.ItemCode = i.ItemCode\n      AND td.CompanyID = i.CompanyID\n      AND th.TransactionTypeID = 1\n      AND ISNULL(th.IsVoid, 0) = 0\n)\nORDER BY i.ItemCode\n```\n\nإذا تقصد تصفية الأصناف حسب فترة زمنية محددة أو تريد عرض الأصناف غير المُباعة من فئة معينة، قل.",
+      "needs_ask": null,
+      "answer_sql": "SELECT i.ItemCode, i.Name AS ItemName FROM t.Items i WHERE NOT EXISTS (SELECT 1 FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE td.ItemCode = i.ItemCode AND td.CompanyID = i.CompanyID AND th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0) ORDER BY i.ItemCode",
+      "report_name": "Rpt_ItemsNotSold",
+      "sources": [
+        "Items",
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 151.4,
+      "error": null
+    },
+    {
+      "id": "r09",
+      "category": "report_alias",
+      "purpose": "تغطية الزيارات",
+      "question": "أعطني تقرير التغطية للمسارات",
+      "ground_truth": "Rpt_Coverage",
+      "validation": "report",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "لا يوجد بيانات حالية في تقرير التغطية للمسارات.",
+      "needs_ask": null,
+      "answer_sql": "SELECT cfd.RouteID, COUNT(DISTINCT cfd.CustomerID) AS assigned_customers, COUNT(DISTINCT dr.CustomerID) AS visited_customers FROM t.CustomersFinancialDetails cfd LEFT JOIN t.DeliveryRoute dr ON dr.CustomerID = cfd.CustomerID AND dr.CompNo = cfd.CompanyID GROUP BY cfd.RouteID ORDER BY assigned_customers DESC; SELECT COUNT(*) AS cfd_count FROM t.CustomersFinancialDetails WHERE CompanyID = 2",
+      "report_name": "Rpt_Coverage",
+      "sources": [
+        "CustomersFinancialDetails",
+        "DeliveryRoute"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 125.6,
+      "error": null
+    },
+    {
+      "id": "r10",
+      "category": "report_alias",
+      "purpose": "ملخص النقدية",
+      "question": "أريد تقرير ملخص النقدية لشهر يوليو 2025",
+      "ground_truth": "Rpt_CashSummary",
+      "validation": "report",
+      "passed": true,
+      "failure_reason": "",
+      "investigation": "",
+      "answer": "إليك ملخص إيصالات النقدية (تقرير `Rpt_CashSummary`) لشهر يوليو 2025:\n\n*   **إجمالي عدد الإيصالات:** 2\n*   **إجمالي المبلغ:** 2,000.0\n\n**التفاصيل اليومية:**\n\n| التاريخ | عدد الإيصالات | المبلغ الإجمالي |\n| :--- | :--- | :--- |\n| 15 يوليو 2025 | 1 | 1,000.0 |\n| 09 يوليو 2025 | 1 | 1,000.0 |",
+      "needs_ask": null,
+      "answer_sql": "SELECT CAST(r.TransactionDate AS date) AS receipt_day, COUNT(*) AS receipt_count, SUM(r.Amount) AS total_amount FROM t.Receipts r WHERE r.TransactionTypeID = 3 AND r.TransactionDate >= '2025-07-01' AND r.TransactionDate <= '2025-07-31' GROUP BY CAST(r.TransactionDate AS date) ORDER BY receipt_day DESC",
+      "report_name": "Rpt_CashSummary",
+      "sources": [
+        "Receipts"
+      ],
+      "doc_search_count": 0,
+      "elapsed_s": 34.0,
+      "error": null
+    }
+  ]
+}

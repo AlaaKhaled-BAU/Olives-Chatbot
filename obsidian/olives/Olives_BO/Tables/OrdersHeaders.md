@@ -257,7 +257,7 @@ Header records for sales orders placed by customers via tablet or back-office.
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
 |--------|------|----------|----|----|------------|
-| CompanyID | smallint | NO | ✓ | ✓ | [[SalesPersons]] |
+| CompanyID | smallint | NO | ✓ | ✓ | [[Contracts]] |
 | OrderYear | int | NO | ✓ |  |  |
 | OrderNo | int | NO | ✓ |  |  |
 | OrderDate | smalldatetime | YES |  |  |  |
@@ -319,6 +319,9 @@ Header records for sales orders placed by customers via tablet or back-office.
 | TransFees | float | YES |  |  |  |
 | ForeignTransFees | float | YES |  |  |  |
 | CheckInTime | smalldatetime | YES |  |  |  |
+| CustomerName | nvarchar | YES |  |  |  |
+| Address | nvarchar | YES |  |  |  |
+
 ## Primary Key
 CompanyID
 OrderYear

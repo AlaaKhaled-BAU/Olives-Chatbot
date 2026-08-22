@@ -18,10 +18,19 @@ Use these patterns when writing `SELECT` on `t.` views. Orders and invoices are 
 - Order customer: `OrdersHeaders.CustomerID` → `Customers.ID`.
 - Order salesperson: `OrdersHeaders.SalesPersonID` → `SalesPersons.ID`.
 
-## Customer ↔ salesperson assignment
-- `Customers` ⋈ `CustomersFinancialDetails` ⋈ `SalesPersons` via `PositionsID` → `PositionID`.
+## Customer ↔ salesperson assignment (CFD / territory)
+- `CustomersFinancialDetails` (cfd) ⋈ `Customers` on `CompanyID`, `CustomerID`.
+- Territory position: `CustomersFinancialDetails.PositionsID` → `Positions.ID` (live FK — **not** `Positions.PositionID`).
+- Salesperson on territory: `Positions.ID` ← `SalesPersons.PositionID` (also `CompanyID` on both sides when composite).
 - **Never** join `CustomersFinancialDetails.CustomerID` to `SalesPersons.ID` — that is wrong.
 - Static assignment may also appear on `Customers.SalesPersonID` where populated; prefer financial-details/positions path for territory.
+- Example (live FKs): for salesperson "أسامة", filter `SalesPersons` then join `Positions` on `sp.PositionID = pos.ID`, then `cfd.PositionsID = pos.ID` — expect multiple CFD rows per territory, not one row per customer naively.
+- End-to-end: `Customers` ⋈ `CustomersFinancialDetails` ⋈ `Positions` ⋈ `SalesPersons` via `PositionsID` → `PositionID`.
+
+## Van stock (SalesPersonItemsBalance)
+- Van quantity by salesperson + item: `SalesPersonItemsBalance` (live FKs to `SalesPersons`, `Items`, `Companies`).
+- Join pattern: `SalesPersonItemsBalance.SalesPersonID` → `SalesPersons.ID` and `SalesPersonItemsBalance.ItemCode` → `Items.ItemCode` (always include `CompanyID` on composite keys).
+- Not the same as invoice detail stock or `TransfersOrdersHeaders` — use the table that matches the question (رصيد السيارة vs transfer document).
 
 ## ClientsActive
 - `(CompanyID, ClientID)` identifies which Olives product fork is active — not a shop or customer row.

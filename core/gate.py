@@ -9,6 +9,8 @@ import sqlglot
 from sqlglot import exp
 
 DEFAULT_ROW_CAP = 200
+# T0: no signed Rpt_* EXEC allow-list yet — callers must pass this until Grok signs audit output.
+DEFAULT_ALLOWED_PROCS: tuple[str, ...] = ()
 
 _DANGEROUS_CALL_RE = re.compile(r"\b(xp_\w+|sp_oa\w+)\b", re.IGNORECASE)
 _OPENROWSET_RE = re.compile(r"\b(OPENROWSET|OPENQUERY|OPENDATASOURCE)\b", re.IGNORECASE)

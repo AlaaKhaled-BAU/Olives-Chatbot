@@ -8,6 +8,9 @@ parent_table: [[PriceListDetails]]
 referenced_table: [[PriceLists]]
 columns: "PriceListDetails.PriceListID → PriceLists.ID"
 ---
+tenant_scoping: "chatbot queries t.-views only; SESSION_CONTEXT('CompanyID')"
+last_verified: 2026-08-22
+---
 
 # PriceListDetails → PriceLists
 

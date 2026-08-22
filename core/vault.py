@@ -274,7 +274,63 @@ def _wiki_name(raw: str) -> str:
     return _norm_value(raw).split("/")[-1]
 
 
-def get_joins(table_name: str, database: str = "Olives_BO") -> dict:
+def _load_schema_cache(client: str | None) -> dict | None:
+    if not client:
+        return None
+    path = config.work_dir(client) / "schema_cache.json"
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _bare_table_name(qualified: str) -> str:
+    return qualified.split(".")[-1]
+
+
+def _live_fks_for_table(table_name: str, cache: dict) -> list[dict]:
+    """Foreign keys from schema_cache introspection — authoritative over vault."""
+    target = table_name.upper()
+    grouped: dict[str, dict] = {}
+    for fk in cache.get("foreign_keys") or []:
+        parent = _bare_table_name(fk.get("table_name", ""))
+        ref = _bare_table_name(fk.get("ref_table", ""))
+        if parent.upper() != target and ref.upper() != target:
+            continue
+        key = fk.get("fk_name") or f"{parent}--{ref}"
+        entry = grouped.setdefault(key, {
+            "name": key,
+            "fk_name": fk.get("fk_name"),
+            "parent_table": parent,
+            "referenced_table": ref,
+            "column_pairs": [],
+            "source": "live_schema_cache",
+        })
+        if parent.upper() == target:
+            entry["column_pairs"].append({
+                "column": fk.get("column_name"),
+                "ref_column": fk.get("ref_column"),
+                "direction": "outbound",
+            })
+        else:
+            entry["column_pairs"].append({
+                "column": fk.get("ref_column"),
+                "ref_column": fk.get("column_name"),
+                "direction": "inbound",
+            })
+    live = list(grouped.values())
+    for item in live:
+        pairs = item["column_pairs"]
+        item["columns"] = ", ".join(
+            f"{p['column']} → {p['ref_column']}" for p in pairs if p.get("column")
+        )
+    live.sort(key=lambda x: (x.get("parent_table", ""), x.get("referenced_table", "")))
+    return live
+
+
+def _vault_relations_for_table(table_name: str, database: str) -> list[dict]:
     target = table_name.upper()
     relations = []
     for n in NOTES_INDEX:
@@ -300,7 +356,163 @@ def get_joins(table_name: str, database: str = "Olives_BO") -> dict:
             "referenced_table": fm.get("referenced_table"),
             "columns": fm.get("columns"),
             "summary": body[:500] if body else None,
+            "source": "vault",
         })
+    return relations
+
+
+def _live_covers_vault(live_fks: list[dict], vault_rel: dict) -> bool:
+    """True when a live FK group matches the vault relation endpoints."""
+    parent = _wiki_name(str(vault_rel.get("parent_table", "")))
+    ref = _wiki_name(str(vault_rel.get("referenced_table", "")))
+    if not parent or not ref:
+        return False
+    for item in live_fks:
+        if (
+            _bare_table_name(item.get("parent_table", "")).upper() == parent.upper()
+            and _bare_table_name(item.get("referenced_table", "")).upper() == ref.upper()
+        ):
+            return True
+    return False
+
+
+def _table_note_path(table_name: str, database: str = "Olives_BO") -> Path | None:
+    rel = f"{database}/Tables/{table_name}.md"
+    path = VAULT / rel
+    return path if path.exists() else None
+
+
+def _parse_vault_column_names(content: str) -> list[str]:
+    body, _ = extract_section(content, "Columns")
+    if not body:
+        return []
+    names = []
+    for line in body.splitlines():
+        if not line.startswith("|") or line.startswith("| Column"):
+            continue
+        parts = [p.strip() for p in line.strip("|").split("|")]
+        if parts and parts[0] and parts[0] != "--------":
+            names.append(parts[0])
+    return names
+
+
+def _format_columns_section(columns: list[dict], fks_by_col: dict[str, str]) -> str:
+    lines = [
+        "## Columns",
+        "| Column | Type | Nullable | PK | FK | References |",
+        "|--------|------|----------|----|----|------------|",
+    ]
+    for col in columns:
+        name = col.get("column", "")
+        ctype = col.get("type", "")
+        nullable = "YES" if col.get("nullable") else "NO"
+        pk = "✓" if col.get("is_pk") else ""
+        ref = fks_by_col.get(name)
+        fk = "✓" if ref else ""
+        ref_cell = f"[[{ref}]]" if ref else ""
+        lines.append(f"| {name} | {ctype} | {nullable} | {pk} | {fk} | {ref_cell} |")
+    return "\n".join(lines) + "\n"
+
+
+def _fk_refs_for_table(table_name: str, cache: dict) -> list[str]:
+    refs: set[str] = set()
+    target = table_name.upper()
+    for fk in cache.get("foreign_keys") or []:
+        parent = _bare_table_name(fk.get("table_name", ""))
+        if parent.upper() != target:
+            continue
+        refs.add(_bare_table_name(fk.get("ref_table", "")))
+    return sorted(refs)
+
+
+def _replace_frontmatter_list_field(content: str, field: str, items: list[str]) -> str:
+    block = f"{field}:\n" + "\n".join(f"  - {item}" for item in items)
+    pattern = rf"^{re.escape(field)}:\s*\n(?:  - .*\n)*"
+    if re.search(pattern, content, flags=re.MULTILINE):
+        return re.sub(pattern, block + "\n", content, count=1, flags=re.MULTILINE)
+    close = content.find("\n---", 4)
+    if close == -1:
+        return content
+    return content[:close] + block + "\n" + content[close:]
+
+
+def sync_vault_table_from_cache(
+    table_name: str,
+    client: str,
+    database: str = "Olives_BO",
+) -> dict:
+    """Patch vault table note columns + frontmatter FK list from live schema_cache.
+
+    Setup / maintenance only — run via setup/sync_vault_from_cache.py after
+    setup/02_introspect.py or setup/refresh.py. Never call from FastAPI /ask,
+    core/agent.py, or any runtime chatbot path (vault is read-only at runtime).
+    """
+    cache = _load_schema_cache(client)
+    if not cache:
+        return {"status": "skipped", "reason": "no_schema_cache"}
+    key = f"dbo.{table_name}"
+    live_cols = cache.get("tables", {}).get(key)
+    if not live_cols:
+        return {"status": "skipped", "reason": "table_not_in_cache"}
+    note_path = _table_note_path(table_name, database)
+    if not note_path:
+        return {"status": "skipped", "reason": "vault_note_missing"}
+
+    content = note_path.read_text(encoding="utf-8")
+    vault_cols = _parse_vault_column_names(content)
+    live_names = [c.get("column") for c in live_cols]
+    if vault_cols == live_names:
+        return {"status": "ok", "patched": False}
+
+    fks_by_col: dict[str, str] = {}
+    target = table_name.upper()
+    for fk in cache.get("foreign_keys") or []:
+        parent = _bare_table_name(fk.get("table_name", ""))
+        if parent.upper() == target:
+            fks_by_col[fk.get("column_name", "")] = _bare_table_name(fk.get("ref_table", ""))
+
+    fk_items = [f"[[{ref}]]" for ref in _fk_refs_for_table(table_name, cache)]
+    content = _replace_frontmatter_list_field(content, "foreign_keys", fk_items)
+    cols_section = _format_columns_section(live_cols, fks_by_col)
+    if "## Columns" in content:
+        content = re.sub(
+            r"## Columns\s*\n.*?(?=\n## |\Z)",
+            cols_section.rstrip() + "\n",
+            content,
+            count=1,
+            flags=re.DOTALL,
+        )
+    else:
+        content = content.rstrip() + "\n\n" + cols_section
+
+    note_path.write_text(content, encoding="utf-8")
+    return {
+        "status": "patched",
+        "table": table_name,
+        "vault_drift": True,
+        "vault_cols": len(vault_cols),
+        "live_cols": len(live_names),
+        "path": str(note_path),
+    }
+
+
+def get_joins(
+    table_name: str,
+    database: str = "Olives_BO",
+    client: str | None = None,
+) -> dict:
+    """FK joins for a BO table. Live schema_cache foreign_keys win over vault relation notes."""
+    target = table_name.upper()
+    cache = _load_schema_cache(client)
+    live_fks = _live_fks_for_table(table_name, cache) if cache else []
+    vault_relations = _vault_relations_for_table(table_name, database)
+    vault_hints = [
+        rel for rel in vault_relations if not _live_covers_vault(live_fks, rel)
+    ]
+    for rel in vault_relations:
+        if _live_covers_vault(live_fks, rel):
+            rel["superseded_by_live"] = True
+
     graph_matches = []
     for key, entry in VAULT_GRAPH.get("tables", {}).items():
         if entry.get("name", "").upper() == target:
@@ -311,7 +523,17 @@ def get_joins(table_name: str, database: str = "Olives_BO") -> dict:
                 "reads_by_procs": entry.get("reads_by", [])[:20],
                 "writes_by_procs": entry.get("writes_by", [])[:20],
             })
-    return {"table": table_name, "database": database, "relations": relations, "graph": graph_matches}
+
+    relations = live_fks + vault_hints
+    return {
+        "table": table_name,
+        "database": database,
+        "source_precedence": "live_schema_cache overrides vault relation notes on conflict",
+        "live_foreign_keys": live_fks,
+        "vault_relations": vault_relations,
+        "relations": relations,
+        "graph": graph_matches,
+    }
 
 
 # Wave 6 — compiled vault cards (setup/compile_vault_cards.py)

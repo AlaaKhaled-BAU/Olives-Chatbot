@@ -1,3 +1,4 @@
+# Requires Python >= 3.13
 fastapi==0.129.0
 uvicorn==0.41.0
 pymssql==2.3.13
@@ -7,3 +8,5 @@ openai==2.31.0
 litellm[proxy]==1.93.0
 prometheus-client
 slowapi==0.1.9
+mcp==1.28.1
+pytest==9.0.2

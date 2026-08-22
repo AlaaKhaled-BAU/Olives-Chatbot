@@ -256,6 +256,7 @@ def ask(request: Request, req: AskRequest):
             yield f"data: {json.dumps({
                 'answer': answer,
                 'answer_sql': result.get('answer_sql'),
+                'report_name': result.get('report_name'),
                 'table': result.get('table'), 'chart': result.get('chart'),
                 'followups': result.get('followups') or [], 'sources': result.get('sources') or [],
             }, default=str)}\n\n"

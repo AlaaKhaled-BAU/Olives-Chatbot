@@ -60,14 +60,20 @@ def _live_facts(company_id: int, client: str) -> dict:
     return facts
 
 
-def build(client: str, company_id: int) -> str:
+def build(client: str, company_id: int, question: str | None = None) -> str:
     """Tenant pack for system prompt — static BO guide + live facts + pinned CompanyID."""
+    from . import module_map
+
     lines = [
         "## Tenant context",
         f"CompanyID: {company_id} (pinned for this session — t. views are scoped).",
         f"calendar_today: {datetime.date.today().isoformat()}",
     ]
     lines.append(_static_from_summary())
+    if question:
+        card = module_map.card_for_question(question, client)
+        if card:
+            lines.append(card)
     facts = _live_facts(company_id, client)
     if facts.get("client_id"):
         cid = facts["client_id"]

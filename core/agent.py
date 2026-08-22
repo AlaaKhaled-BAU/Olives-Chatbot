@@ -6,11 +6,10 @@ must be the final answer.
 
 FIXPLAN M6 (2026-07-25): the dedicated run_proc tool was removed --
 chatbot_ro has no EXECUTE grant on any procedure (confirmed live), so it
-always errored and just burned a turn. catalog/allowed_proc_names are
-still very much in use: gate.validate() still allow-lists any EXEC a model
-embeds directly in run_select's SQL text (denied at the DB permission
-layer regardless, same as before), and introspect_schema still looks up
-procedure parameters from the catalog."""
+always errored and just burned a turn. T0 (Lane C): allowed_proc_names is
+[] until a signed rpt_exec allow-list exists — catalog.for_client() keys are
+metadata only, not an EXEC gate allow-list. introspect_schema still looks
+up procedure parameters from the catalog."""
 import argparse
 import calendar
 import datetime
@@ -40,14 +39,30 @@ MODEL_ALIAS = "chatbot"  # the one name the gateway maps to Claude/Gemini
 MAX_QUERIES = 4
 # P0: search_docs is free vs MAX_QUERIES but still thrashes without its own cap.
 MAX_DOC_SEARCHES = 3
+MAX_VAULT_SEARCHES = 3
 
 _DOCS_ONLY_SCHEMA_TOOLS = frozenset({
     "introspect_schema", "search_schema_notes", "read_schema_note", "get_joins",
 })
 
+_VAULT_TOOLS = frozenset({
+    "search_schema_notes", "read_schema_note", "get_joins",
+})
+
 _FAST_PATH_SKIP_TOOLS = frozenset({
     "search_docs", "search_schema_notes", "read_schema_note", "get_joins",
 })
+
+_REPORT_PATH_INITIAL_TOOLS = frozenset({"run_report", "ask_user", "analyze"})
+
+_HOWTO_INITIAL_TOOLS = frozenset({"search_docs", "ask_user", "analyze"})
+
+_REPORT_HINT_RE = re.compile(r"تقرير|\breport\b", re.IGNORECASE)
+_HOWTO_HINT_RE = re.compile(
+    r"كيف|اشرح|explain|how does|how do|what is|what does|ماذا تعني|شاشة|screen|"
+    r"system option|خيار|option",
+    re.IGNORECASE,
+)
 
 _EXPLAIN_INTENT_RE = re.compile(
     r"كيف|اشرح|explain|how does|how do|what is|what does|ماذا تعني",
@@ -106,6 +121,7 @@ _STEP_LABELS = {
     "get_joins": "looking up joins",
     "lookup_hot": "loading master data",
     "run_metric": "running metric query",
+    "run_report": "running report query",
 }
 
 
@@ -115,7 +131,7 @@ def _step_label(name: str, args: dict, state: dict) -> str | None:
     that a query is running, never its text -- that leaks schema shape and,
     through it, other clients' branch structure'). None for ask_user, which
     ends the turn immediately with nothing to narrate a wait for."""
-    if name in ("run_select", "run_metric"):
+    if name in ("run_select", "run_metric", "run_report"):
         if name == "run_select" and "information_schema" in args.get("sql", "").lower():
             return "searching schema"
         return f"running query {len(state['queries']) + 1} of {MAX_QUERIES}"
@@ -395,6 +411,39 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "run_report",
+            "description": (
+                "Run a named Olives BO report from the catalog. Uses a certified SELECT template on "
+                "t. when available; otherwise returns catalog purpose and a not-certified notice. "
+                "Never EXEC stored procedures in this release. Counts against the query budget when "
+                "a SELECT template runs."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Catalog report name, e.g. Rpt_SalesmanSalesSummary",
+                    },
+                    "params": {
+                        "type": "object",
+                        "description": "Optional filters: from_date, to_date, sales_person_id, customer_id, item_code",
+                        "properties": {
+                            "from_date": {"type": "string"},
+                            "to_date": {"type": "string"},
+                            "sales_person_id": {"type": "integer"},
+                            "customer_id": {"type": "integer"},
+                            "item_code": {"type": "string"},
+                        },
+                    },
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "lookup_hot",
             "description": (
                 "Load an L1 master snapshot (salespersons, items, routes, companies, etc.). "
@@ -443,6 +492,38 @@ def _is_fast_count_path(question: str) -> bool:
     if metrics.question_mentions_metric(q):
         return True
     return any(term in q_lower for term in _MASTER_COUNT_TERMS)
+
+
+def _is_report_path(question: str, client: str) -> bool:
+    """Named report questions — prefer run_report, skip docs thrash."""
+    matches = reports.match_reports(question, client, limit=1)
+    if not matches:
+        return False
+    if _REPORT_HINT_RE.search(question):
+        return True
+    card = matches[0]
+    q_lower = question.lower()
+    for alias in card.get("aliases") or []:
+        if len(alias) >= 6 and alias.lower() in q_lower:
+            return True
+    name = card.get("name", "")
+    if name and name.lower().replace("rpt_", "") in q_lower.replace(" ", ""):
+        return True
+    return False
+
+
+def _is_howto_path(question: str, client: str) -> bool:
+    """How-to / screen / option — search_docs first; no schema or SQL until needed."""
+    q = (question or "").strip()
+    if not q:
+        return False
+    if _has_count_sql_intent(q) or _is_fast_count_path(q):
+        return False
+    if metrics.question_mentions_metric(q):
+        return False
+    if _is_report_path(q, client):
+        return False
+    return bool(_HOWTO_HINT_RE.search(q) or _EXPLAIN_INTENT_RE.search(q))
 
 
 def _needs_honesty_preamble(question: str) -> bool:
@@ -619,27 +700,33 @@ def _dedupe_doc_pairs(pairs: list[tuple[str, str]]) -> list[tuple[str, str]]:
 
 
 def _active_tools(state: dict) -> list | None:
-    """Filter tool list for query budget, doc-search cap, and docs-only guard."""
+    """Filter tool list for query budget, doc/vault caps, and intent guards."""
     if len(state["queries"]) >= MAX_QUERIES:
         return None
     tools = TOOLS
     if state.get("fast_count"):
         tools = [t for t in tools if t["function"]["name"] not in _FAST_PATH_SKIP_TOOLS]
+    if state.get("report_path"):
+        tools = [t for t in tools if t["function"]["name"] in _REPORT_PATH_INITIAL_TOOLS]
+    if state.get("howto_path") and not _has_count_sql_intent(state.get("question", "")):
+        tools = [t for t in tools if t["function"]["name"] in _HOWTO_INITIAL_TOOLS]
     if state.get("doc_searches", 0) >= MAX_DOC_SEARCHES:
         tools = [t for t in tools if t["function"]["name"] != "search_docs"]
+    if state.get("vault_searches", 0) >= MAX_VAULT_SEARCHES:
+        tools = [t for t in tools if t["function"]["name"] not in _VAULT_TOOLS]
     if state.get("docs_only"):
         tools = [t for t in tools if t["function"]["name"] not in _DOCS_ONLY_SCHEMA_TOOLS]
     return tools
 
 
-def _system_prompt(client: str, company_id: int | None = None) -> str:
+def _system_prompt(client: str, company_id: int | None = None, question: str | None = None) -> str:
     base = (BASE_DIR / "prompts" / "system.md").read_text()
     base = base.replace("{{CLIENT}}", client).replace("{{MAX_QUERIES}}", str(MAX_QUERIES))
     playbook = BASE_DIR / "prompts" / "join_playbook.md"
     if playbook.exists():
         base += "\n\n## Join playbook\n" + playbook.read_text()
     if company_id is not None:
-        base += "\n\n" + tenant_pack.build(client, company_id)
+        base += "\n\n" + tenant_pack.build(client, company_id, question=question)
     return base
 
 
@@ -774,15 +861,18 @@ def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, 
             state["docs_only"] = True
         return {"results": results}
     if name == "search_schema_notes":
+        state["vault_searches"] = state.get("vault_searches", 0) + 1
         return {"results": vault.search_schema_notes(
             args.get("pattern", ""), type_filter=args.get("type"),
         )}
     if name == "read_schema_note":
+        state["vault_searches"] = state.get("vault_searches", 0) + 1
         return vault.read_schema_note(
             name=args.get("name"), path=args.get("path"), type_filter=args.get("type"),
         )
     if name == "get_joins":
-        return vault.get_joins(args.get("table", ""))
+        state["vault_searches"] = state.get("vault_searches", 0) + 1
+        return vault.get_joins(args.get("table", ""), client=client)
     if name == "lookup_hot":
         result = hot_cache.lookup(args.get("table", ""), company_id, client)
         base = (args.get("table") or "").strip().split(".")[-1]
@@ -802,6 +892,22 @@ def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, 
         if "error" not in result:
             sql_text = result.get("sql")
             state["queries"].append(sql_text)
+            rows = result.get("rows")
+            if isinstance(rows, list) and (state["last_rows"] is None or len(rows) > len(state["last_rows"])):
+                state["last_rows"] = rows
+        return result
+    if name == "run_report":
+        report_name = args.get("name", "")
+        result = reports.run_report(
+            report_name,
+            company_id,
+            client,
+            params=args.get("params"),
+            allowed_procs=allowed_proc_names,
+        )
+        state["report_name"] = report_name
+        if result.get("sql") and "error" not in result:
+            state["queries"].append(result["sql"])
             rows = result.get("rows")
             if isinstance(rows, list) and (state["last_rows"] is None or len(rows) > len(state["last_rows"])):
                 state["last_rows"] = rows
@@ -935,12 +1041,15 @@ def _build_envelope(question: str, final_text: str, state: dict) -> dict:
     from data this turn already produced -- never a second, potentially
     inconsistent ask to the model for numbers/names it already gave."""
     table = _build_table(state["last_rows"])
-    return {
+    out = {
         "table": table,
         "chart": _build_chart(table),
         "sources": _build_sources(state["queries"], state["doc_source_pairs"]),
         "followups": _suggest_followups(question, final_text) if final_text else [],
     }
+    if state.get("report_name"):
+        out["report_name"] = state["report_name"]
+    return out
 
 
 def ask_stream(client: str, question: str, conversation: dict = None, role: str = "manager",
@@ -965,7 +1074,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
 
     cache = _schema_cache(client)
     catalog_procs = catalog.for_client(client, name_aliases)
-    allowed_proc_names = list(catalog_procs.keys())
+    allowed_proc_names: list[str] = []
 
     profile = params.discover_profile(client)
     company_id = params.resolve("CompanyID", conversation, profile)
@@ -991,8 +1100,9 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     # a clean miss instead of a wrong hit.
     schema_version = _schema_version(cache)
     key = memory.cache_key(client, company_id, role, MODEL_ALIAS, question, schema_version)
+    report_path = _is_report_path(question, client)
     cached_plan = memory.get_plan(key)
-    if cached_plan:
+    if cached_plan and not report_path:
         try:
             # C4a: plan_cache now stores an ORDERED LIST of queries (one
             # turn can be several, C4) -- re-run each in order and hand the
@@ -1003,7 +1113,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             raw_results = [sql.run_select(q, company_id, client, allowed_procs=allowed_proc_names) for q in queries]
             results = [_cap_for_context(r) for r in raw_results]
             messages = [
-                {"role": "system", "content": _system_prompt(client, company_id)},
+                {"role": "system", "content": _system_prompt(client, company_id, question=question)},
                 {"role": "user", "content": question},
                 {
                     "role": "user",
@@ -1054,7 +1164,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         yield {"type": "done", "answer": None, "needs_ask": calendar_ask}
         return
 
-    messages = [{"role": "system", "content": _system_prompt(client, company_id)}]
+    messages = [{"role": "system", "content": _system_prompt(client, company_id, question=question)}]
     shots = memory.few_shots(client, company_id, question, limit=3)
     if shots:
         examples = "\n".join(f'- "{s["question"]}" -> `{s["proc_or_sql"]}`' for s in shots)
@@ -1080,11 +1190,17 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         )
         messages.append({
             "role": "system",
-            "content": f"Matching report metadata (write equivalent SELECT on t., never EXEC):\n{cards}",
+            "content": (
+                "Matching report metadata — use run_report with the catalog name. "
+                "Certified SELECT templates run on t. only; no EXEC in this release "
+                "(audited read-only Rpt_* EXEC requires a later signed allow-list + GRANT):\n"
+                f"{cards}"
+            ),
         })
     # Wave 6 vault cards — deterministic schema memory on every /ask
     fast_count = _is_fast_count_path(question)
-    if not fast_count:
+    howto_path = _is_howto_path(question, client)
+    if not fast_count and not report_path:
         vault_hits = vault.retrieve_cards(question, client, limit=3)
         if vault_hits:
             vault_block = vault.format_retrieved_cards(question, vault_hits)
@@ -1095,6 +1211,23 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             "content": (
                 "Count-only question for a master table or named metric — use run_metric "
                 "or run_select directly. Do not call search_docs or vault tools."
+            ),
+        })
+    if report_path:
+        top = report_cards[0]["name"] if report_cards else ""
+        messages.append({
+            "role": "system",
+            "content": (
+                f"Named report question — call run_report(name={top!r}) once. "
+                "Do not thrash search_docs; use catalog params and tenant dates."
+            ),
+        })
+    if howto_path:
+        messages.append({
+            "role": "system",
+            "content": (
+                "How-to / screen / option question — search_docs first. "
+                "Do not introspect schema or run SQL unless the question also asks for counts."
             ),
         })
     if _needs_honesty_preamble(question):
@@ -1116,11 +1249,16 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         "queries": [],
         "warned_last_query": False,
         "warned_doc_search_cap": False,
+        "warned_vault_search_cap": False,
         "last_rows": None,
         "doc_source_pairs": [],
         "doc_searches": 0,
+        "vault_searches": 0,
         "docs_only": False,
         "fast_count": fast_count,
+        "report_path": report_path,
+        "howto_path": howto_path,
+        "report_name": None,
         "question": question,
     }
     final_text = None
@@ -1197,11 +1335,20 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                 ),
             })
             state["warned_doc_search_cap"] = True
+        if state.get("vault_searches", 0) >= MAX_VAULT_SEARCHES and not state.get("warned_vault_search_cap"):
+            messages.append({
+                "role": "system",
+                "content": (
+                    "No more vault schema searches (search_schema_notes / read_schema_note / get_joins). "
+                    "Answer from notes already retrieved or use live introspect_schema."
+                ),
+            })
+            state["warned_vault_search_cap"] = True
 
     if _has_evidence(state):
         final_text = _resolve_final_text(final_text, messages, state)
         trace.log_event(client, question, event="answer", subject=subject, company_id=company_id)
-        if state["queries"]:
+        if state["queries"] and not state.get("report_path"):
             memory.set_plan(key, client, {"queries": state["queries"]})
         envelope = _build_envelope(question, final_text, state)
     elif _is_blank(final_text):
@@ -1211,7 +1358,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     else:
         final_text = final_text.strip()
         trace.log_event(client, question, event="answer", subject=subject, company_id=company_id)
-        if state["queries"]:
+        if state["queries"] and not state.get("report_path"):
             memory.set_plan(key, client, {"queries": state["queries"]})
         envelope = _build_envelope(question, final_text, state)
 

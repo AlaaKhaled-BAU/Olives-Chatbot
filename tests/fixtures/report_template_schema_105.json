@@ -1,0 +1,2169 @@
+{
+  "tables": {
+    "dbo.DeliveryRoute": [
+      {
+        "column": "CompNo",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "SalesmanNo",
+        "type": "int",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "CustomerID",
+        "type": "bigint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "RouteDate",
+        "type": "smalldatetime",
+        "nullable": false,
+        "is_pk": true
+      }
+    ],
+    "dbo.Receipts": [
+      {
+        "column": "CompanyID",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "TransactionTypeID",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "TransactionYear",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "TransactionNo",
+        "type": "int",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "TransactionDate",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "DocumentTypeID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "CustomerID",
+        "type": "bigint",
+        "nullable": true
+      },
+      {
+        "column": "SalesPersonID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "Amount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "CurrencyID",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "ExchangeRate",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "IsPrinted",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Notes",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Latitude",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Longitude",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "RouteID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "PostedToERP",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Collected",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Discount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "RefNo",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "TrDateTime",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "PrintOriginalCount",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "PrintCopyCount",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "IsWFApproved",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "WFApproveDesc",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "IsVoid",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "AcceptDate",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "ServerDate",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "DetailCount",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "TabletSysID",
+        "type": "varchar",
+        "nullable": true
+      },
+      {
+        "column": "AcceptedBy",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "ReceiptRequestYear",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "ReceiptRequestNo",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "Reference1",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Reference2",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "PostedToEmail",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Bank_TransferNo",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Bank_Transfer_Date",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "Bank_Transfer_Amount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "Bank_Transfer_BankID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "Bank_Transfer_BankAccount",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "FirstVoid",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "VoidPostedToERP",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "VoidPostedToEmail",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "VoidedByUser",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "SecondCollected",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "PostedToERPDateTime",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "LocationLineID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "ForeignDiscount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "IsDepositInBank",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "PostDate",
+        "type": "smalldatetime",
+        "nullable": true
+      }
+    ],
+    "dbo.TransactionsHeaders": [
+      {
+        "column": "CompanyID",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "TransactionTypeID",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "TransactionYear",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "TransactionNo",
+        "type": "int",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "TransactionDate",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "SalesPersonID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "CustomerID",
+        "type": "bigint",
+        "nullable": true
+      },
+      {
+        "column": "PriceListID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "DocumentTypeID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "CreditCash",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "DiscountAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "DiscountPercent",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignDiscountAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignDiscountPercent",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "Notes",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "CurrencyID",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "ExchangeRate",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "IsPrinted",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Latitude",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Longitude",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "RouteID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "PostedToERP",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "IsVoid",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "CustomerName",
+        "type": "varchar",
+        "nullable": true
+      },
+      {
+        "column": "Approve",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Reference1",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Reference2",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "TrDateTime",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "BusinessUnitID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "PostedToERP_Rec",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "PaymentType",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "CustomerDiscountPerc",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "CustomerDiscountAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "PrintOriginalCount",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "PrintCopyCount",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "IsWFApproved",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "WFApproveDesc",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "IsCheckInvoice",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "ContractID",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "ForeignCustomerDiscountPerc",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignCustomerDiscountAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "AcceptDate",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "ServerDate",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "IsLinkedWithInv",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "DetailCount",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "TabletSysID",
+        "type": "varchar",
+        "nullable": true
+      },
+      {
+        "column": "PayAmount_Curr1",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "PayAmount_Curr2",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "AcceptedBy",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "PatientName",
+        "type": "varchar",
+        "nullable": true
+      },
+      {
+        "column": "FileNo",
+        "type": "varchar",
+        "nullable": true
+      },
+      {
+        "column": "LocationLineID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "lineManagerApprove",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "DeliveryOrderYear",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "DeliveryOrderNo",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "InvDueDays",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "IsDirectOnline",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Manual_Disc",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "IsLoan",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "LoanApproveBy",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "PostedToERPDateTime",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "SalesmanStockYear",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "SalesmanStockNo",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "EINV_QR",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "EINV_INV_UUID",
+        "type": "uniqueidentifier",
+        "nullable": true
+      },
+      {
+        "column": "IsFromCash",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "IsPostVoid",
+        "type": "bit",
+        "nullable": true
+      }
+    ],
+    "dbo.TransactionsDetails": [
+      {
+        "column": "CompanyID",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "TransactionTypeID",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "TransactionYear",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "TransactionNo",
+        "type": "int",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "ItemCode",
+        "type": "nvarchar",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "UnitID",
+        "type": "nvarchar",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "ItemSerial",
+        "type": "int",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "Quantity",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "Bonus",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "Price",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "DiscountAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "DiscountPercent",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "VoucherDiscount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "TaxType",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "TaxPercent",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "TaxAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignPrice",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignDiscountAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignDiscountPercent",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignVouDiscount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignTaxPercent",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignTaxAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ItemStatus",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "CustomerDiscountAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignCustomerDiscountAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "UPrice",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "TaxType1",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "TaxPercent1",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "TaxAmount1",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "TaxType2",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "TaxPercent2",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "TaxAmount2",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "Approve",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Manual_Bonus",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ExchangeRate",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "SP_Qty",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ItemBarcode",
+        "type": "varchar",
+        "nullable": true
+      },
+      {
+        "column": "Manual_Disc",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "QtyAsBonus",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "Notes",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "ReturnReason",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "BonusTax",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "BonusAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "LineSort",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "CurrentQty",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "IsInventoried",
+        "type": "bit",
+        "nullable": true
+      }
+    ],
+    "dbo.SalesPersons": [
+      {
+        "column": "CompanyID",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "ID",
+        "type": "int",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "Parent",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "BusinessUnitID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "GroupID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "CashBoxAccount",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "DebitAccount",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "DeviceID",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Name",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "ForeignName",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Reference1",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Reference2",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "SalesPersonType",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "TelephoneNo",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Email",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "IsSuspended",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "PositionID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "IsUpdatedStock",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "DayOff",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Level",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "UserID",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "CompanyBrancheID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "CreditLimit",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "IsSendData",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "AutoSendData",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "VehicleId",
+        "type": "varchar",
+        "nullable": true
+      },
+      {
+        "column": "SerialRef",
+        "type": "varchar",
+        "nullable": true
+      },
+      {
+        "column": "MaxStockValue",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "CarID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "CoverageTargetPer",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ProductivityTargetPer",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "DistributionTargetPer",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "Longitude",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Latitude",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "MaxLoadOrderAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "RouteCheck",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "AssetStoreNo",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "PostedToERP",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Barcode",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "TragetPercentage",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ItemGroup",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "MonthlyAllowedDiscountValue",
+        "type": "float",
+        "nullable": true
+      }
+    ],
+    "dbo.Customers": [
+      {
+        "column": "CompanyID",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "ID",
+        "type": "bigint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "Name",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "ForeignName",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "ShortName",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "TypeID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "LocationID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "Reference1",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Reference2",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Account",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Barcode",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Contact",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "TelephoneNo",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "MobileNo",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "FaxNo",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "POBox",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Address",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Latitude",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Longitude",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "WebSite",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Email",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "IsSuspended",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "UserID",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Password",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "CustomerBalance",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ChqBalance",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "CustomerImage",
+        "type": "image",
+        "nullable": true
+      },
+      {
+        "column": "Balance",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "SendInvByEmail",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "CommercialRegistrationNo",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "ProfessionlicenceNo",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "NewCustRefNo",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Notes",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Group_ID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "ClassID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "TabSysID",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "TaxNumber",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "CompanyNationalID",
+        "type": "varchar",
+        "nullable": true
+      },
+      {
+        "column": "IsCollectedGPS",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Erp_Reference",
+        "type": "varchar",
+        "nullable": true
+      },
+      {
+        "column": "AssetsRef1",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "AssetsRef2",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Status",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "DeliveryCarType",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "IsClosed",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "DayOff",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "WorkingDays",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "SuspendedReason",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "PriceListID_Tmp",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "PType_Tmp",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "IsWFSuspended",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "CreateDate",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "Reference3",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ExemtedDate",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "Street",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "CommercialName",
+        "type": "nvarchar",
+        "nullable": true
+      }
+    ],
+    "dbo.Items": [
+      {
+        "column": "CompanyID",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "ItemCode",
+        "type": "nvarchar",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "Name",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "ForeignName",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "ShortName",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Barcode",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "CategCode",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "UnitID",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Reference1",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Reference2",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "FillSize",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "MinimumStock",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "IsExpiry",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "ValidityDays",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "Volume",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "Weight",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "IsSuspended",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "ItemImage",
+        "type": "image",
+        "nullable": true
+      },
+      {
+        "column": "TargetReferenceID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "QtyInAllStores",
+        "type": "money",
+        "nullable": true
+      },
+      {
+        "column": "DefaultUnit",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "Reference3",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Reference4",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Reference5",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "IsTaxExempt",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "ItemReplacementGroup",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "Is_weighted",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "PDFFileID",
+        "type": "numeric",
+        "nullable": true
+      },
+      {
+        "column": "VideoFileID",
+        "type": "numeric",
+        "nullable": true
+      },
+      {
+        "column": "UsedInUploadOrder",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "SubTargetReferenceID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "TaxType",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "Tax",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "Erp_Reference",
+        "type": "varchar",
+        "nullable": true
+      },
+      {
+        "column": "ItemBonusTargetGroupID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "ItemOrderInList",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "SuggestGroupID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "ClassID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "BasketItemNo",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "BasketVolume",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "IsBasketItem",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "IsCustStockItem",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "VanCustodyUnitSerial",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "PromotionItemGroupID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "IsBatchItem",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "ItemQtyStatus",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "IsCashOnly",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "IsMostSales",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Ref6",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Ref7",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "IsForSales",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "ItemGroupID",
+        "type": "int",
+        "nullable": true
+      }
+    ],
+    "dbo.OrdersHeaders": [
+      {
+        "column": "CompanyID",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "OrderYear",
+        "type": "int",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "OrderNo",
+        "type": "int",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "OrderDate",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "PromisesDate",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "CustomerID",
+        "type": "bigint",
+        "nullable": true
+      },
+      {
+        "column": "SalesPersonID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "PriceListID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "DiscountAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "DiscountPercent",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignDiscountAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignDiscountPercent",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "CurrencyID",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "ExchangeRate",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "Notes",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Latitude",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Longitude",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "PostedToERP",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "RouteID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "Reference1",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Reference2",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "PaymentType",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "ServerDate",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "WFApproved",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Approved",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "DocumentsTypesID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "TrDateTime",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "BusinessUnitID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "CustomerDiscountPerc",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "CustomerDiscountAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "IsVoid",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "PrintOriginalCount",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "PrintCopyCount",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "ContractID",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "ForeignCustomerDiscountPerc",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignCustomerDiscountAmount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "IsPostBackOrder",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "IsPostBackOrderToERP",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "CreditCash",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "PostedByEmail",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "AcceptDate",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "DetailCount",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "DeliveryBatchID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "TabletSysID",
+        "type": "varchar",
+        "nullable": true
+      },
+      {
+        "column": "ExtraNote",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "IsDelivered",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Manual_Disc",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "BackOrderYear",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "BackOrderNo",
+        "type": "bigint",
+        "nullable": true
+      },
+      {
+        "column": "FinalApproval",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "PostedToERPDateTime",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "UsedInAutoUploadOrder",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "LocationLineID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "MakeCashDiscount",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "QuotationYear",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "QuotationNo",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "NeedApproval",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "DriverNo",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "NoNeedCreditCheck",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "TransFees",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ForeignTransFees",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "CheckInTime",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "CustomerName",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Address",
+        "type": "nvarchar",
+        "nullable": true
+      }
+    ],
+    "dbo.CustomersFinancialDetails": [
+      {
+        "column": "CompanyID",
+        "type": "smallint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "CustomerID",
+        "type": "bigint",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "PositionsID",
+        "type": "int",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "BusinessUnitID",
+        "type": "int",
+        "nullable": false,
+        "is_pk": true
+      },
+      {
+        "column": "PaymentTypeID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "PriceListID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "RouteID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "CustomersPromotionsGroupsID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "CreditLimit",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "DueDays",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "ChqsDueDays",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "AllowChqs",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "IsSuspended",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "FavouriteVisitTime",
+        "type": "smalldatetime",
+        "nullable": true
+      },
+      {
+        "column": "Reference1",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "Reference2",
+        "type": "nvarchar",
+        "nullable": true
+      },
+      {
+        "column": "TaxInclude",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "DiscountPerc",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "CreditCash",
+        "type": "smallint",
+        "nullable": true
+      },
+      {
+        "column": "CustomerBalance",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ChqBalance",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "VisitOrder",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "MaxInvoiceValue",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "MaxInvoiceCount",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "ChqLimit",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "Tax_1_Include",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "Tax_2_Include",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "AllowManualDiscount",
+        "type": "bit",
+        "nullable": true
+      },
+      {
+        "column": "CompanyBrancheID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "EarlyRepaymentDiscountPerc",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ClassID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "DiscountEarlyPayDays",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "LocationLineID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "DeliveryDays",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "OrderCashDiscount",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "CurrencyID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "ReturnCreditLimit",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "ReturnBalance",
+        "type": "float",
+        "nullable": true
+      },
+      {
+        "column": "LocationID",
+        "type": "int",
+        "nullable": true
+      },
+      {
+        "column": "SalesOrderLimit",
+        "type": "float",
+        "nullable": true
+      }
+    ]
+  }
+}
