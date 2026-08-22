@@ -336,12 +336,13 @@ async def ask(request: Request, req: AskRequest):
         _persist_session(req.session_id, session)
 
     async def asgi_stream():
-        """TRACK D: pump the sync generator on a thread; between every item
-        (and every silent second) poll for client disconnect. On disconnect
-        we set the cancel Event — the agent stops generating within one
-        chunk/tool-call — and close silently."""
+        """TRACK D: pump the sync generator on a thread. A dedicated
+        watcher polls is_disconnected every 0.5s — critical during silent
+        thinking phases when the agent emits no events for tens of seconds;
+        without it, abort latency equals the longest quiet window."""
         q: queue.Queue = queue.Queue()
         sentinel = object()
+        wake = object()
 
         def _pump():
             try:
@@ -354,25 +355,41 @@ async def ask(request: Request, req: AskRequest):
 
         threading.Thread(target=_pump, daemon=True).start()
         loop = asyncio.get_running_loop()
-        while True:
-            try:
-                item = await asyncio.wait_for(loop.run_in_executor(None, q.get), timeout=15.0)
-            except asyncio.TimeoutError:
+
+        async def _watch_disconnect():
+            while not cancel.is_set():
                 if await request.is_disconnected():
                     cancel.set()
+                    try:
+                        q.put_nowait(wake)
+                    except queue.Full:
+                        pass
                     return
-                yield ": keep-alive\n\n"
-                continue
-            if await request.is_disconnected():
-                cancel.set()
-                return
-            if item is sentinel:
-                return
-            if isinstance(item, agent.TurnCancelled):
-                return
-            if isinstance(item, BaseException):
-                raise item
-            yield item
+                await asyncio.sleep(0.5)
+
+        watcher = asyncio.create_task(_watch_disconnect())
+        try:
+            while True:
+                try:
+                    item = await asyncio.wait_for(
+                        loop.run_in_executor(None, q.get), timeout=20.0)
+                except asyncio.TimeoutError:
+                    # Belt-and-braces: watcher owns detection; this also
+                    # re-checks in case the watcher task itself died.
+                    if await request.is_disconnected():
+                        cancel.set()
+                        return
+                    yield ": keep-alive\n\n"
+                    continue
+                if item is wake or item is sentinel:
+                    return
+                if isinstance(item, agent.TurnCancelled):
+                    return
+                if isinstance(item, BaseException):
+                    raise item
+                yield item
+        finally:
+            watcher.cancel()
 
     return StreamingResponse(
         asgi_stream(),

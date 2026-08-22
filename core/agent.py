@@ -1390,6 +1390,8 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             # cached_plan.get("sql") handles a plan written before this
             # change (single-string shape) without crashing.
             queries = cached_plan.get("queries") or ([cached_plan["sql"]] if cached_plan.get("sql") else [])
+            if cancel is not None and cancel.is_set():
+                raise TurnCancelled("client disconnected before replay")
             raw_results = [sql.run_select(q, company_id, client, allowed_procs=allowed_proc_names) for q in queries]
             results = [_cap_for_context(r) for r in raw_results]
             messages = _static_prefix(client, cache) + [
@@ -1402,7 +1404,8 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             ]
             answer = None
             for event in _stream_turn(messages, None, gear=DOCS_GEAR,
-                                      user_id=_user_id(client, company_id, subject)):
+                                      user_id=_user_id(client, company_id, subject),
+                                      cancel=cancel):
                 if event["type"] == "_turn_done":
                     answer = event["message"]["content"]
                 else:

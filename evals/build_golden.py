@@ -19,7 +19,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
 from core import sql  # noqa: E402
-from evals.golden_rows import normalize_rows  # noqa: E402
+from evals.golden_rows import snapshot_rows  # noqa: E402
 
 GOLDEN_PATH = BASE_DIR / "evals" / "exec_golden.jsonl"
 
@@ -40,7 +40,7 @@ def main() -> None:
         except Exception as exc:  # noqa: BLE001 — report and keep going
             print(f"[SKIP] {case.get('name')}: {type(exc).__name__}: {str(exc)[:100]}")
             continue
-        case["gold_rows"] = normalize_rows(rows)
+        case["gold_rows"] = snapshot_rows(rows)
         changed += 1
         print(f"[OK] {case['name']}: {len(rows)} rows snapshotted")
     GOLDEN_PATH.write_text(

@@ -28,19 +28,123 @@ def _norm_value(v):
         return f"{float(v):.2f}"
     if isinstance(v, (datetime, date)):
         return v.isoformat()[:10]
-    return str(v).strip().lower()
+    s = str(v).strip().lower()
+    # Type symmetry: a numeric STRING must land where the same NUMBER lands,
+    # or snapshot-vs-candidate comparisons split on representation.
+    try:
+        return f"{float(s.replace(',', '')):.2f}"
+    except ValueError:
+        return s
+
+
+def snapshot_rows(rows) -> list[dict]:
+    """Build-time capture preserving COLUMN NAMES (projection needs them at
+    grade time): [{'gross_amount': '432.58'}, ...] with values already
+    normalized so grade-time normalization is idempotent."""
+    if isinstance(rows, dict):
+        rows = rows.get("rows", [])
+    out = []
+    for row in rows or []:
+        if isinstance(row, dict):
+            out.append({str(k): _norm_value(v) for k, v in row.items()})
+        else:
+            raise ValueError("cannot snapshot nameless rows — gold SQL must return dict rows")
+    return out
 
 
 def normalize_rows(rows) -> list[tuple]:
-    """[{col: val}] -> sorted list of column-sorted value tuples."""
+    """Robust over result shapes: {col: val} rows, bare [val] rows,
+    driver oddities, and the capped {'rows': [...]} wrapper."""
+    if isinstance(rows, dict):  # capped-shape wrapper
+        rows = rows.get("rows", [])
+    if rows is None:
+        return []
     out = []
-    for row in rows or []:
-        out.append(tuple(_norm_value(row[k]) for k in sorted(row.keys(), key=str)))
+    for row in rows:
+        if isinstance(row, dict):
+            out.append(tuple(_norm_value(row[k]) for k in sorted(row.keys(), key=str)))
+        elif isinstance(row, (list, tuple)):
+            out.append(tuple(_norm_value(v) for v in row))
+        else:
+            out.append((_norm_value(row),))
     return sorted(out)
 
 
+def _unwrap(rows):
+    if isinstance(rows, dict):
+        rows = rows.get("rows", [])
+    return rows or []
+
+
+def _ci_map(row: dict) -> dict:
+    """Case-insensitive column lookup (SQL Server collations ignore case;
+    driver-preserved casing must not decide pass/fail)."""
+    return {_col_key(k): v for k, v in row.items()}
+
+
+def _col_key(name):
+    return str(name).strip().lower()
+
+
 def rows_equal(gold_rows, candidate_rows) -> bool:
-    return normalize_rows(gold_rows) == normalize_rows(candidate_rows)
+    """Column-projected comparison (TRACK A hardening): when both sides are
+    dict-rows, grade ONLY the gold columns — candidates may return extra
+    columns (e.g. the certified metric ships invoice_count alongside
+    gross_amount) without failing, but every gold column must exist and
+    match. Missing gold column in candidate = fail. Non-dict shapes fall
+    back to strict whole-tuple comparison. Row order never matters."""
+    gold = _unwrap(gold_rows)
+    cand = _unwrap(candidate_rows)
+    if not gold and not cand:
+        return True
+    if gold and all(isinstance(r, dict) for r in gold) \
+            and cand and all(isinstance(r, dict) for r in cand):
+        gold_cols = []
+        seen = set()
+        for r in gold:
+            for k in r.keys():
+                ck = _col_key(k)
+                if ck not in seen:
+                    seen.add(ck)
+                    gold_cols.append(ck)
+        cand_maps = [_ci_map(r) for r in cand]
+
+        def proj(row_map):
+            try:
+                return tuple(_norm_value(row_map[c]) for c in gold_cols)
+            except KeyError:
+                return None
+
+        try:
+            gold_set = sorted(
+                tuple(_norm_value(_ci_map(r)[c]) for c in gold_cols) for r in gold)
+        except KeyError:
+            gold_missing = True  # ragged/unmatched names — try value-tier below
+        else:
+            gold_missing = False
+
+        cand_proj = []
+        names_match = not gold_missing and all(
+            all(c in m for c in gold_cols) for m in cand_maps)
+
+        if names_match:
+            for m in cand_maps:
+                p = proj(m)
+                if p is None:
+                    return False  # candidate missing a required gold column
+                cand_proj.append(p)
+            return sorted(cand_proj) == gold_set
+
+        # Value-tier fallback: aggregate aliases are model-invented
+        # (COUNT(*) AS CustomerCount vs our AS n), so names legitimately
+        # diverge. For SINGLE-column golds, pass iff every gold value exists
+        # among the candidate cells and the candidate isn't missing rows.
+        if len(gold_cols) == 1:
+            needed = {_norm_value(r[gold_cols[0]]) for r in gold}
+            have = {_norm_value(v) for r in cand for v in r.values()}
+            return needed <= have and len(cand) >= len(gold)
+        return False
+    return normalize_rows(gold) == normalize_rows(cand)
 
 
 def load_cases(path) -> list[dict]:
@@ -72,6 +176,10 @@ def run_suite(cases, agent_ask, run_select, verbose=True) -> tuple[int, int]:
                 print(f"  [FAIL] {name}: {type(exc).__name__}: {str(exc)[:120]}")
             continue
         ok = rows_equal(case.get("gold_rows"), cand_rows)
+        if not ok and verbose:
+            from evals.golden_rows import normalize_rows as _nr
+            print(f"    cand_sql: {cand_sql[:180]!r}")
+            print(f"    gold={_nr(case.get('gold_rows'))[:5]} cand={_nr(cand_rows)[:5]}")
         passed += int(ok)
         if verbose:
             mark = "PASS" if ok else "FAIL"

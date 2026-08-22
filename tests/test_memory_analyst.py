@@ -240,3 +240,35 @@ def test_rows_not_equal_on_missing_row():
 def test_normalize_rows_handles_arabic_indic_digits_as_strings():
     rows = [{"name": "أحمد"}]
     assert normalize_rows(rows) == [("أحمد",)]
+
+
+def test_rows_equal_tolerates_extra_candidate_columns():
+    from evals.golden_rows import rows_equal
+    gold = [{"gross_amount": 432.58}]
+    cand = [{"invoice_count": 2, "gross_amount": 432.5833}]
+    assert rows_equal(gold, cand)
+
+
+def test_rows_equal_case_insensitive_columns_and_missing_col_fails():
+    from evals.golden_rows import rows_equal
+    assert rows_equal([{"Gross": 5}], [{"gross": 5}])
+    assert not rows_equal([{"gross": 5, "n": 1}], [{"other": 5}])
+
+
+def test_math_module_still_importable_in_golden_rows():
+    import evals.golden_rows as gr
+    assert hasattr(gr, "math")
+
+
+def test_rows_equal_value_tier_for_renamed_single_column():
+    from evals.golden_rows import rows_equal
+    gold = [{"n": "25"}]
+    cand = [{"CustomerCount": 25}]
+    assert rows_equal(gold, cand)
+    assert not rows_equal(gold, [{"CustomerCount": 99}])
+
+
+def test_value_tier_requires_rowcount_floor():
+    from evals.golden_rows import rows_equal
+    gold = [{"n": "1"}, {"n": "2"}]
+    assert not rows_equal(gold, [{"Count": 1}])
