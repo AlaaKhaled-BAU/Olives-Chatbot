@@ -91,10 +91,10 @@ OrderNo
 Typical business table
 ## Common Issues
 
-- **Pending orders stuck**: WF approval not progressing — check WF_SETUP and approver assignment
-- **Qty mismatch**: Order qty differs from delivered qty — check delivery confirmation step
-- **Duplicate items**: Same item appears twice in order details — causes pricing errors
-- **Route mismatch**: Customer on wrong route assigned in order — delivery driver skips stop
+- **Role**: archived twin of SalesOrderDeliveryHF (identical shape); query here for closed periods
+## Tenancy
+
+Both tables surface as `t.` views scoped via their `CompNo` column (= `SESSION_CONTEXT(N'CompanyID')`; proven live: company 1 sees 2 of SalesOrderHistoryDF's SalesOrderHistoryHF rows). `CompNo` holds the company id.
 
 ## Related
 

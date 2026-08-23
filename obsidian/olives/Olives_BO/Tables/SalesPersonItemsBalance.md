@@ -176,11 +176,11 @@ CompanyID, SalesPersonID -> [[SalesPersons]](CompanyID, ID)
 Typical business table
 ## Common Issues
 
-- **Duplicate barcodes**: Multiple items sharing same barcode — POS picks wrong item
-- **Price mismatch**: Sell price in Items differs from PriceListDetails — customer charged wrong amount
-- **Stock discrepancy**: QtyInAllStores differs from sum of StoreBalances — run CALCITEMBALANCE
-- **Missing units**: Item has no valid ItemUnits — cannot be sold
-- **Tax config wrong**: IsTaxExempt flag incorrect — ZATCA/legal reporting mismatch
+- **Role**: van-custody snapshot per salesman; movement history belongs to Transactions* tables
+- **Unit naming**: UnitCode has no declared FK — resolve against ItemsUnits manually
+## Tenancy
+
+Chatbot queries `t.SalesPersonItemsBalance` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

@@ -93,8 +93,8 @@ Core data table in the Back Office (server-side) — stores itemsunitsdetails re
 | Column | Type | Nullable | PK | FK | References |
 |--------|------|----------|----|----|------------|
 | CompanyID | smallint | NO | ✓ | ✓ | [[ItemsUnits]] |
-| ItemCode | nvarchar | YES | ✓ | ✓ | [[Items]] |
-| UnitID | nvarchar | YES | ✓ | ✓ | [[ItemsUnits]] |
+| ItemCode | nvarchar | NO | ✓ | ✓ | [[Items]] |
+| UnitID | nvarchar | NO | ✓ | ✓ | [[ItemsUnits]] |
 | ConvertRate | float | YES |  |  |  |
 | UnitSerial | int | YES |  |  |  |
 | Barcode | nvarchar | YES |  |  |  |
@@ -218,11 +218,10 @@ CompanyID, UnitID -> [[ItemsUnits]](CompanyID, ID)
 Typical business table
 ## Common Issues
 
-- **Duplicate barcodes**: Multiple items sharing same barcode — POS picks wrong item
-- **Price mismatch**: Sell price in Items differs from PriceListDetails — customer charged wrong amount
-- **Stock discrepancy**: QtyInAllStores differs from sum of StoreBalances — run CALCITEMBALANCE
-- **Missing units**: Item has no valid ItemUnits — cannot be sold
-- **Tax config wrong**: IsTaxExempt flag incorrect — ZATCA/legal reporting mismatch
+- **Conversion**: ConvertRate expresses this unit against the item default unit (Items.UnitID) — multiply when normalizing quantities
+## Tenancy
+
+Chatbot queries `t.ItemsUnitsDetails` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

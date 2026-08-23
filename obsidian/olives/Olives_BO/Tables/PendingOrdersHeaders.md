@@ -25,7 +25,7 @@ Core data table in the Back Office (server-side) — stores pendingordersheaders
 | OrderNo | int | NO |  |  |  |
 | SalespersonID | int | NO |  |  |  |
 | CustomerNo | bigint | NO |  |  |  |
-| CustomerName | nvarchar | YES |  |  |  |
+| CustomerName | nvarchar | NO |  |  |  |
 | OrderDate | smalldatetime | NO |  |  |  |
 | TotalBeforeTax | float | YES |  |  |  |
 ## Primary Key
@@ -44,10 +44,10 @@ _None_
 Typical business table
 ## Common Issues
 
-- **Pending orders stuck**: WF approval not progressing — check WF_SETUP and approver assignment
-- **Qty mismatch**: Order qty differs from delivered qty — check delivery confirmation step
-- **Duplicate items**: Same item appears twice in order details — causes pricing errors
-- **Route mismatch**: Customer on wrong route assigned in order — delivery driver skips stop
+- **Carrier naming**: this family uses SalespersonID(int) + CustomerNo(bigint) — join Customers via CompanyID+CustomerNo, NOT CustomerID
+## Tenancy
+
+Chatbot queries `t.PendingOrdersHeaders` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

@@ -91,6 +91,7 @@ Core data table in the Back Office (server-side) — stores invoicedeliveryhf re
 | DeliveryBatchID | int | YES |  |  |  |
 | RefOrderYear | smallint | YES |  |  |  |
 | RefOrderNo | int | YES |  |  |  |
+| DeliveredApproved | bit | YES |  |  |  |
 ## Primary Key
 CompNo
 VouYear
@@ -156,11 +157,12 @@ VouType
 Typical business table
 ## Common Issues
 
-- **Orphan lines**: Detail rows without matching header — causes sync failures
-- **Posting failure**: IsPosted flag stuck false — check ERP integration log
-- **Duplicate vouchers**: Same VouNo generated for different transactions — run dedup check
-- **Currency mismatch**: ExRate different from CurrenciesRate table — financial reconciliation off
-- **Void inconsistency**: IsVoid flag but original transaction still active — check WF approval
+- **Order back-link**: RefOrderYear/RefOrderNo point at originating SalesOrderDelivery vouchers — join there for order-to-invoice traceability
+- **Lifecycle**: IsDelivered + DeliveredDateTime + DeliveredSalesmanNo track van delivery state; ManifestID groups delivery runs
+- **Status column**: InvStatus mostly NULL live; PostedToERP marks ERP export
+## Tenancy
+
+Both tables surface as `t.` views scoped via their `CompNo` column (= `SESSION_CONTEXT(N'CompanyID')`; proven live: company 1 sees 2 of InvoiceDeliveryDF's InvoiceDeliveryHF rows). `CompNo` holds the company id.
 
 ## Related
 

@@ -78,7 +78,7 @@ related_workflows: [[Route-Planning]]
 ## Business Purpose
 > [!warning] AUTO-GENERATED — verify before trusting
 
-Core data table in the Back Office (server-side) — stores salespersonsroutes records.
+Weekly route plan per salesman position. WeekDay 1-7 = Saturday-Friday (verified against Day column data). Week1..Week4 hold alternative route ids per slot; slot selection is application-side.
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -177,13 +177,14 @@ CompanyID, Week4 -> [[RoutesInformation]](CompanyID, ID)
 
 ## Estimated Size / Volatility
 Typical business table
+## Tenancy
+
+Chatbot queries `t.SalesPersonsRoutes` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`.
+
 ## Common Issues
 
-- **Missing route assignment**: Salesperson has no RouteID — cannot see customers on tablet
-- **Item balance mismatch**: Van stock differs from SalesPersonsItemsBalance — run stock-taking proc
-- **Device permission missing**: No device permission record — tablet app features unavailable
-- **Target not calculated**: Monthly targets missing — dashboard shows zero achievement
-
+- **Calendar**: WeekDay integers verified live: 1=السبت(Sat),2=الأحد(Sun),3=الاثنين(Mon),4=الثلاثاء(Tue),5=الأربعاء(Wed),6=الخميس(Thu),7=الجمعة(Fri)
+- **Slot selection**: do NOT assume Week1..4 = week-of-month; resolve via app logic (Fun_GetWeekNo usage in Rpt procs)
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]

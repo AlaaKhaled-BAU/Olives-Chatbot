@@ -187,8 +187,8 @@ Line-item details for sales orders — products, quantities, prices, and discoun
 | CompanyID | smallint | NO | ✓ | ✓ | [[OrdersHeaders]] |
 | OrderYear | int | NO | ✓ | ✓ | [[OrdersHeaders]] |
 | OrderNo | int | NO | ✓ | ✓ | [[OrdersHeaders]] |
-| ItemCode | nvarchar | YES | ✓ | ✓ | [[Items]] |
-| UnitID | nvarchar | YES | ✓ | ✓ | [[ItemsUnits]] |
+| ItemCode | nvarchar | NO | ✓ | ✓ | [[Items]] |
+| UnitID | nvarchar | NO | ✓ | ✓ | [[ItemsUnits]] |
 | Quantity | float | YES |  |  |  |
 | Bonus | float | YES |  |  |  |
 | PromisesDate | smalldatetime | YES |  |  |  |
@@ -227,6 +227,8 @@ Line-item details for sales orders — products, quantities, prices, and discoun
 | Ref1 | varchar | YES |  |  |  |
 | Ref2 | varchar | YES |  |  |  |
 | Ref3 | varchar | YES |  |  |  |
+| TotalPrice | float | YES |  |  |  |
+| SysCodeTypeID | nvarchar | YES |  |  |  |
 ## Primary Key
 CompanyID
 OrderYear

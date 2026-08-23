@@ -25,7 +25,7 @@ Core data table in the Back Office (server-side) — stores contracts records.
 | Column | Type | Nullable | PK | FK | References |
 |--------|------|----------|----|----|------------|
 | CompanyID | smallint | NO | ✓ | ✓ | [[Customers]] |
-| ContractID | nvarchar | YES | ✓ |  |  |
+| ContractID | nvarchar | NO | ✓ |  |  |
 | ContractName | nvarchar | YES |  |  |  |
 | StartDate | smalldatetime | YES |  |  |  |
 | EndDate | smalldatetime | YES |  |  |  |

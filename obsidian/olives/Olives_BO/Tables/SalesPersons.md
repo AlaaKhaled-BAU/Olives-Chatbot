@@ -893,7 +893,7 @@ Field sales representatives registry — assignment, route, device, and performa
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
 |--------|------|----------|----|----|------------|
-| CompanyID | smallint | NO | ✓ | ✓ | [[SalesPersonsGroups]] |
+| CompanyID | smallint | NO | ✓ | ✓ | [[Companies]] |
 | ID | int | NO | ✓ |  |  |
 | Parent | int | YES |  | ✓ | [[SalesPersons]] |
 | BusinessUnitID | int | YES |  |  |  |
@@ -1843,6 +1843,10 @@ Typical business table
 - **Item balance mismatch**: Van stock differs from SalesPersonsItemsBalance — run stock-taking proc
 - **Device permission missing**: No device permission record — tablet app features unavailable
 - **Target not calculated**: Monthly targets missing — dashboard shows zero achievement
+
+## Tenancy
+
+Chatbot queries `t.SalesPersons` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

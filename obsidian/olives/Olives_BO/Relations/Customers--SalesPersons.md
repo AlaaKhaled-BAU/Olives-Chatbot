@@ -6,24 +6,28 @@ tags: [#convention, #backoffice]
 support_relevance: high
 parent_table: [[Customers]]
 referenced_table: [[SalesPersons]]
-columns: "Customers.CompanyID,SalesPersonID → SalesPersons.CompanyID,ID"
+columns: "CustomersFinancialDetails.PositionsID ↔ Positions ← SalesPersons.PositionID"
 last_verified: 2026-08-22
-verified_source: work/morec/schema_cache.json
+verified_source: live SQL instance (INFORMATION_SCHEMA + sys.foreign_keys)
+tenant_scoping: "chatbot queries t.-views only; SESSION_CONTEXT('CompanyID')"
 ---
 
 # Customers → SalesPersons
 
-**Convention join** (NO declared FK despite prior note): Customers.CompanyID+SalesPersonID → [[SalesPersons]].CompanyID+ID
+**There is NO direct customer-to-salesman link.** `Customers` has no SalesPersonId column (live-verified). Two real paths:
 
-**Business meaning**: Assigns each customer to a primary salesperson; drives territory, visit planning and commission attribution. Verified 2026-08-22: no DB constraint backs this link — do not rely on FK metadata to discover it.
+**Assignment (who owns the customer):**
+`t.CustomersFinancialDetails.PositionsID` → `Positions (CompanyID, ID)` ← `SalesPersons.PositionID` — both hops are declared FKs. A customer can hold several CFD rows (one per position/business unit).
+
+**Acting salesman (who transacted):** `OrdersHeaders`, `Receipts`, `TransactionsHeaders`, `ReturnOrdersHeaders`, `TransfersOrdersHeaders` each carry `CompanyID+SalesPersonID -> SalesPersons.CompanyID+ID` (declared).
 
 ## Tenancy
 
-Chatbot queries `t.Customers` and `t.SalesPersons` only; both views auto-filter `SESSION_CONTEXT(N'CompanyID')`. On raw dbo tables always include the CompanyID half shown above.
+Chatbot queries `t.CustomersFinancialDetails`, `t.SalesPersons`, `t.Positions` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`.
 
 ## See also
 
 - [[Customers]]
 - [[SalesPersons]]
+- [[CustomersFinancialDetails--Customers]]
 - [[CustomersFinancialDetails--RoutesInformation]]
-- [[_MOC-Olives_BO]]

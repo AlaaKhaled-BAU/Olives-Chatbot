@@ -69,11 +69,11 @@ CompanyID, ItemNo -> [[Items]](CompanyID, ItemCode)
 Typical business table
 ## Common Issues
 
-- **Duplicate barcodes**: Multiple items sharing same barcode — POS picks wrong item
-- **Price mismatch**: Sell price in Items differs from PriceListDetails — customer charged wrong amount
-- **Stock discrepancy**: QtyInAllStores differs from sum of StoreBalances — run CALCITEMBALANCE
-- **Missing units**: Item has no valid ItemUnits — cannot be sold
-- **Tax config wrong**: IsTaxExempt flag incorrect — ZATCA/legal reporting mismatch
+- **Role**: batch-level stock balances (ExpireDate/Qty per batch) — contrast with TransactionsBatchsItemsInfo which links batches to specific transaction lines
+- **Carrier naming**: ItemNo references Items.ItemCode (no CompanyID in column name; tenant via table scoping)
+## Tenancy
+
+Chatbot queries `t.BatchsItemsInfo` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

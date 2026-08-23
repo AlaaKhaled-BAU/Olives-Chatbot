@@ -71,7 +71,7 @@ Workflow configuration or log table for approval process management.
 | Column | Type | Nullable | PK | FK | References |
 |--------|------|----------|----|----|------------|
 | CompanyID | smallint | YES |  | ✓ | [[Companies]] |
-| ReqID | numeric | YES | ✓ |  |  |
+| ReqID | numeric | NO | ✓ |  |  |
 | FunctionID | smallint | YES |  |  |  |
 | PositionID | int | YES |  |  |  |
 | ReqDate | smalldatetime | YES |  |  |  |
@@ -84,6 +84,7 @@ Workflow configuration or log table for approval process management.
 | Ref3 | nvarchar | YES |  |  |  |
 | Ref4 | nvarchar | YES |  |  |  |
 | Ref5 | nvarchar | YES |  |  |  |
+| ReqBy | nvarchar | YES |  |  |  |
 ## Primary Key
 ReqID
 ## Foreign Keys
@@ -180,9 +181,12 @@ CompanyID -> [[Companies]](ID)
 Typical business table
 ## Common Issues
 
-- **Rapid growth**: Table size growing fast — archive old records periodically
-- **Orphan log entries**: No corresponding source transaction — investigate data source
-- **No cleanup**: No purge job configured — disk space may fill up
+- **Status codes**: LastStatus observed live: 0/1/2/3 (numeric; meaning app-side) — do not invent labels
+- **Approver resolution**: FunctionID joins [[WF_Functions]].ID by convention (no declared FK); PositionID -> Positions
+- **Volume**: append-only log — always bound queries by date
+## Tenancy
+
+Chatbot queries `t.WF_MasterLog` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

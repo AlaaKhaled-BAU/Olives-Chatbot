@@ -46,8 +46,8 @@ Core data table in the Back Office (server-side) — stores returnordersdetails 
 | CompanyID | smallint | NO | ✓ | ✓ | [[ReturnOrdersHeaders]] |
 | TransactionYear | smallint | NO | ✓ | ✓ | [[ReturnOrdersHeaders]] |
 | TransactionNo | int | NO | ✓ | ✓ | [[ReturnOrdersHeaders]] |
-| ItemCode | nvarchar | YES | ✓ | ✓ | [[Items]] |
-| UnitID | nvarchar | YES | ✓ | ✓ | [[ItemsUnits]] |
+| ItemCode | nvarchar | NO | ✓ | ✓ | [[Items]] |
+| UnitID | nvarchar | NO | ✓ | ✓ | [[ItemsUnits]] |
 | ItemSerial | int | YES |  |  |  |
 | Quantity | float | YES |  |  |  |
 | Bonus | float | YES |  |  |  |

@@ -50,11 +50,10 @@ CompanyID, PositionsID -> [[Positions]](CompanyID, ID)
 Typical business table
 ## Common Issues
 
-- **Duplicate customers**: Multiple records with same name/phone created during sync — support agent sees duplicate entries in dropdowns
-- **Orphan references**: Customer records referenced by transactions that were soft-deleted — causes FK violation on cleanup
-- **Balance mismatch**: CustomerBalance field diverges from actual calculated balance — run reconciliation proc
-- **Suspend stuck**: IsSuspended flag not clearing after payment — check WF approval chain
-- **GPS not collected**: IsCollectedGPS flag false — affects route optimization
+- **Format**: VisitActivityInOrder is a CSV of activity tokens (e.g. Agreements,Catalog,...,Order,) — parse by splitting on commas, trailing comma common
+## Tenancy
+
+Chatbot queries `t.CustomersVisitActivity` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

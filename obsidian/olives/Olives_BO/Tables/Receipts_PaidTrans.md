@@ -109,11 +109,13 @@ CompanyID -> [[Companies]](ID)
 Typical business table
 ## Common Issues
 
-- **Orphan lines**: Detail rows without matching header — causes sync failures
-- **Posting failure**: IsPosted flag stuck false — check ERP integration log
-- **Duplicate vouchers**: Same VouNo generated for different transactions — run dedup check
-- **Currency mismatch**: ExRate different from CurrenciesRate table — financial reconciliation off
-- **Void inconsistency**: IsVoid flag but original transaction still active — check WF approval
+> [!warning] AUTO-GENERATED — verify before trusting
+
+- **Settlement key**: joins Receipts via CompanyID+TransactionTypeID+TransactionYear+TransactionNo (convention — no ReceiptID column exists)
+- **Discount fields**: DiscountAmount/DiscountPercent apply at settlement time, distinct from receipt-level discount
+## Tenancy
+
+Chatbot queries `t.Receipts_PaidTrans` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

@@ -24,7 +24,7 @@ Workflow approval process definitions — levels, approvers, and conditions.
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
 |--------|------|----------|----|----|------------|
-| AutoID | bigint | YES | ✓ |  |  |
+| AutoID | bigint | NO | ✓ |  |  |
 | CompanyID | smallint | YES |  | ✓ | [[Companies]] |
 | FromType | smallint | YES |  |  |  |
 | FromID | bigint | YES |  |  |  |
@@ -48,9 +48,11 @@ CompanyID -> [[Companies]](ID)
 Typical business table
 ## Common Issues
 
-- **Stuck in workflow**: WF level not advancing — check WF_SETUPHD and approver chain
-- **Missing approver**: No user assigned at workflow level — request never processed
-- **Duplicate requests**: Same request submitted multiple times — approve/reject duplicates
+- **Dispatch**: FromType observed live: 0(×47),1(×14),2(×5) — pairs with FromID to name the governed object
+- **Function link**: FunctionID resolves against the [[WF_Functions]] catalog by convention
+## Tenancy
+
+Chatbot queries `t.WF_SetupHeader` / `t.WF_SetupDetails` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

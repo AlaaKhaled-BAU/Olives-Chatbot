@@ -25,8 +25,8 @@ Core data table in the Back Office (server-side) — stores salesorderdeliverydf
 | CompNo | smallint | NO | ✓ |  |  |
 | OrderYear | smallint | NO | ✓ |  |  |
 | OrderNo | int | NO | ✓ |  |  |
-| ItemNo | varchar | YES | ✓ |  |  |
-| UnitCode | varchar | YES | ✓ |  |  |
+| ItemNo | varchar | NO | ✓ |  |  |
+| UnitCode | varchar | NO | ✓ |  |  |
 | OrderdQty | money | YES |  |  |  |
 | Bonus | money | YES |  |  |  |
 | DeliveredQty | money | YES |  |  |  |
@@ -66,10 +66,10 @@ UnitCode
 Typical business table
 ## Common Issues
 
-- **Pending orders stuck**: WF approval not progressing — check WF_SETUP and approver assignment
-- **Qty mismatch**: Order qty differs from delivered qty — check delivery confirmation step
-- **Duplicate items**: Same item appears twice in order details — causes pricing errors
-- **Route mismatch**: Customer on wrong route assigned in order — delivery driver skips stop
+- **Fill rate**: OrderedQty vs DeliveredQty vs OutstandingQty per line; QtyOH = quantity on hand at order time
+## Tenancy
+
+Chatbot queries `t.SalesOrderDeliveryDF` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

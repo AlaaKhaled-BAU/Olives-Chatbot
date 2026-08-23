@@ -742,11 +742,12 @@ CompanyID, RouteID -> [[RoutesInformation]](CompanyID, ID)
 Typical business table
 ## Common Issues
 
-- **Duplicate customers**: Multiple records with same name/phone created during sync — support agent sees duplicate entries in dropdowns
-- **Orphan references**: Customer records referenced by transactions that were soft-deleted — causes FK violation on cleanup
-- **Balance mismatch**: CustomerBalance field diverges from actual calculated balance — run reconciliation proc
-- **Suspend stuck**: IsSuspended flag not clearing after payment — check WF approval chain
-- **GPS not collected**: IsCollectedGPS flag false — affects route optimization
+- **Multi-row**: one customer can hold several term rows (per Position/BusinessUnit) — aggregate credit headroom as SUM(CreditLimit)-SUM(CustomerBalance) across positions
+- **Stale snapshots**: CustomerBalance/ChqBalance/ReturnBalance here are cached; reconcile against CustomerStatmentOfAccount ledger when precision matters
+- **Template bleed**: older copies of this block cited IsCollectedGPS — that column lives on Customers, not here
+## Tenancy
+
+Chatbot queries `t.CustomersFinancialDetails` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

@@ -119,13 +119,14 @@ WHERE type = "relation"
 - [[VanTransferHeader--VanTransferDetails]]
 - [[WF_SetupDetails--WF_SetupHeader]]
 - [[_RequestTo-Join-Conventions]]
+- [[SalesPersons--SalesPersonsRoutes]] — salesman position ↔ weekly route plan
 
 ## Connectivity Stats
 | Metric | Value |
 |--------|-------|
 | Tables | 440 |
 | Procedures | 1722 |
-| Relations | 57 |
+| Relations | 58 |
 
 ## Related
 

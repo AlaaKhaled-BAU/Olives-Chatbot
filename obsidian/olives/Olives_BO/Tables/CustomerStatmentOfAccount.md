@@ -53,8 +53,8 @@ Core data table in the Back Office (server-side) — stores customerstatmentofac
 |--------|------|----------|----|----|------------|
 | CompanyID | smallint | NO | ✓ |  |  |
 | CustomerID | bigint | NO | ✓ |  |  |
-| TrType | varchar | YES | ✓ |  |  |
-| TrNo | varchar | YES | ✓ |  |  |
+| TrType | varchar | NO | ✓ |  |  |
+| TrNo | varchar | NO | ✓ |  |  |
 | TrSer | smallint | NO | ✓ |  |  |
 | DeptNo | int | NO | ✓ |  |  |
 | TrDate | smalldatetime | NO | ✓ |  |  |
@@ -135,11 +135,12 @@ TrDate
 Typical business table
 ## Common Issues
 
-- **Duplicate customers**: Multiple records with same name/phone created during sync — support agent sees duplicate entries in dropdowns
-- **Orphan references**: Customer records referenced by transactions that were soft-deleted — causes FK violation on cleanup
-- **Balance mismatch**: CustomerBalance field diverges from actual calculated balance — run reconciliation proc
-- **Suspend stuck**: IsSuspended flag not clearing after payment — check WF approval chain
-- **GPS not collected**: IsCollectedGPS flag false — affects route optimization
+- **Ledger role**: running Debit/Credit/Balance ledger — authoritative for "what does X owe" over CFD cached balances
+- **TrType domain**: varchar codes seen live: '0','1','3','9999' — decode against source transaction family before filtering; do not guess
+- **Join hint**: TrType+TrNo point back at source vouchers; pair with TransactionTypeID lookups (see TransactionsTypes catalog)
+## Tenancy
+
+Chatbot queries `t.CustomerStatmentOfAccount` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

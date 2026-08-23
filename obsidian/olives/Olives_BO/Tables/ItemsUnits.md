@@ -409,11 +409,11 @@ CompanyID -> [[Companies]](ID)
 Typical business table
 ## Common Issues
 
-- **Duplicate barcodes**: Multiple items sharing same barcode — POS picks wrong item
-- **Price mismatch**: Sell price in Items differs from PriceListDetails — customer charged wrong amount
-- **Stock discrepancy**: QtyInAllStores differs from sum of StoreBalances — run CALCITEMBALANCE
-- **Missing units**: Item has no valid ItemUnits — cannot be sold
-- **Tax config wrong**: IsTaxExempt flag incorrect — ZATCA/legal reporting mismatch
+- **Role**: unit dictionary (Name/ShortName/IsIntegerQty) joined via ID; conversion factors live in [[ItemsUnitsDetails]], not here
+- **Key**: ID is NOT NULL identity-style lookup key
+## Tenancy
+
+Chatbot queries `t.ItemsUnits` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

@@ -1373,9 +1373,9 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         companies = profile.get("_companies") or []
         if companies:
             options = "، ".join(f"{c['name']} ({c['id']})" for c in companies)
-            msg = f"Which company should I look at? Options: {options}"
+            msg = f"أي شركة تريد الاستعلام عنها؟ الخيارات: {options}"
         else:
-            msg = "Which company should I look at?"
+            msg = "أي شركة تريد الاستعلام عنها؟"
         yield {"type": "done", "answer": None, "needs_ask": msg}
         return
 

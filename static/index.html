@@ -1,15 +1,24 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Olives — مساعد البيانات</title>
+<meta name="color-scheme" content="dark light">
+<title>Olives — مساعد بيانات</title>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <header>
     <div class="header-left">
-      <h1>مساعد بيانات Olives</h1>
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 20h18"/><path d="M5 16l4-6 4 3 6-9"/>
+        </svg>
+      </span>
+      <div>
+        <h1>مساعد بيانات Olives</h1>
+        <span class="brand-sub">إجابات مُتحقَّق منها من قاعدة بياناتك</span>
+      </div>
     </div>
     <div id="context-bar" class="header-right">
       <span id="company-label"></span>
@@ -18,6 +27,7 @@
       <span id="as-of-label" class="as-of-label hidden" aria-label="As-of dates"></span>
     </div>
   </header>
+
   <section id="db-console" class="db-card">
     <button type="button" id="db-toggle" class="db-head" aria-expanded="false">
       <span id="db-orb" class="orb amber" aria-hidden="true"></span>
@@ -63,7 +73,25 @@
       <div id="db-msg" class="db-msg hidden"></div>
     </div>
   </section>
+
+  <section id="empty-state" aria-hidden="false">
+    <span class="hero-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 20h18"/><path d="M5 16l4-6 4 3 6-9"/>
+      </svg>
+    </span>
+    <h2>اسأل بياناتك مباشرة</h2>
+    <p>أجيب بالأرقام مع الاستعلام الذي أنتجها — جرّب أحد هذه الأسئلة:</p>
+    <div class="hero-chips">
+      <button type="button" class="chip-btn" data-q="كم عدد الزبائن النشطين؟">كم عدد الزبائن النشطين؟</button>
+      <button type="button" class="chip-btn" data-q="كم مبيعات يوليو 2025؟">مبيعات يوليو 2025؟</button>
+      <button type="button" class="chip-btn" data-q="مين أفضل مندوب عندنا؟">أفضل مندوب؟</button>
+      <button type="button" class="chip-btn" data-q="كيف أضيف عميل جديد؟">كيف أضيف عميل جديد؟</button>
+    </div>
+  </section>
+
   <main id="messages" aria-live="polite"></main>
+
   <form id="ask-form">
     <input id="question" type="text" placeholder="اسأل عن بياناتك..." autocomplete="off" required>
     <button type="submit">إرسال</button>

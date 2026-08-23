@@ -151,11 +151,12 @@ VouType
 Typical business table
 ## Common Issues
 
-- **Orphan lines**: Detail rows without matching header — causes sync failures
-- **Posting failure**: IsPosted flag stuck false — check ERP integration log
-- **Duplicate vouchers**: Same VouNo generated for different transactions — run dedup check
-- **Currency mismatch**: ExRate different from CurrenciesRate table — financial reconciliation off
-- **Void inconsistency**: IsVoid flag but original transaction still active — check WF approval
+- **Status column**: InvStatus is NULL on essentially all live rows — do not filter on it
+- **Doc types**: VouType values observed live: 9 (dominant), 1 — meaning is app-side; never assume 1=invoice
+- **Naming**: key is CompNo+VouYear+VouNo+VouType; carrier cols are CustomerNo/SalesmanNo (no underscores)
+## Tenancy
+
+Both tables surface as `t.` views scoped via their `CompNo` column (= `SESSION_CONTEXT(N'CompanyID')`; proven live: company 1 sees 2 of InvoiceHistoryDF's InvoiceHistoryHF rows). `CompNo` holds the company id.
 
 ## Related
 

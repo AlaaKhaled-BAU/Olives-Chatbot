@@ -360,6 +360,7 @@ Line-item details for financial transactions — items, quantities, prices, and 
 | BonusAmount | float | YES |  |  |  |
 | LineSort | smallint | YES |  |  |  |
 | CurrentQty | float | YES |  |  |  |
+| IsInventoried | bit | YES |  |  |  |
 ## Primary Key
 CompanyID
 TransactionTypeID
@@ -680,11 +681,11 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 Typical business table
 ## Common Issues
 
-- **Orphan lines**: Detail rows without matching header — causes sync failures
-- **Posting failure**: IsPosted flag stuck false — check ERP integration log
-- **Duplicate vouchers**: Same VouNo generated for different transactions — run dedup check
-- **Currency mismatch**: ExRate different from CurrenciesRate table — financial reconciliation off
-- **Void inconsistency**: IsVoid flag but original transaction still active — check WF approval
+- **Qty semantics**: Quantity sign/units depend on TransactionTypeID (issue vs receipt vs transfer) — resolve type first via header join
+- **No void flag**: IsVoid lives on the HEADER table only; do not filter IsVoid here
+## Tenancy
+
+Chatbot queries `t.TransactionsDetails` / `t.TransactionsHeaders` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

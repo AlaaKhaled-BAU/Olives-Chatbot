@@ -53,9 +53,9 @@ Core data table in the Back Office (server-side) — stores invoicedeliverydf re
 | VouYear | smallint | NO | ✓ |  |  |
 | VouNo | int | NO | ✓ |  |  |
 | VouType | smallint | NO | ✓ |  |  |
-| ItemNo | varchar | YES | ✓ |  |  |
-| BatchNo | varchar | YES | ✓ |  |  |
-| UnitCode | varchar | YES | ✓ |  |  |
+| ItemNo | varchar | NO | ✓ |  |  |
+| BatchNo | varchar | NO | ✓ |  |  |
+| UnitCode | varchar | NO | ✓ |  |  |
 | Qty | money | YES |  |  |  |
 | Bonus | money | YES |  |  |  |
 | SellValue | float | YES |  |  |  |
@@ -118,11 +118,10 @@ UnitCode
 Typical business table
 ## Common Issues
 
-- **Orphan lines**: Detail rows without matching header — causes sync failures
-- **Posting failure**: IsPosted flag stuck false — check ERP integration log
-- **Duplicate vouchers**: Same VouNo generated for different transactions — run dedup check
-- **Currency mismatch**: ExRate different from CurrenciesRate table — financial reconciliation off
-- **Void inconsistency**: IsVoid flag but original transaction still active — check WF approval
+- **TotWeight**: carries line weight for load planning; units come from item master config
+## Tenancy
+
+Both tables surface as `t.` views scoped via their `CompNo` column (= `SESSION_CONTEXT(N'CompanyID')`; proven live: company 1 sees 2 of InvoiceDeliveryHF's InvoiceDeliveryDF rows). `CompNo` holds the company id.
 
 ## Related
 

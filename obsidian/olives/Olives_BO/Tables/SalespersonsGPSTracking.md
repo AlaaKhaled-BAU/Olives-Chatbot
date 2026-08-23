@@ -26,7 +26,7 @@ Core data table in the Back Office (server-side) — stores salespersonsgpstrack
 | CompanyID | smallint | NO | ✓ |  |  |
 | SalesPersonID | int | NO | ✓ |  |  |
 | TrDateTime | datetime | NO | ✓ |  |  |
-| TabletSysID | varchar | YES | ✓ |  |  |
+| TabletSysID | varchar | NO | ✓ |  |  |
 | GpsX | varchar | YES |  |  |  |
 | GpsY | varchar | YES |  |  |  |
 | Notes | varchar | YES |  |  |  |
@@ -51,10 +51,11 @@ TabletSysID
 Typical business table
 ## Common Issues
 
-- **Missing route assignment**: Salesperson has no RouteID — cannot see customers on tablet
-- **Item balance mismatch**: Van stock differs from SalesPersonsItemsBalance — run stock-taking proc
-- **Device permission missing**: No device permission record — tablet app features unavailable
-- **Target not calculated**: Monthly targets missing — dashboard shows zero achievement
+- **Coordinates**: GpsX/GpsY are varchar — coordinate order/format unstated; validate against known locations before geo math
+- **Volume**: ping stream; always bound TrDateTime ranges
+## Tenancy
+
+Chatbot queries `t.SalespersonsGPSTracking` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

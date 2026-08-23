@@ -141,6 +141,8 @@ Core data table in the Back Office (server-side) — stores transfersordersheade
 | Reference1 | nvarchar | YES |  |  |  |
 | Reference2 | nvarchar | YES |  |  |  |
 | PostToInvoice | bit | YES |  |  |  |
+| ApprovedToSalesOrder | bit | YES |  |  |  |
+| PostToSalesOrder | bit | YES |  |  |  |
 ## Primary Key
 CompanyID
 OrderYear
@@ -287,11 +289,8 @@ CompanyID, SalesPersonID -> [[SalesPersons]](CompanyID, ID)
 Typical business table
 ## Common Issues
 
-- **Pending orders stuck**: WF approval not progressing — check WF_SETUP and approver assignment
-- **Qty mismatch**: Order qty differs from delivered qty — check delivery confirmation step
-- **Duplicate items**: Same item appears twice in order details — causes pricing errors
-- **Route mismatch**: Customer on wrong route assigned in order — delivery driver skips stop
-
+- **VouType**: separates request vs issue vouchers — values are app-defined; check paired details before summing across types
+- **StoreNo type**: StoreNo is int HERE but nvarchar on StoresBalances — cast before comparing/joining the two
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]

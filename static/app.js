@@ -102,24 +102,129 @@ companySelect.addEventListener("change", async () => {
     headers: apiHeaders(),
     body: JSON.stringify({ session_id: sessionId(), company_id: Number(companySelect.value) }),
   });
-  await loadContext();
+  await // Auto theme: dark default, follows OS light preference (D1=A)
+(function () {
+  const root = document.documentElement;
+  const mq = window.matchMedia("(prefers-color-scheme: light)");
+  const apply = () => { root.setAttribute("data-theme", mq.matches ? "light" : "dark"); };
+  apply();
+  mq.addEventListener ? mq.addEventListener("change", apply) : mq.addListener(apply);
+})();
+
+// Empty-state starter questions
+document.querySelectorAll("#empty-state .chip-btn").forEach((b) => {
+  b.addEventListener("click", () => {
+    const q = document.getElementById("question");
+    q.value = b.dataset.q;
+    document.getElementById("ask-form").requestSubmit();
+  });
+});
+
+loadContext();
 });
 
 function addMessage(text, role) {
+  const empty = document.getElementById("empty-state");
+  if (empty && !empty.classList.contains("hidden")) empty.classList.add("hidden");
   const div = document.createElement("div");
   div.className = `msg ${role}`;
   if (!ARABIC_RE.test(text)) div.classList.add("en");
-  div.textContent = text;
-  // Per-paragraph bidi: Arabic-first stays RTL while digit/Latin runs stay
-  // LTR — fixes «25 زور*ت» corruption without touching model output.
-  div.style.unicodeBidi = "plaintext";
+  if (role === "bot") {
+    div.innerHTML = renderRich(text);
+    div.style.unicodeBidi = "plaintext";
+  } else {
+    div.textContent = text;
+    div.style.unicodeBidi = "plaintext";
+  }
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
   return div;
 }
 
+/* markdown-lite: escape-first, then transform — fences, inline code, bold,
+   pipe-tables, lists. Kills raw ```sql leaks (qa ISSUE-002) safely. */
+function escHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function renderRich(text) {
+  const out = [];
+  const lines = escHtml(text || "").split("\n");
+  let i = 0, para = [];
+  const flush = () => {
+    if (para.length) { out.push(`<p>${para.join("<br>")}</p>`); para = []; }
+  };
+  while (i < lines.length) {
+    const line = lines[i];
+    const fence = line.match(/^```(\w*)\s*$/);
+    if (fence) {
+      flush();
+      const body = [];
+      i++;
+      while (i < lines.length && !/^```\s*$/.test(lines[i])) { body.push(lines[i]); i++; }
+      i++; // closing fence
+      out.push(
+        `<div class="md-codeblock"><span class="cb-lang">${fence[1] || "code"}</span>` +
+        `<pre><code>${body.join("\n")}</code></pre></div>`);
+      continue;
+    }
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      flush();
+      const rows = [];
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { rows.push(lines[i]); i++; }
+      const cells = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+      if (rows.length >= 2 && /^[\s|:-]+$/.test(rows[1])) {
+        const head = cells(rows[0]);
+        let html = '<div class="md-table-wrap"><table><thead><tr>' +
+          head.map((h) => `<th>${/[\d٪%]/.test(h) ? ` class="num">${h}` : `>${h}`}`).join("") +
+          "</tr></thead><tbody>";
+        for (const r of rows.slice(2)) {
+          const cs = cells(r);
+          html += "<tr>" + cs.map((c, ci) => {
+            const num = /^[\s\d.,٪%\-+]+$/.test(c);
+            return `<td${num ? ' class="num"' : ""}>${c}</td>`;
+          }).join("") + "</tr>";
+        }
+        html += "</tbody></table></div>";
+        out.push(html);
+      } else {
+        para.push(...rows);
+      }
+      continue;
+    }
+    if (/^\s*[-•]\s+/.test(line) || /^\s*\d+[.)]\s+/.test(line)) {
+      flush();
+      const items = [];
+      while (i < lines.length && (/^\s*[-•]\s+/.test(lines[i]) || /^\s*\d+[.)]\s+/.test(lines[i]))) {
+        items.push(lines[i].replace(/^\s*([-•]|\d+[.)])\s+/, ""));
+        i++;
+      }
+      out.push(`<ul>${items.map((it) => `<li>${it}</li>`).join("")}</ul>`);
+      continue;
+    }
+    if (line.trim() === "") { flush(); }
+    else { para.push(line); }
+    i++;
+  }
+  flush();
+  return out.join("")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`\n]+)`/g, "<code>$1</code>");
+}
+
+function showTyping() {
+  const t = document.createElement("div");
+  t.className = "typing";
+  t.id = "typing-indicator";
+  t.innerHTML = "<i></i><i></i><i></i>";
+  messages.appendChild(t);
+  messages.scrollTop = messages.scrollHeight;
+  return t;
+}
+
 async function ask(question) {
-  const bot = addMessage("...", "bot");
+  const bot = addMessage("", "bot");
+  bot.innerHTML = '<div class="typing"><i></i><i></i><i></i></div>';
   let resp;
   try {
     resp = await fetch("/ask", {
@@ -128,12 +233,14 @@ async function ask(question) {
       body: JSON.stringify({ question, session_id: sessionId() }),
     });
   } catch (e) {
+    bot.innerHTML = "";
     bot.textContent = "تعذر الاتصال بالخادم";
     bot.className = "msg error";
     return;
   }
 
   if (!resp.ok) {
+    bot.innerHTML = "";
     bot.textContent = `خطأ (${resp.status})`;
     bot.className = "msg error";
     return;
@@ -161,12 +268,14 @@ async function ask(question) {
       gotAnything = true;
       if (data.step) {
         if (!streaming) {
+          bot.innerHTML = "";
           bot.textContent = `${data.step}…`;
           bot.classList.add("en");
         }
       } else if (data.answer_chunk) {
         if (!streaming) {
           streaming = true;
+          bot.innerHTML = "";
           bot.textContent = "";
         }
         streamedText += data.answer_chunk;
@@ -174,7 +283,8 @@ async function ask(question) {
         bot.classList.toggle("en", !ARABIC_RE.test(streamedText));
         messages.scrollTop = messages.scrollHeight;
       } else if (data.answer && String(data.answer).trim()) {
-        bot.textContent = data.answer;
+        bot.innerHTML = "";
+        bot.innerHTML = renderRich(String(data.answer));
         bot.classList.toggle("en", !ARABIC_RE.test(data.answer));
         if (data.answer_sql) lastAnswerSql = data.answer_sql;
         const asOf = extractAsOfFromDone(data);
@@ -405,6 +515,24 @@ form.addEventListener("submit", (e) => {
   ask(question);
 });
 
+// Auto theme: dark default, follows OS light preference (D1=A)
+(function () {
+  const root = document.documentElement;
+  const mq = window.matchMedia("(prefers-color-scheme: light)");
+  const apply = () => { root.setAttribute("data-theme", mq.matches ? "light" : "dark"); };
+  apply();
+  mq.addEventListener ? mq.addEventListener("change", apply) : mq.addListener(apply);
+})();
+
+// Empty-state starter questions
+document.querySelectorAll("#empty-state .chip-btn").forEach((b) => {
+  b.addEventListener("click", () => {
+    const q = document.getElementById("question");
+    q.value = b.dataset.q;
+    document.getElementById("ask-form").requestSubmit();
+  });
+});
+
 loadContext();
 
 
@@ -532,7 +660,25 @@ loadContext();
         paintStatus({ source: "live", active: res.active });
         const n = (lastProbe && Array.isArray(lastProbe.databases)) ? lastProbe.databases.length : null;
         setMsg(`✓ تم تثبيت المصدر الحي: ${res.probe.server_name}${n !== null ? ` (${n} قاعدة)` : ""}`, "ok");
-        try { await loadContext(); } catch {}
+        try { await // Auto theme: dark default, follows OS light preference (D1=A)
+(function () {
+  const root = document.documentElement;
+  const mq = window.matchMedia("(prefers-color-scheme: light)");
+  const apply = () => { root.setAttribute("data-theme", mq.matches ? "light" : "dark"); };
+  apply();
+  mq.addEventListener ? mq.addEventListener("change", apply) : mq.addListener(apply);
+})();
+
+// Empty-state starter questions
+document.querySelectorAll("#empty-state .chip-btn").forEach((b) => {
+  b.addEventListener("click", () => {
+    const q = document.getElementById("question");
+    q.value = b.dataset.q;
+    document.getElementById("ask-form").requestSubmit();
+  });
+});
+
+loadContext(); } catch {}
       }
     } catch { setMsg("تعذر الوصول للخدمة", "error"); }
     saveBtn.textContent = "اتصال وتثبيت";
@@ -541,7 +687,25 @@ loadContext();
   resetBtn.addEventListener("click", async () => {
     await fetch("/db/reset", { method: "POST" });
     refreshStatus();
-    try { await loadContext(); } catch {}
+    try { await // Auto theme: dark default, follows OS light preference (D1=A)
+(function () {
+  const root = document.documentElement;
+  const mq = window.matchMedia("(prefers-color-scheme: light)");
+  const apply = () => { root.setAttribute("data-theme", mq.matches ? "light" : "dark"); };
+  apply();
+  mq.addEventListener ? mq.addEventListener("change", apply) : mq.addListener(apply);
+})();
+
+// Empty-state starter questions
+document.querySelectorAll("#empty-state .chip-btn").forEach((b) => {
+  b.addEventListener("click", () => {
+    const q = document.getElementById("question");
+    q.value = b.dataset.q;
+    document.getElementById("ask-form").requestSubmit();
+  });
+});
+
+loadContext(); } catch {}
   });
 
   refreshStatus();

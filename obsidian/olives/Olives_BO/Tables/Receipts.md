@@ -274,6 +274,9 @@ Payment receipts collected from customers — cash, check, or bank transfer reco
 | SecondCollected | bit | YES |  |  |  |
 | PostedToERPDateTime | smalldatetime | YES |  |  |  |
 | LocationLineID | int | YES |  |  |  |
+| ForeignDiscount | float | YES |  |  |  |
+| IsDepositInBank | bit | YES |  |  |  |
+| PostDate | smalldatetime | YES |  |  |  |
 ## Primary Key
 CompanyID
 TransactionTypeID
@@ -540,11 +543,12 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 Typical business table
 ## Common Issues
 
-- **Orphan lines**: Detail rows without matching header — causes sync failures
-- **Posting failure**: IsPosted flag stuck false — check ERP integration log
-- **Duplicate vouchers**: Same VouNo generated for different transactions — run dedup check
-- **Currency mismatch**: ExRate different from CurrenciesRate table — financial reconciliation off
-- **Void inconsistency**: IsVoid flag but original transaction still active — check WF approval
+- **Posting**: PostedToERP marks ERP export; PostDate timestamps it
+- **Voiding**: IsVoid exists here (unlike detail tables); check paired ReturnOrdersHeaders before treating voids as revenue reversals
+- **Naming**: receipt voucher number columns are TransactionYear/TransactionNo — there is no VouNo column
+## Tenancy
+
+Chatbot queries `t.Receipts` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

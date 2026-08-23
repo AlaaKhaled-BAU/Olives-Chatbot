@@ -469,6 +469,7 @@ Master product/item catalog including pricing, descriptions, categorization, and
 | ShortName | nvarchar | YES |  |  |  |
 | Barcode | nvarchar | YES |  |  |  |
 | CategCode | nvarchar | YES |  | ✓ | [[ItemsCategories]] |
+| ItemGroupID | int | YES |  | ✓ | [[ItemsGroups]] |
 | UnitID | nvarchar | YES |  | ✓ | [[ItemsUnits]] |
 | Reference1 | nvarchar | YES |  |  |  |
 | Reference2 | nvarchar | YES |  |  |  |
@@ -524,6 +525,7 @@ CompanyID, SuggestGroupID -> [[ItemsSuggestGroup]](CompanyID, ID)
 CompanyID, UnitID -> [[ItemsUnits]](CompanyID, ID)
 CompanyID, SubTargetReferenceID -> [[TargetsReferences]](CompanyID, ID)
 CompanyID, TargetReferenceID -> [[TargetsReferences]](CompanyID, ID)
+CompanyID, ItemGroupID -> [[ItemsGroups]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (411):**
@@ -1025,6 +1027,10 @@ Typical business table
 - **Stock discrepancy**: QtyInAllStores differs from sum of StoreBalances — run CALCITEMBALANCE
 - **Missing units**: Item has no valid ItemUnits — cannot be sold
 - **Tax config wrong**: IsTaxExempt flag incorrect — ZATCA/legal reporting mismatch
+
+## Tenancy
+
+Chatbot queries `t.Items` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

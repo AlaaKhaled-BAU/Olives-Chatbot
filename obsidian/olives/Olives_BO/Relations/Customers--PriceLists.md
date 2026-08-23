@@ -5,25 +5,28 @@ name: Customers--PriceLists
 tags: [#convention, #backoffice]
 support_relevance: high
 parent_table: [[Customers]]
-referenced_table: [[PriceLists]]
-columns: "Customers.CompanyID,PriceListID → PriceLists.CompanyID,ID"
+referenced_table: [[SalesPersons]]
+columns: "CustomersFinancialDetails.PositionsID ↔ Positions ← SalesPersons.PositionID"
 last_verified: 2026-08-22
-verified_source: work/morec/schema_cache.json
+verified_source: live SQL instance (INFORMATION_SCHEMA + sys.foreign_keys)
+tenant_scoping: "chatbot queries t.-views only; SESSION_CONTEXT('CompanyID')"
 ---
 
 # Customers → PriceLists
 
-**Convention join** (NO declared FK despite prior note): Customers.CompanyID+PriceListID → [[PriceLists]].CompanyID+ID
+**The customer's default price list lives on CustomersFinancialDetails, not Customers.** `Customers` has no PriceListId column (only a legacy `PriceListID_Tmp`; live-verified).
 
-**Business meaning**: Assigns the default price tier used when pricing orders/invoices for a customer; overridable per customer-item via ItemsPriceExceptions.
+**Declared FK:** `t.CustomersFinancialDetails.CompanyID+PriceListID` → `[[PriceLists]].CompanyID+ID` (one row per position/business unit — different positions may price the same customer differently).
+**Transactional:** `OrdersHeaders.CompanyID+PriceListID` → `[[PriceLists]]` (declared) snapshots the list used per order.
 
 ## Tenancy
 
-Chatbot queries `t.Customers` and `t.PriceLists` only; both views auto-filter `SESSION_CONTEXT(N'CompanyID')`. On raw dbo tables always include the CompanyID half shown above.
+Chatbot queries `t.CustomersFinancialDetails`, `t.SalesPersons`, `t.Positions` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`.
 
 ## See also
 
 - [[Customers]]
-- [[PriceLists]]
+- [[SalesPersons]]
+- [[CustomersFinancialDetails--Customers]]
 - [[PriceListDetails--PriceLists]]
-- [[_MOC-Olives_BO]]
+- [[CustomersFinancialDetails--RoutesInformation]]

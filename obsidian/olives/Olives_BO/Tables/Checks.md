@@ -302,10 +302,12 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 Typical business table
 ## Common Issues
 
-- **Partial payment not tracked**: Receipt amount less than invoice total — aging report shows incorrect balance
-- **Check bounce**: CheckStatus not updated after bank return — customer credit not restored
-- **Currency conversion error**: ExRate differs from daily rate — receipt in wrong amount
-- **Duplicate receipts**: Same payment applied twice — customer credit balance wrong
+- **Check lifecycle**: CheckStatus is tri-state in live data: NULL = pending, then 1/2 after transition; ChangeStatusDate records the flip
+- **Exchange rate**: ExchangeRate here can drift from CurrenciesRate — reconcile before FX reporting
+- **Dual FK targets**: BankID references Banks.ID AND Branches.BankID; CustomerID references Customers.ID AND Drawers.CustomerID — pick the target that matches your question
+## Tenancy
+
+Chatbot queries `t.Checks` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 

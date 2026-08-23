@@ -503,6 +503,7 @@ Header records for all financial transactions (invoices, receipts, credit notes)
 | EINV_INV_UUID | uniqueidentifier | YES |  |  |  |
 | IsFromCash | bit | YES |  |  |  |
 | IsPostVoid | bit | YES |  |  |  |
+| IsLinkedWithInv | bit | YES |  |  |  |
 ## Primary Key
 CompanyID
 TransactionTypeID
@@ -993,13 +994,19 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 
 ## Estimated Size / Volatility
 Typical business table
+## TransactionTypeID catalog (live lookup)
+
+See `TransactionsTypes` lookup table. Values: 1 Sales Invoice · 2 Return Sales Invoice · 3 Receipt Voucher · 4 Customer Stock · 5 Sales Order · 6 Transfer · 7 Unload · 8 Competitive Items · 9 Salesman Stock · 10 Return Order · 11 Sales Quotations · 12 Items Replacement In-Out · 13 Payment Order · 14 Debit Credit Note · 15 Issue Asset · 16 Receive Items · 17 IssueItems · 18 Bank Deposit · 99 Survey.
+
 ## Common Issues
 
-- **Orphan lines**: Detail rows without matching header — causes sync failures
-- **Posting failure**: IsPosted flag stuck false — check ERP integration log
-- **Duplicate vouchers**: Same VouNo generated for different transactions — run dedup check
-- **Currency mismatch**: ExRate different from CurrenciesRate table — financial reconciliation off
-- **Void inconsistency**: IsVoid flag but original transaction still active — check WF approval
+- **Posting**: PostedToERP marks ERP export (no IsPosted column here)
+- **Numbering**: voucher number columns are TransactionYear/TransactionNo (no VouNo)
+- **FX**: exchange rates live in CurrenciesRate; this table has no ExRate column
+- **Type filter**: always pair TransactionTypeID with the catalog above when answering "sales" vs "transfer" questions
+## Tenancy
+
+Chatbot queries `t.TransactionsHeaders` / `t.TransactionsDetails` only — auto-scoped by `SESSION_CONTEXT(N'CompanyID')`. Raw dbo access is blocked for `chatbot_ro`.
 
 ## Related
 
