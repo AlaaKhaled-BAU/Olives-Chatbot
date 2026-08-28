@@ -105,7 +105,20 @@ _FAKE_CACHE = {
 }
 
 
-def test_schema_block_only_lists_queryable_tenant_views():
+def test_schema_block_hides_salesman_visits_summary():
+    cache = {
+        "tables": {
+            "dbo.Customers": [{"column": "ID", "type": "int", "nullable": False}],
+            "dbo.SalesmanVisitsSummary": [{"column": "VisitDate", "type": "datetime", "nullable": True}],
+        },
+        "has_tenant_view": {
+            "dbo.Customers": True,
+            "dbo.SalesmanVisitsSummary": True,
+        },
+    }
+    block = agent._schema_block(cache)
+    assert "Customers(" in block
+    assert "SalesmanVisitsSummary" not in block
     block = agent._schema_block(_FAKE_CACHE)
     assert "dbo.Customers(ID:int, Name:nvarchar?)" in block
     assert "SecretTable" not in block, "non-view tables must never enter model context"

@@ -226,6 +226,30 @@ def test_retrieve_territory_question_includes_cfd_and_playbook_override():
     assert "Customers--SalesPersons" in formatted
 
 
+def test_retrieve_visits_question_uses_log_action_not_territory():
+    _ensure_cards()
+    hits = vault.retrieve_cards("اعطيني زيارات المندوب اخر اسبوع", "morec", limit=3)
+    names = {c["name"] for c in hits if c["kind"] == "table"}
+    assert "LogActionTransaction" in names
+    assert "CustomersFinancialDetails" not in names
+    assert all(c.get("name") != "SalesmanVisitsSummary" for c in hits)
+
+
+def test_retrieve_future_visits_uses_route_calendar():
+    _ensure_cards()
+    hits = vault.retrieve_cards("الزيارات القادمة للاسبوع القادم", "morec", limit=3)
+    names = {c["name"] for c in hits if c["kind"] == "table"}
+    assert "SalesPersonsRoutes" in names
+    assert "LogActionTransaction" not in names
+
+
+def test_search_and_read_hidden_salesman_visits_summary():
+    hits = vault.search_schema_notes("SalesmanVisitsSummary")
+    assert not any(h.get("name") == "SalesmanVisitsSummary" for h in hits)
+    note = vault.read_schema_note(name="SalesmanVisitsSummary")
+    assert "error" in note
+
+
 def test_retrieve_arabic_sales_alias():
     _ensure_cards()
     hits = vault.retrieve_cards("كم مبيعات الشهر", "morec", limit=3)
@@ -250,6 +274,7 @@ def test_module_map_cfd_domain():
     card = module_map.format_card("cfd", "morec")
     assert "CustomersFinancialDetails" in card
     assert "PositionsID" in card or "Positions" in card
+    assert module_map.match_domain("اعطيني زيارات المندوب اخر اسبوع", "morec") == "routes"
 
 
 def test_compile_module_map_writes_all_domains():

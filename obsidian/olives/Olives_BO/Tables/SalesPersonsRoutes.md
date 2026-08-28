@@ -76,9 +76,18 @@ related_workflows: [[Route-Planning]]
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
 
-Weekly route plan per salesman position. WeekDay 1-7 = Saturday-Friday (verified against Day column data). Week1..Week4 hold alternative route ids per slot; slot selection is application-side.
+**Planned / future salesman visits** — weekly route **template** (not GPS history, not actual visits).
+
+- `WeekDay` 1–7 = Saturday–Friday (`Day` column confirms Arabic name).
+- `Week1`–`Week4` = route id per **week-of-month slot** — resolve with `Fun_GetWeekNo` / BO week logic (same as `OT_SendSalesmanData`); do not assume calendar weeks 1–4 blindly.
+- **Never query this table alone** for «زيارات قادمة»: join chain below.
+
+**Push to tablet:** [[OT_SendSalesmanData]] reads this + [[CustomersFinancialDetails]] + [[RoutesInformation]] and builds `OSFA_DB.OT_SalesmanRoute` (daily customer list). Optional override: [[SalespersonRouteByDate]] (sparse, some clients).
+
+**Chatbot planned visits:** `SalesPersons` → `PositionID` → this table for target weekday → pick correct `WeekN` column → `CustomersFinancialDetails` (`RouteID`, `VisitOrder`, same `PositionsID`) → `RoutesInformation.Name`.
+
+**Actual past visits:** [[LogActionTransaction]] (`ActionID = N'0'`), imported via [[OT_ImportActionLog]] — not this table.
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

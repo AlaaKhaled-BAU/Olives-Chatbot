@@ -25,8 +25,53 @@ client = TestClient(app)
 
 _MULTI_COMPANY_PROFILE = {
     "CompanyID": "MULTI",
+    "CompanyID": "MULTI",
+    "_companies": [{"id": 3, "name": "Alpha Trading"}, {"id": 7, "name": "Beta Foods"}],
     "_companies": [{"id": 3, "name": "Alpha Trading"}, {"id": 7, "name": "Beta Foods"}],
 }
+
+_PROFILE_PATCHES = (
+    "api.server.params.discover_profile",
+    "api.server.params.discover_profile",
+)
+
+
+def _patch_profile():
+    return patch("api.server.params.discover_profile", return_value=_MULTI_COMPANY_PROFILE)
+
+
+def test_ask_pins_dropdown_company_without_listing_companies_in_chat():
+    sid = "test-session-pin-default"
+    SESSIONS.pop(sid, None)
+    with patch("api.server.agent.ask_stream") as mock_ask, _patch_profile():
+        mock_ask.return_value = _stream_of({"answer": "42 customers.", "needs_ask": None})
+        _ask("how many customers?", sid)
+        conv = mock_ask.call_args.kwargs["conversation"]
+        assert conv.get("CompanyID") == 3 or conv.get("CompanyID") == 3
+    SESSIONS.pop(sid, None)
+
+
+def test_ask_body_company_id_overrides_default():
+    sid = "test-session-pin-body"
+    SESSIONS.pop(sid, None)
+    with patch("api.server.agent.ask_stream") as mock_ask, _patch_profile():
+        mock_ask.return_value = _stream_of({"answer": "ok", "needs_ask": None})
+        client.post("/ask", json={"question": "q", "session_id": sid, "company_id": 7}).read()
+        conv = mock_ask.call_args.kwargs["conversation"]
+        assert conv.get("CompanyID") == 7 or conv.get("CompanyID") == 7
+    SESSIONS.pop(sid, None)
+
+
+def test_a_number_in_the_question_does_not_override_pinned_company():
+    sid = "test-session-c6c-bad-number"
+    SESSIONS.pop(sid, None)
+    with patch("api.server.agent.ask_stream") as mock_ask, _patch_profile():
+        mock_ask.return_value = _stream_of({"answer": "ok", "needs_ask": None})
+        _ask("how many invoices in 2024?", sid)
+        conv = mock_ask.call_args.kwargs["conversation"]
+        assert conv.get("CompanyID") == 3 or conv.get("CompanyID") == 3
+        assert conv.get("CompanyID") != 2024 and conv.get("CompanyID") != 2024
+    SESSIONS.pop(sid, None)
 
 def _stream_of(result):
     """C7: api/server.py now calls agent.ask_stream() (a generator), not
@@ -42,82 +87,20 @@ def _ask(question, session_id):
     return resp
 
 
-def test_needs_ask_then_number_resolves_then_sticks():
-    sid = "test-session-m8-a"
-    SESSIONS.pop(sid, None)
-    with patch("api.server.agent.ask_stream") as mock_ask, \
-         patch("api.server.params.discover_profile", return_value=_MULTI_COMPANY_PROFILE):
-        # turn 1: simulate a MULTI-company client asking which company
-        mock_ask.return_value = _stream_of({"answer": None, "needs_ask": "Which company should I look at? Options: Alpha Trading (3)، Beta Foods (7)"})
-        _ask("how many customers?", sid)
-        assert mock_ask.call_args.kwargs["conversation"] == {}  # nothing resolved yet
-
-        # turn 2: user answers with a REAL company id -- must be resolved
-        # INTO conversation before this call, and the clarifying loop must end.
-        mock_ask.return_value = _stream_of({"answer": "42 customers.", "needs_ask": None})
-        _ask("company 7", sid)
-        assert mock_ask.call_args.kwargs["conversation"] == {"CompanyID": 7}
-
-        # turn 3: same session, unrelated question -- must NOT be re-asked;
-        # CompanyID must still be there without the user repeating it.
-        mock_ask.return_value = _stream_of({"answer": "some answer", "needs_ask": None})
-        _ask("and how many salespersons?", sid)
-        assert mock_ask.call_args.kwargs["conversation"] == {"CompanyID": 7}
-    SESSIONS.pop(sid, None)
-
-
-def test_a_number_that_is_not_a_real_company_id_never_resolves():
-    """C6c's actual measured bug: "how many invoices in 2024" was
-    previously accepted as CompanyID=2024 because the old resolver grabbed
-    ANY digit in the message. 2024 is not one of this client's real
-    company IDs -- must be rejected, leaving the clarifying loop open
-    rather than silently scoping every later answer to a nonexistent
-    company."""
-    sid = "test-session-c6c-bad-number"
-    SESSIONS.pop(sid, None)
-    with patch("api.server.agent.ask_stream") as mock_ask, \
-         patch("api.server.params.discover_profile", return_value=_MULTI_COMPANY_PROFILE):
-        mock_ask.return_value = _stream_of({"answer": None, "needs_ask": "Which company should I look at?"})
-        _ask("how many customers?", sid)
-
-        mock_ask.return_value = _stream_of({"answer": None, "needs_ask": "Which company should I look at?"})
-        _ask("how many invoices in 2024?", sid)
-        assert mock_ask.call_args.kwargs["conversation"] == {}, \
-            "2024 must never be accepted as a CompanyID just because it's a number in the message"
-    SESSIONS.pop(sid, None)
-
-
-def test_company_name_also_resolves():
-    """The plan's stated fix isn't just 'a real ID' -- a name match must
-    work too, case-insensitively."""
-    sid = "test-session-c6c-name"
-    SESSIONS.pop(sid, None)
-    with patch("api.server.agent.ask_stream") as mock_ask, \
-         patch("api.server.params.discover_profile", return_value=_MULTI_COMPANY_PROFILE):
-        mock_ask.return_value = _stream_of({"answer": None, "needs_ask": "Which company?"})
-        _ask("q", sid)
-        mock_ask.return_value = _stream_of({"answer": "ok", "needs_ask": None})
-        _ask("beta foods please", sid)
-        assert mock_ask.call_args.kwargs["conversation"] == {"CompanyID": 7}
-    SESSIONS.pop(sid, None)
-
-
 def test_different_session_is_not_contaminated():
     sid_a, sid_b = "test-session-m8-b1", "test-session-m8-b2"
     SESSIONS.pop(sid_a, None)
     SESSIONS.pop(sid_b, None)
-    with patch("api.server.agent.ask_stream") as mock_ask, \
-         patch("api.server.params.discover_profile", return_value=_MULTI_COMPANY_PROFILE):
-        mock_ask.return_value = _stream_of({"answer": None, "needs_ask": "Which company?"})
-        _ask("q", sid_a)
+    with patch("api.server.agent.ask_stream") as mock_ask, _patch_profile():
         mock_ask.return_value = _stream_of({"answer": "ok", "needs_ask": None})
-        _ask("company 3", sid_a)
-        assert mock_ask.call_args.kwargs["conversation"] == {"CompanyID": 3}
+        client.post("/ask", json={"question": "q", "session_id": sid_a, "company_id": 7}).read()
+        assert mock_ask.call_args.kwargs["conversation"].get("CompanyID") == 7
 
-        # session B has never been told a company -- must start empty, not
-        # inherit session A's CompanyID=3.
         _ask("some other question", sid_b)
-        assert mock_ask.call_args.kwargs["conversation"] == {}
+        # B never sent company_id=7 — default pin is first profile company (3).
+        assert mock_ask.call_args.kwargs["conversation"].get("CompanyID") == 3
+    SESSIONS.pop(sid_a, None)
+    SESSIONS.pop(sid_b, None)
     SESSIONS.pop(sid_a, None)
     SESSIONS.pop(sid_b, None)
 
@@ -170,5 +153,5 @@ def test_no_session_id_is_fully_stateless():
         # reply was never associated with the prior needs_ask, so it must NOT
         # have resolved CompanyID (there's no session to have remembered
         # pending_ask against).
-        assert mock_ask.call_args.kwargs["conversation"] == {}
+        assert mock_ask.call_args.kwargs["conversation"].get("CompanyID") == 3
     assert None not in SESSIONS

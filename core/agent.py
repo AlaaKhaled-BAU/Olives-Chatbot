@@ -46,8 +46,18 @@ class TurnCancelled(Exception):
 # TRACK F2: analyst intent. Asymmetric-safe router — firing it only upgrades
 # thinking (t2) and appends the analyst pack; nothing is ever hidden.
 _ANALYSIS_HINT_RE = re.compile(
-    r"توقع|المتوقعة|توقعات|القادم|المقبل|الأسبوع القادم|تحليل|اتجاه|نمو|"
-    r"انصحني|أنصحك|ماذا تفعل|وش نفعل|خطة|predict|forecast|next week|trend|growth",
+    r"توقع|المتوقعة|توقعات|الأسبوع القادم|تحليل|اتجاه|نمو|"
+    r"انصحني|أنصحك|ماذا تفعل|وش نفعل|predict|forecast|trend|growth",
+    re.IGNORECASE,
+)
+_VISIT_FORECAST_RE = re.compile(
+    r"توقع|توقعات|المتوقعة|تحليل|اتجاه|رأيك|رأي|كمحلل|تقدير|"
+    r"predict|forecast|trend|projection|analyst",
+    re.IGNORECASE,
+)
+_VISIT_PLAN_ROUTE_RE = re.compile(
+    r"خطة المسار|المخطط|المجدول|جدول المسار|route\s+plan|route\s+calendar|"
+    r"SalesPersonsRoutes|schedule",
     re.IGNORECASE,
 )
 
@@ -168,7 +178,11 @@ def _schema_block(cache: dict) -> str:
         "Every table below is a `t.*` view automatically scoped to the session CompanyID.",
         "Write SQL directly against these; introspect_schema is only for anything NOT listed here.",
     ]
+    hidden = gate.HIDDEN_TABLES
     for name in sorted(tables):
+        bare = name.split(".")[-1].lower()
+        if bare in hidden:
+            continue
         if views and not views.get(name, False):
             continue
         cols = tables[name] or []
@@ -197,6 +211,9 @@ def _all_cards_block(client: str) -> str:
                          f"{str(card.get('columns', ''))[:120]}"
                          + (f" — {str(card.get('business_meaning'))[:100]}" if card.get("business_meaning") else ""))
         else:
+            name = str(card.get("name") or "")
+            if name.lower() in gate.HIDDEN_TABLES:
+                continue
             purpose = str(card.get("purpose", ""))[:110]
             pk = str(card.get("primary_key", ""))[:60]
             fk = str(card.get("foreign_keys", ""))[:80]
@@ -468,8 +485,9 @@ TOOLS = [
         "function": {
             "name": "ask_user",
             "description": (
-                "Block only when identity or policy is unresolved: multi-company CompanyID, "
+                "Block only for identity/policy that is NOT company: "
                 "which of several hot-cache people/items, EXEC/proc body, or كل الشركات. "
+                "CompanyID is already pinned by the UI — never ask which company, never list companies. "
                 "Do NOT block for grain ambiguity (best salesman, sales vs orders, cash vs credit) — "
                 "state one Arabic assumption, run run_metric/run_select, then offer an alternate "
                 "('إذا تقصد عدد الفواتير أو زبائن المنطقة، قل.')."
@@ -652,8 +670,10 @@ TOOLS = [
         "function": {
             "name": "lookup_hot",
             "description": (
-                "Load an L1 master snapshot (salespersons, items, routes, companies, etc.). "
-                "Never for invoices/orders/receipts/balances. Free — does not count against query budget."
+                "Load an L1 master snapshot (salespersons, items, routes, LogActions "
+                "ActionID codebook). Pass LogActionTransaction for the same codebook "
+                "(the fact log is not cached). Never for invoices/orders/receipts/balances. "
+                "Free — does not count against query budget."
             ),
             "parameters": {
                 "type": "object",
@@ -767,6 +787,8 @@ def _honesty_preamble(client: str, company_id: int) -> str:
         f"max_invoice_date={max_invoice_date} (from MAX(TransactionDate)). "
         f"max_order_date={max_order_date}. "
         f"t. views return only CompanyID={company_id}. "
+        "The user already chose this company in the header dropdown. "
+        "Never ask which company. Never list companies. "
         "If the user asked for all companies, say you only see this company. "
         "If they asked for this month/year and that calendar period has no invoices, "
         "say the calendar period is empty, then offer the last posting period."
@@ -948,6 +970,15 @@ def _introspect(cache, catalog_procs, name: str):
     has_view = cache.get("has_tenant_view")
     for table_name, cols in cache["tables"].items():
         if table_name.split(".")[-1].lower() == low:
+            if low in gate.HIDDEN_TABLES:
+                return {
+                    "error": (
+                        "SalesmanVisitsSummary is unused and empty. "
+                        "Actual visits: LogActionTransaction "
+                        "(ActionID N'0' login / N'3' logout). "
+                        "Planned visits: SalesPersonsRoutes + CustomersFinancialDetails.RouteID."
+                    )
+                }
             if has_view is not None and not has_view.get(table_name, False):
                 return {"error": f"{name!r} exists in the schema but has no client-facing "
                                   f"t. view -- not queryable (see db/table_classification.md)"}
@@ -1362,22 +1393,10 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     allowed_proc_names: list[str] = []
 
     profile = params.discover_profile(client)
-    company_id = params.resolve("CompanyID", conversation, profile)
-    if company_id in (params.NEEDS_ASK, params.MULTI):
-        trace.log_event(client, question, event="needs_ask", subject=subject, param="CompanyID")
-        _record_latency()
-        # C6c: list the REAL options when known, so the reply can be
-        # validated against them instead of api/server.py having to guess
-        # at a bare number in free text (the fixed bug: "how many invoices
-        # in 2024" was previously silently accepted as CompanyID=2024).
-        companies = profile.get("_companies") or []
-        if companies:
-            options = "، ".join(f"{c['name']} ({c['id']})" for c in companies)
-            msg = f"أي شركة تريد الاستعلام عنها؟ الخيارات: {options}"
-        else:
-            msg = "أي شركة تريد الاستعلام عنها؟"
-        yield {"type": "done", "answer": None, "needs_ask": msg}
-        return
+    company_id = params.pin_company_id(conversation, profile)
+    if company_id is None:
+        company_id = 1
+    conversation["CompanyID"] = company_id
 
     # C3: schema_version in the key means a plan cached against an older
     # schema shape (renamed column, dropped table) can never be matched by
@@ -1538,6 +1557,9 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         if confirm_note:
             messages.append({"role": "system", "content": confirm_note})
     analysis_intent = bool(_ANALYSIS_HINT_RE.search(question))
+    visit_q = bool(vault._VISIT_PAST_HINTS.search(question))
+    visit_future = visit_q and bool(vault._VISIT_FUTURE_HINTS.search(question))
+    visit_forecast = visit_future and _VISIT_FORECAST_RE.search(question) and not _VISIT_PLAN_ROUTE_RE.search(question)
     if analysis_intent:
         analyst_pack = BASE_DIR / "prompts" / "analyst.md"
         if analyst_pack.exists():
@@ -1549,9 +1571,42 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                         "in ONE query instead of many single-number queries, then use the analyze tool's "
                         "trend_direction for the projection. Never invent numbers."),
         })
+    if visit_forecast:
+        messages.append({
+            "role": "system",
+            "content": (
+                "Visit forecast / analyst opinion — use historical t.LogActionTransaction "
+                "(ActionID = N'0' weekly series) + analyze tool. Label estimates تقديري. "
+                "Do NOT use SalesPersonsRoutes unless the user also asks for route plan comparison."
+            ),
+        })
+    elif visit_future:
+        messages.append({
+            "role": "system",
+            "content": (
+                "Planned / upcoming visits — route calendar from t.SalesPersonsRoutes "
+                "(weekday → Week1–Week4 slot) + t.CustomersFinancialDetails.RouteID + VisitOrder "
+                "+ t.RoutesInformation. Not LogActionTransaction (history only)."
+            ),
+        })
+    elif visit_q and not visit_future:
+        messages.append({
+            "role": "system",
+            "content": (
+                "Actual past visits — t.LogActionTransaction with ActionID = N'0' (CustEntry). "
+                "Never SalesmanVisitsSummary. ActionID 7 is SystemLogin, not a visit."
+            ),
+        })
     conv_block = _conversation_block(history)
     if conv_block:
         messages.append({"role": "system", "content": conv_block})
+    messages.append({
+        "role": "system",
+        "content": (
+            f"Pinned CompanyID={company_id} from the UI dropdown. "
+            "Query this company only. Never call ask_user about companies."
+        ),
+    })
     messages.append({"role": "user", "content": question})
 
     # C4: "queries" replaces the old single answer_sql/results_in_context
@@ -1625,9 +1680,20 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                 args = {}
 
             if name == "ask_user":
-                trace.log_event(client, question, event="needs_ask", subject=subject, param=args.get("question"))
+                asked = str(args.get("question") or "")
+                if re.search(r"which company|أي شركة|CompanyID|الخيارات\s*:|Options\s*:", asked, re.I):
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.get("id") or "ask_user",
+                        "content": (
+                            f"CompanyID is already pinned to {company_id} from the UI dropdown. "
+                            "Do not ask which company. Do not list companies. Answer the user question."
+                        ),
+                    })
+                    continue
+                trace.log_event(client, question, event="needs_ask", subject=subject, param=asked)
                 _record_latency()
-                yield {"type": "done", "answer": None, "needs_ask": args.get("question")}
+                yield {"type": "done", "answer": None, "needs_ask": asked}
                 return
 
             step = _step_label(name, args, state)

@@ -14,7 +14,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
-from core import config, vault  # noqa: E402
+from core import config, gate, vault  # noqa: E402
 
 VAULT_BO = BASE_DIR / "obsidian" / "olives" / "Olives_BO"
 _SKIP_SECTIONS = frozenset({
@@ -28,6 +28,9 @@ _SKIP_SECTIONS = frozenset({
 })
 
 _ARABIC_ALIASES = {
+    "زيارات": "LogActionTransaction",
+    "زيارات المندوب": "LogActionTransaction",
+    "زيارات قادمة": "SalesPersonsRoutes",
     "مبيعات": "TransactionsHeaders",
     "مرتجعات": "returns",
     "تحصيل": "Receipts",
@@ -130,7 +133,7 @@ def compile_cards() -> list[dict]:
     if tables_dir.is_dir():
         for path in sorted(tables_dir.glob("*.md")):
             card = _compile_table(path)
-            if card:
+            if card and str(card.get("name", "")).lower() not in gate.HIDDEN_TABLES:
                 cards.append(card)
     rel_dir = VAULT_BO / "Relations"
     if rel_dir.is_dir():

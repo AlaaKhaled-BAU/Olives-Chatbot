@@ -207,6 +207,7 @@ _SYNONYM_GROUPS = (
     ("فاتورة", "فواتير", "فاتورتي"),
     ("طلب", "طلبات"),
     ("مندوب", "مناديب", "مندوبين", "salesman", "salesperson"),
+    ("زيارات", "زيارة", "visits", "visit"),
     ("معلق", "suspended", "IsSuspended"),
     (
         "assign", "customers", "salesman", "4.8",
@@ -235,6 +236,8 @@ _AR_EN_BRIDGE = {
     "مندوب": ("salesman", "salesperson"),
     "مندوبين": ("salesman", "salesperson"),
     "للمندوب": ("salesman", "salesperson"),
+    "زيارات": ("visits", "LogActionTransaction"),
+    "زيارة": ("visit", "LogActionTransaction"),
     "باك": ("back-office",),
     "أوفيس": ("office",),
     "اعتماد": ("approve", "approval"),
@@ -263,6 +266,9 @@ def _unify_alef(text: str) -> str:
 
 def normalize_ar(text: str) -> str:
     """Single normalization pipeline used by indexer and searcher alike."""
+    # SQL documentation PDF conversion inserts U+00AD between identifier parts
+    # (Log­Action­Transaction) so FTS never matches LogActionTransaction.
+    text = (text or "").replace("\u00ad", "")
     return _unify_alef(_strip_ar_diacritics(text))
 
 

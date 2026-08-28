@@ -163,8 +163,32 @@ related_workflows:
 
 
 ## Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
-Automatically documented procedure in the Olives_BO database. Reads ClientsActive, CompanyBranches, CustomersFinancialDetails, DBO, InvoiceHistoryDF, InvoiceHistoryHF, Items, OT_SendLog, OrdersHeaders, Receipts, SalesPersonItemsAssignment, SalesPersonItemsBalance, SalesPersons, SalesPersonsDevicePermissions, StoresBalances. Writes CompanyParameters, CustomersFinancialDetails, CustTargetTot, HaveTrans, Items, OrdersHeaders, OT_Banks, OT_BanksAccounts, OT_BatchsInfo, OT_Branchs, OT_BusinessUnitDef, OT_COMPANY, OT_CompanyBranches, OT_CompetitiveItems, OT_ContractItems, OT_Contracts, OT_CouponsInfo, OT_CreditInvoiceList, OT_Currency, OT_CustIssueAmount, OT_CustomerChqList, OT_CustomerMF, OT_CustomerSalesByCategory, OT_CustomersClasses, OT_CustomersGPSLocations, OT_CustomersGroups, OT_CustomersItemQtyLimit, OT_CustomersItemsAssigment, OT_CustomersReturnItemQtyLimit, OT_CustStockHistory, OT_CustType, OT_DocTypes, OT_Drawers, OT_ErrorLog, OT_GeoLevel1, OT_ImageTypes, OT_InvoiceHistoryDF, OT_InvoiceHistoryHF, OT_InvoiceReturnLinkToTab, OT_ItemsCateg, OT_ItemsMF, OT_ItemsPriceExceptions, OT_ItemsPriority, OT_ItemsQtyAvg, OT_ItemsSalesUnits, OT_ItemsSubCateg, OT_ItemsUnitsBarcode, OT_ItemUnits, OT_LinkedSalesman, OT_OrderHistoryDF, OT_OrderHistoryHF, OT_PaymentsTypes, OT_PriceListsMF, OT_PromotionsCondUnCodOutput, OT_ProspectiveCustomer, OT_Reasons, OT_ReceiptRequests, OT_ReceiptRequestsInvoicesLink, OT_ReprintReasons, OT_ReturnChecks, OT_RouteMF, OT_SalesmanGroupItemQtyLimit, OT_SalesmanItemBonusTarget, OT_SalesmanItemBonusTargetByCustomer, OT_SalesmanMF, OT_SalesmanNotebookSerials, OT_SalesmanProcedures, OT_SalesmanRoute, OT_SalesmanTransactionsSerialsMulti, OT_SendLog, OT_StateAccBalance, OT_StoreItemsQty, OT_StoreItemsQty_Main, OT_Stores, OT_Surveys, OT_Surveys_Questions, OT_Surveys_Questions_Options, OT_SystemOptions, Receipts, Salesman, SalesmanBalance, SalesPersonItemsAssignment, SalesPersonItemsBalance, SalesPersonNotbookTransactionsSerials, SalesPersons, SalesPersonTransactionsSerials, SalesPersonTransactionsSerialsMulti, StartVisitTime, TakedSurveyIDs, TransactionsHeaders, TransfersOrdersHeaders, Van_StandardStock, VisitActivityInOrder, WF_PositionsVer. Invoked by 17 procedure(s). Calls 29 procedure(s). See Tables Read/Written and Callers/Callees below for the full dependency map.
+
+**BO → tablet master-data push** (`@CompNo`, `@SalesmanNo`, `@SendDate`). Run after salesman onboarding or when admin triggers «Send Data to Salesman». The tablet then pulls OSFA `OT_*` tables on «Update Data».
+
+Opposite direction of [[OT_ImportActionLog]] (tablet actions → BO). This proc does **not** import visits; it **ships** catalog, permissions, and the **visit route plan** the tablet will follow.
+
+### What gets pushed (business categories)
+
+| Category | BO reads (main) | OSFA targets (main) |
+|----------|-----------------|---------------------|
+| Items / prices / van stock | `Items`, assignments, balances, price lists | `OT_ItemsMF`, `OT_ItemsCateg`, `OT_StoreItemsQty`, `OT_PriceListsMF`, … |
+| Customers | `Customers`, `CustomersFinancialDetails`, GPS | `OT_CustomerMF`, `OT_CustomersGPSLocations`, … |
+| **Route / visit plan** | `SalesPersonsRoutes`, `RoutesInformation`, `CustomersFinancialDetails` (`RouteID`, `VisitOrder`); optional `SalespersonRouteByDate` (some clients) | `OT_RouteMF` (names), **`OT_SalesmanRoute`** (daily customer list from `@SendDate` forward ~1 month) |
+| Salesman profile | `SalesPersons`, device permissions, serials | `OT_SalesmanMF`, `OT_SystemOptions`, targets, surveys, … |
+| Pending docs | `OrdersHeaders`, `Receipts`, `TransactionsHeaders`, … | staging tables for tablet pickup |
+
+Delegates bulk work to **`OT_SendItemsInfo`** and **`OT_SendCustomersInfo`**.
+
+### Visit plan mechanics (for chatbot notes)
+
+1. Read weekly calendar: **`SalesPersonsRoutes`** (position × `WeekDay` × `Week1`–`Week4`).
+2. Resolve week slot via BO logic (`Fun_GetWeekNo` in reports — not naive calendar week).
+3. Expand each day from `@SendDate` forward; join **`CustomersFinancialDetails`** on matching `RouteID` + `PositionsID`; order by **`VisitOrder`**.
+4. Delete + insert **`OSFA_DB.OT_SalesmanRoute`** per salesman (tablet working copy). Stamp `Visited` from same-day `OT_ActionLog` ActionID=`0` (UX only).
+5. **`Tablet_GetSalesmanRoute`** reads BO `SalesPersonsRoutes` directly — BO is the definition source.
+
+Chatbot: query BO calendar tables (`t.SalesPersonsRoutes` + `t.CustomersFinancialDetails` + `t.RoutesInformation`). Never query OSFA `OT_SalesmanRoute` at runtime.
 ## Parameters
 - @CompNo int
 - @SalesmanNo int

@@ -68,3 +68,20 @@ def test_unpromoted_source_never_feeds_few_shot(tmp_path, monkeypatch):
     conn.commit()
     conn.close()
     assert memory.few_shots("morec", 1) == []
+
+
+def test_pin_company_id_uses_dropdown_not_first_profile_row():
+    profile = {
+        "CompanyID": params.MULTI,
+        "_companies": [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}],
+    }
+    assert params.pin_company_id({"CompanyID": 2}, profile) == 2
+
+
+def test_pin_company_id_falls_back_to_first_company_never_needs_ask():
+    profile = {
+        "CompanyID": params.MULTI,
+        "_companies": [{"id": 4, "name": "A"}, {"id": 7, "name": "B"}],
+    }
+    assert params.pin_company_id({}, profile) == 4
+    assert params.pin_company_id({}, profile) != params.NEEDS_ASK

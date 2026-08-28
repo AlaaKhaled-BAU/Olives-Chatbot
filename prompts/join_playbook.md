@@ -27,6 +27,32 @@ Use these patterns when writing `SELECT` on `t.` views. Orders and invoices are 
 - Example (live FKs): for salesperson "أسامة", filter `SalesPersons` then join `Positions` on `sp.PositionID = pos.ID`, then `cfd.PositionsID = pos.ID` — expect multiple CFD rows per territory, not one row per customer naively.
 - End-to-end: `Customers` ⋈ `CustomersFinancialDetails` ⋈ `Positions` ⋈ `SalesPersons` via `PositionsID` → `PositionID`.
 
+## Actual salesman visits (زيارات منفذة)
+- Fact table: `LogActionTransaction` (query `t.LogActionTransaction`). CompNo is tenant-scoped by the view.
+- Login / visit start: `ActionID = N'0'` (CustEntry). Logout: `ActionID = N'3'` (CustLeave). `Data1` = customer id. `TimeStamp` = when. `SalesmanID` is nvarchar — `TRY_CAST(lat.SalesmanID AS int) = sp.ID`.
+- Visit *count* for a period: count logins (`ActionID = N'0'`) only. **`ActionID = N'7'` is SystemLogin (app open), not a visit** — it is often the most common action.
+- **Data1 is not always a customer.** Invoice/order/return/payment actions (`4`,`5`,`9`,`12`): `Data1` = document year, `Data2` = document number (`OT_ImportActionLog` stamps those docs' LocationLineID).
+- Join customers only for visit-like actions: `TRY_CAST(lat.Data1 AS bigint) = c.ID`.
+- Codebook: `lookup_hot` table `LogActions` or `LogActionTransaction` (same L1 snapshot). Do not dump the fact log via lookup_hot.
+- Last week: filter `TimeStamp` with tenant `calendar_today`, not invoice max date.
+
+## Planned / future visits (زيارات قادمة — route calendar)
+
+Not in `LogActionTransaction` (history only). Pushed to tablet by `OT_SendSalesmanData` → OSFA `OT_SalesmanRoute`; chatbot reads BO master:
+
+- Calendar: `SalesPersons` → `PositionID` → `SalesPersonsRoutes`.
+- `WeekDay`: 1=Saturday … 7=Friday. With SQL Server `DATEFIRST` 7: Olives weekday = `(DATEPART(WEEKDAY, the_date) % 7) + 1`.
+- `Week1`–`Week4` are week-of-month route slots — resolve with BO `Fun_GetWeekNo` logic (same as send-data proc); do not blindly `COALESCE(Week1..Week4)`.
+- Customers: `CustomersFinancialDetails.RouteID` IN (the day's WeekN) and `cfd.PositionsID = spr.PositionsID`, order by `VisitOrder`.
+- Route name: `RoutesInformation`.
+- Sparse override (some clients): `SalespersonRouteByDate`.
+
+**Forecast vs plan:** user asks توقع / تحليل / رأيك → historical `LogActionTransaction` + `analyze`, not this calendar.
+
+## Analyst visit forecast (توقع زيارات)
+
+Historical weekly counts from `LogActionTransaction` where `ActionID = N'0'`, GROUP BY week, then `analyze` trend. Label projection تقديري. Compare to plan only when user explicitly asks.
+
 ## Van stock (SalesPersonItemsBalance)
 - Van quantity by salesperson + item: `SalesPersonItemsBalance` (live FKs to `SalesPersons`, `Items`, `Companies`).
 - Join pattern: `SalesPersonItemsBalance.SalesPersonID` → `SalesPersons.ID` and `SalesPersonItemsBalance.ItemCode` → `Items.ItemCode` (always include `CompanyID` on composite keys).

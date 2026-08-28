@@ -179,7 +179,8 @@ def test_fts_query_neutralizes_syntax_and_injection_characters():
     assert q == '"weird" OR "quote" OR "injection" OR "AND" OR "test"'
 
 
-def test_fts_query_empty_input_is_a_valid_no_op_query():
+def test_normalize_ar_strips_soft_hyphens():
+    assert docs.normalize_ar("Log\u00adAction\u00adTransaction") == "LogActionTransaction"
     assert docs._fts_query("   ") == '""'
 
 

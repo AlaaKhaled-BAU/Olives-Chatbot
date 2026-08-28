@@ -213,6 +213,10 @@ def _score_card(question_tokens: set, card: dict, aliases: list[str]) -> int:
     return overlap
 
 
+_VISIT_Q = re.compile(r"زيارات|زيارة|\bvisits?\b", re.IGNORECASE)
+_SALES_Q = re.compile(r"مبيعات|فاتور|\bsales\b", re.IGNORECASE)
+
+
 def match_reports(question: str, client: str, limit: int = 3) -> list:
     """Keyword overlap match against catalog cards plus in-repo template aliases."""
     catalog = load_catalog(client)
@@ -231,9 +235,12 @@ def match_reports(question: str, client: str, limit: int = 3) -> list:
     q_tokens = _tokens(question)
     if not q_tokens:
         return []
+    visit_only = bool(_VISIT_Q.search(question) and not _SALES_Q.search(question))
     scored = []
     for card in catalog:
         name = card.get("name", "")
+        if visit_only and re.search(r"Sales", name) and not re.search(r"Visit", name, re.I):
+            continue
         aliases = list(card.get("aliases") or templates.get(name, {}).get("aliases") or [])
         overlap = _score_card(q_tokens, card, aliases)
         if overlap:

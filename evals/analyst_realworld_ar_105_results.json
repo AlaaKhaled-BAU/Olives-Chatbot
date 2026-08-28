@@ -1,0 +1,599 @@
+[
+  {
+    "id": "DA01",
+    "persona": "owner",
+    "angle": "growth",
+    "purpose": "مقارنة نمو شهري",
+    "question": "كصاحب عمل: هل المبيعات تتحسن؟ قارن إجمالي مبيعات يونيو 2025 مع يوليو 2025 وقل لي إن كنا ننمو أم نتراجع.",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 28.3,
+    "answer": "المبيعات **تتراجع** — الانخفاض حاد جداً بين الشهرين.\n\n| الشهر | عدد الفواتير (مبيعات) | إجمالي المبيعات |\n|---|---|---|\n| يونيو 2025 | 8 | 4,838.28 |\n| يوليو 2025 | 2 | 432.58 |\n\n- نسبة التغير: **‎−91.1%** (من 4,838.28 إلى 432.58).\n- عدد الفواتير انخفض من 8 إلى 2.\n\n**ملاحظة مهمة حول حدّ البيانات:** بيانات يوليو 2025 في القاعدة تبدو جزئية (آخر ترحيل متوفر تقريباً منتصف الشهر)، فالرقم قد لا يمثل الشهر كاملاً. إذا أردت، يمكنني مقارنة يونيو كاملاً مع أول 15 يوماً من يوليو فقط لمقارنة عادلة، أو عرض آخر فترة ترحيل كاملة.\n\n```sql\n-- يونيو 2025\nSELECT COUNT(*) AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount\nFROM t.TransactionsHeaders th\nINNER JOIN t.TransactionsDetails td\n  ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID\n AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo\nWHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0\n  AND th.TransactionDate >= '2025-06-01' AND th.TransactionDate <= '2025-06-30';\n\n-- يوليو 2025\nSELECT COUNT(*) AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount\nFROM t.TransactionsHeaders th\nINNER JOIN t.TransactionsDetails td\n  ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID\n AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo\nWHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0\n  AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate <= '2025-07-31';\n```",
+    "answer_sql": "SELECT (SELECT COUNT(*) FROM t.TransactionsHeaders thc WHERE thc.TransactionTypeID = 1 AND ISNULL(thc.IsVoid, 0) = 0 AND thc.CompanyID = 2 AND thc.TransactionDate >= '2025-06-01' AND thc.TransactionDate <= '2025-06-30') AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-06-01' AND th.TransactionDate <= '2025-06-30'; SELECT (SELECT COUNT(*) FROM t.TransactionsHeaders thc WHERE thc.TransactionTypeID = 1 AND ISNULL(thc.IsVoid, 0) = 0 AND thc.CompanyID = 2 AND thc.TransactionDate >= '2025-07-01' AND thc.TransactionDate <= '2025-07-31') AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate <= '2025-07-31'",
+    "sources": [
+      "TransactionsDetails",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 10,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "states assumptions or interpretation",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA02",
+    "persona": "cfo",
+    "angle": "cash_vs_sales",
+    "purpose": "تحصيل مقابل فواتير",
+    "question": "كم إجمالي مبلغ سندات القبض غير الملغاة، وكم إجمالي مبيعات فواتير البيع غير الملغاة؟ وهل التحصيل أعلى أم المبيعات؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 14.55,
+    "answer": "أجمع النتائج:\n\n**سندات القبض (المقبوضات) غير الملغاة:**\n- عدد السندات: **213**\n- إجمالي المبلغ: **365,487.84**\n\n**مبيعات فواتير البيع غير الملغاة:**\n- عدد الفواتير: **473**\n- إجمالي المبيعات (كمية × سعر): **2,203,818.07**\n\n**المقارنة:** المبيعات **أعلى بكثير** من التحصيل. التحصيل يمثل حوالي **16.6%** فقط من المبيعات.\n\n| البند | العدد | الإجمالي |\n|---|---|---|\n| سندات قبض | 213 | 365,487.84 |\n| فواتير مبيعات | 473 | 2,203,818.07 |\n\nالفرق: **1,838,330.22** — أي أن إجمالي فواتير البيع يتجاوز إجمالي التحصيل بنحو **6 أضعاف** (النسبة 6.03×).\n\n```sql\n-- سندات القبض غير الملغاة\nSELECT COUNT(*) AS receipt_count, SUM(Amount) AS total_receipts\nFROM t.Receipts\nWHERE TransactionTypeID = 3 AND ISNULL(IsVoid, 0) = 0;\n\n-- مبيعات فواتير البيع غير الملغاة\nSELECT COUNT(*) AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount\nFROM t.TransactionsHeaders th\nINNER JOIN t.TransactionsDetails td\n  ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID\n AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo\nWHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0;\n```",
+    "answer_sql": "SELECT COUNT(*) AS receipt_count, SUM(Amount) AS total_receipts FROM t.Receipts WHERE TransactionTypeID = 3 AND ISNULL(IsVoid, 0) = 0; SELECT COUNT(*) AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0",
+    "sources": [
+      "Receipts",
+      "TransactionsDetails",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 10,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "addresses receipts/collections",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA03",
+    "persona": "sales_manager",
+    "angle": "top_customer",
+    "purpose": "أفضل عميل",
+    "question": "من أكبر عميل عندنا حسب قيمة مبيعات فواتير البيع غير الملغاة؟ أعطني اسمه وإجمالي مبيعاته وعدد فواتيره.",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 18.54,
+    "answer": "أكبر عميل حسب قيمة مبيعات فواتير البيع غير الملغاة:\n\n- **اسم العميل:** كارفور - طريق ديراب\n- **إجمالي المبيعات:** **799,746.91**\n- **عدد الفواتير:** **25 فاتورة**\n\n```sql\nSELECT TOP 1\n    c.Name AS CustomerName,\n    COUNT(DISTINCT th.TransactionYear * 1000000 + th.TransactionNo) AS InvoiceCount,\n    SUM(td.Quantity * td.Price) AS TotalSalesAmount\nFROM t.TransactionsHeaders th\nINNER JOIN t.TransactionsDetails td\n    ON th.CompanyID = td.CompanyID\n    AND th.TransactionTypeID = td.TransactionTypeID\n    AND th.TransactionYear = td.TransactionYear\n    AND th.TransactionNo = td.TransactionNo\nLEFT JOIN t.Customers c\n    ON th.CompanyID = c.CompanyID\n    AND th.CustomerID = c.ID\nWHERE th.TransactionTypeID = 1\n    AND ISNULL(th.IsVoid, 0) = 0\nGROUP BY c.Name\nORDER BY SUM(td.Quantity * td.Price) DESC\n```\n\nهذه النتيجة مبنية على قيمة المبيعات (كمية × سعر) عبر كل الفترات الزمنية المتاحة للشركة المحددة. إذا كنت تقصد الترتيب خلال فترة زمنية معينة (مثل شهر أو سنة محددة)، قل لي وسأضيف الفلتر التاريخي.",
+    "answer_sql": "SELECT TOP 1\n    c.Name AS CustomerName,\n    COUNT(DISTINCT th.TransactionYear * 1000000 + th.TransactionNo) AS InvoiceCount,\n    SUM(td.Quantity * td.Price) AS TotalSalesAmount\nFROM t.TransactionsHeaders th\nINNER JOIN t.TransactionsDetails td\n    ON th.CompanyID = td.CompanyID\n    AND th.TransactionTypeID = td.TransactionTypeID\n    AND th.TransactionYear = td.TransactionYear\n    AND th.TransactionNo = td.TransactionNo\nLEFT JOIN t.Customers c\n    ON th.CompanyID = c.CompanyID\n    AND th.CustomerID = c.ID\nWHERE th.TransactionTypeID = 1\n    AND ISNULL(th.IsVoid, 0) = 0\nGROUP BY c.Name\nORDER BY SUM(td.Quantity * td.Price) DESC",
+    "sources": [
+      "Customers",
+      "TransactionsDetails",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 9,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA04",
+    "persona": "credit_control",
+    "angle": "credit_sales",
+    "purpose": "بيع آجل",
+    "question": "كم عدد فواتير البيع الآجلة CreditCash=0 غير الملغاة، وما نسبتها من إجمالي فواتير المبيعات؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 12.18,
+    "answer": "آسف، النسبة الصحيحة هي 10/238 وليست 23.8 (أدخل تُرتيب البسط والمقام). دعني أصححها:\n\n**النتيجة:**\n\nمن إجمالي فواتير المبيعات غير الملغاة (238 فاتورة):\n- عدد فواتير البيع **الآجلة** (CreditCash=0): **10 فواتير**\n- النسبة من إجمالي فواتير المبيعات: **‎4.2%** (10 ÷ 238)\n\n```sql\nSELECT\n  COUNT(*) AS total_sales_invoices,\n  SUM(CASE WHEN CREDITCASH = 0 THEN 1 ELSE 0 END) AS credit_invoices\nFROM t.TransactionsHeaders\nWHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0\n```\n\nإذا كنت تقصد فترة زمنية محددة أو عدد **الزبائن** النقدي مقابل الآجل في منطقة معينة، قلّ لي.",
+    "answer_sql": "SELECT\n  COUNT(*) AS total_sales_invoices,\n  SUM(CASE WHEN CREDITCASH = 0 THEN 1 ELSE 0 END) AS credit_invoices\nFROM t.TransactionsHeaders\nWHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0",
+    "sources": [
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 9,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA05",
+    "persona": "operations",
+    "angle": "backlog",
+    "purpose": "طلبات معلقة",
+    "question": "كم طلب بيع عندنا غير مسلّم؟ وماذا يعني ذلك لو أردت تخطيط التسليم الأسبوع القادم؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 157.92,
+    "answer": "**الافتراض:** أقصد بطلبات البيع غير المسلّمة كل رؤوس الطلبات (`OrdersHeaders`) التي لم تُعلَّم كمسلّمة (`IsDelivered = 0`) وغير الملغاة (`IsVoid = 0`)، لجميع الفترات المتاحة.\n\n## النتيجة\n\n| الفئة | عدد الطلبات |\n|---|---|\n| إجمالي الطلبات غير المسلّمة | **132** |\n| — منها موعودة التسليم قبل 2025 | 103 |\n| — منها موعودة خلال 2025 | 23 |\n| — منها موعودة خلال 2026 | **6 فقط** |\n\n```sql\nSELECT\n  SUM(CASE WHEN PromisesDate < '2025-01-01' THEN 1 ELSE 0 END) AS promised_before_2025,\n  SUM(CASE WHEN PromisesDate >= '2025-01-01' AND PromisesDate < '2026-01-01' THEN 1 ELSE 0 END) AS promised_2025,\n  SUM(CASE WHEN PromisesDate >= '2026-01-01' THEN 1 ELSE 0 END) AS promised_2026,\n  COUNT(*) AS total_undelivered\nFROM t.OrdersHeaders\nWHERE ISNULL(IsDelivered, 0) = 0 AND ISNULL(IsVoid, 0) = 0\n```\n\n## ماذا يعني ذلك لتخطيط الأسبوع القادم؟\n\n- **العبء الحقيقي للتسليم القادم صغير:** 6 طلبات فقط موعودة في 2026 (أحدثها بتاريخ وعد 2026-06-15). هذه هي التي تخص تخطيط التسليم الأسبوع القادم فعلياً.\n- **103 طلبات (78%) موعودة قبل 2025** — لا علاقة لها بالأسبوع القادم؛ إما طلبات قديمة لم تُغلق في النظام أو تحتاج مراجعة/إلغاء، وليست عبء تسليم واقعياً.\n- **قبل بناء خطة التسليم:** أنصح بفصل طلبات 2026 (الستة) وترتيبها حسب تاريخ الوعد، ومراجعة الـ 103 القديمة لتصفية النظام — وإلا ستبدو قائمة التسليم وكأنها 132 طلباً بينما الفعلي القابل للتسليم قريباً هو 6 فقط.\n\n**ملاحظة:** خانة `TotalPrice` في التفاصيل فارغة للطلبات القديمة، لذا لم أحسب قيمة الطلبات — إن أردت قيمة الطلبات غير المسلّمة قل لي لأحسبها من الأسعار المتوفرة.",
+    "answer_sql": "SELECT COUNT(*) AS total_orders, SUM(CASE WHEN ISNULL(oh.IsDelivered, 0) = 0 THEN 1 ELSE 0 END) AS undelivered_orders FROM t.OrdersHeaders oh WHERE 1=1 AND oh.CompanyID = 2 AND ISNULL(oh.IsDelivered, 0) = 0; SELECT oh.PromisesDate,\n       COUNT(*) AS order_count,\n       SUM(d.Quantity) AS total_qty,\n       SUM(d.TotalPrice) AS total_value\nFROM t.OrdersHeaders oh\nJOIN t.OrdersDetails d\n  ON d.CompanyID = oh.CompanyID AND d.OrderYear = oh.OrderYear AND d.OrderNo = oh.OrderNo\nWHERE ISNULL(oh.IsDelivered, 0) = 0 AND ISNULL(oh.IsVoid, 0) = 0\nGROUP BY oh.PromisesDate\nORDER BY oh.PromisesDate; SELECT MIN(OrderDate) AS min_order_date,\n       MAX(OrderDate) AS max_order_date,\n       MIN(PromisesDate) AS min_promise_date,\n       MAX(PromisesDate) AS max_promise_date\nFROM t.OrdersHeaders\nWHERE ISNULL(IsDelivered, 0) = 0 AND ISNULL(IsVoid, 0) = 0; SELECT\n  SUM(CASE WHEN PromisesDate < '2025-01-01' THEN 1 ELSE 0 END) AS promised_before_2025,\n  SUM(CASE WHEN PromisesDate >= '2025-01-01' AND PromisesDate < '2026-01-01' THEN 1 ELSE 0 END) AS promised_2025,\n  SUM(CASE WHEN PromisesDate >= '2026-01-01' THEN 1 ELSE 0 END) AS promised_2026,\n  COUNT(*) AS total_undelivered\nFROM t.OrdersHeaders\nWHERE ISNULL(IsDelivered, 0) = 0 AND ISNULL(IsVoid, 0) = 0",
+    "sources": [
+      "OrdersDetails",
+      "OrdersHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 10,
+      "notes": [
+        "respects void filter",
+        "states assumptions or interpretation",
+        "distinguishes orders from invoices",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA06",
+    "persona": "accountant",
+    "angle": "reconciliation",
+    "purpose": "مطابقة أعداد",
+    "question": "كم عدد سندات القبض غير الملغاة وكم عدد فواتير المبيعات غير الملغاة؟ هل العددان متقاربان أم مختلفان جذرياً؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 17.53,
+    "answer": "- **سندات القبض غير الملغاة:** **213 سند**\n- **فواتير المبيعات غير الملغاة:** **238 فاتورة**\n\nالعددان **متقاربان** — الفرق 25 فاتورة فقط، أي أن سندات القبض تمثل نحو **89%** من عدد فواتير المبيعات، وهو تناسب معقول لشركة تجارية.\n\n```sql\nSELECT COUNT(*) AS receipt_count FROM t.Receipts WHERE TransactionTypeID = 3 AND ISNULL(IsVoid, 0) = 0;\n\nSELECT COUNT(*) AS sales_invoice_count FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0;\n```\n\nإذا تقصد عدد الفواتير لفترة محددة أو مقارنة بمبالغها، قل.",
+    "answer_sql": "SELECT COUNT(*) AS receipt_count FROM t.Receipts WHERE TransactionTypeID = 3 AND ISNULL(IsVoid, 0) = 0; SELECT COUNT(*) AS sales_invoice_count FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0",
+    "sources": [
+      "Receipts",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 10,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "addresses receipts/collections",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA07",
+    "persona": "route_manager",
+    "angle": "coverage",
+    "purpose": "زبائن بلا مندوب",
+    "question": "هل عندنا زبائن غير مربوطين بأي مندوب في التفاصيل المالية للعملاء؟ كم عددهم إن وُجدوا؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 26.91,
+    "answer": "**النتيجة: لا يوجد زبائن غير مربوطين بأي مندوب.**\n\n- عدد الزبائن المرتبطين بمنصب/مندوب عبر التفاصيل المالية، والذين لا يملكون مندوبًا: **0**\n- عدد الزبائن بدون سجل في التفاصيل المالية إطلاقًا (وبالتالي غير مربوطين بأي مندوب): **0**\n\nأي أن **كل الزبائن مرتبطون بمندوب** عبر التفاصيل المالية للعملاء، ولا يوجد أي زبون غير مربوط.\n\nتحققت من الحالتين معًا (من له سجل مالي بلا مندوب، ومن ليس له سجل مالي أصلًا) وكانت النتيجة صفرًا في الحالتين.\n\n```sql\nSELECT COUNT(*) AS CustomersWithoutSalesperson\nFROM t.Customers c\nLEFT JOIN t.CustomersFinancialDetails cfd\n  ON cfd.CompanyID = c.CompanyID AND cfd.CustomerID = c.ID\nLEFT JOIN t.Positions p\n  ON p.CompanyID = cfd.CompanyID AND p.ID = cfd.PositionsID\nLEFT JOIN t.SalesPersons sp\n  ON sp.CompanyID = p.CompanyID AND sp.PositionID = p.ID\nWHERE sp.ID IS NULL;\n```\n\nإذا كنت تقصد تعريفًا مختلفًا للارتباط (مثل ربط مندوب مباشرةً على الزبون بدلًا من عبر المنصب)، قل وسأتحقق منه.",
+    "answer_sql": "SELECT COUNT(*) AS CustomersWithoutSalesperson\nFROM t.Customers c\nLEFT JOIN t.CustomersFinancialDetails cfd\n  ON cfd.CompanyID = c.CompanyID AND cfd.CustomerID = c.ID\nLEFT JOIN t.Positions p\n  ON p.CompanyID = cfd.CompanyID AND p.ID = cfd.PositionsID\nLEFT JOIN t.SalesPersons sp\n  ON sp.CompanyID = p.CompanyID AND sp.PositionID = p.ID\nWHERE sp.ID IS NULL; SELECT COUNT(*) AS CustomersWithNoFinancialDetails\nFROM t.Customers c\nLEFT JOIN t.CustomersFinancialDetails cfd\n  ON cfd.CompanyID = c.CompanyID AND cfd.CustomerID = c.ID\nWHERE cfd.CustomerID IS NULL",
+    "sources": [
+      "Customers",
+      "CustomersFinancialDetails",
+      "Positions",
+      "SalesPersons"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "logical",
+      "logic_score": 7,
+      "notes": [
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA08",
+    "persona": "product_manager",
+    "angle": "dead_stock",
+    "purpose": "أصناف راكدة",
+    "question": "كم صنفاً لم يُبَع في أي فاتورة بيع غير ملغاة؟ واذكر أسماءها إن أمكن.",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 11.79,
+    "answer": "Let me also count how many total items exist, and confirm these are among all non-suspended items. Actually the query above returns items never in any non-void sales invoice. Let me provide the count and names.\n\n**النتيجة:** عدد الأصناف التي لم تُبَع في أي فاتورة بيع غير ملغاة هو **5 أصناف**:\n\n| رمز الصنف | الاسم |\n|-----------|-------|\n| Item_11 | White Chocolate |\n| Item_12 | Stroop Wafel |\n| Item_13 | كونلي - نكهة الحار و الليمون |\n| Item_14 | فيب معسل عنب و نعناع |\n| Item_15 | فيب معسل عنب و نعناع |\n\nملاحظة: الصنفان Item_14 و Item_15 يحملان نفس الاسم، فهما صنفان مختلفان برمزين مختلفين.\n\n**الاستعلام:**\n```sql\nSELECT i.ItemCode, i.Name\nFROM t.Items i\nWHERE NOT EXISTS (\n    SELECT 1\n    FROM t.TransactionsDetails td\n    INNER JOIN t.TransactionsHeaders th\n        ON th.CompanyID = td.CompanyID\n       AND th.TransactionTypeID = td.TransactionTypeID\n       AND th.TransactionYear = td.TransactionYear\n       AND th.TransactionNo = td.TransactionNo\n    WHERE td.ItemCode = i.ItemCode\n      AND th.TransactionTypeID = 1\n      AND ISNULL(th.IsVoid, 0) = 0\n);\n```\n\nإذا كنت تقصد حساب الأصناف من قائمة البيع الفعّالة فقط (غير المعلّقة `IsSuspended = 0`)، أو تريد استثناء الأصناف المعطّلة، قل لي لعدّل الفلتر.",
+    "answer_sql": "SELECT i.ItemCode, i.Name\nFROM t.Items i\nWHERE NOT EXISTS (\n    SELECT 1\n    FROM t.TransactionsDetails td\n    INNER JOIN t.TransactionsHeaders th\n        ON th.CompanyID = td.CompanyID\n       AND th.TransactionTypeID = td.TransactionTypeID\n       AND th.TransactionYear = td.TransactionYear\n       AND th.TransactionNo = td.TransactionNo\n    WHERE td.ItemCode = i.ItemCode\n      AND th.TransactionTypeID = 1\n      AND ISNULL(th.IsVoid, 0) = 0\n);",
+    "sources": [
+      "Items",
+      "TransactionsDetails",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 10,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "states assumptions or interpretation",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA09",
+    "persona": "returns_analyst",
+    "angle": "return_rate",
+    "purpose": "نسبة المرتجعات",
+    "question": "كم عدد فواتير مرتجعات المبيعات غير الملغاة، وما نسبتها من عدد فواتير المبيعات غير الملغاة؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 18.36,
+    "answer": "حسناً، لدينا الأرقام. دعني أحسب النسبة الصحيحة (نسبة المرتجعات من المبيعات):\n\n**الافتراض:** أقصد بفواتير مرتجعات المبيعات غير الملغاة كل رؤوس الفواتير من نوع المرتجعات (`TransactionTypeID = 2`) غير الملغاة (`IsVoid = 0`)، وبنفس المنطق فواتير المبيعات من نوع البيع (`TransactionTypeID = 1`).\n\n**النتائج:**\n- **عدد فواتير مرتجعات المبيعات غير الملغاة:** **23 فاتورة**\n- **عدد فواتير المبيعات غير الملغاة:** **238 فاتورة**\n- **النسبة:** فواتير المرتجعات تمثل نحو **9.7%** من عدد فواتير المبيعات (23 ÷ 238).\n\n**الخلاصة:** عدد مرتجعات المبيعات أقل بكثير من عدد فواتير المبيعات، وهو ما يبدو طبيعياً لشركة تجارية — نحو فاتورة مرتجعات واحدة لكل 10 فواتير مبيعات.\n\n```sql\nSELECT \n  (SELECT COUNT(*) FROM t.TransactionsHeaders WHERE TransactionTypeID = 2 AND ISNULL(IsVoid, 0) = 0) AS return_invoices_count,\n  (SELECT COUNT(*) FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0) AS sales_invoices_count\n```\n\nإذا تقصد النسبة بالقيمة (المبلغ) بدل العدد، قل وسأعطيك إياها.",
+    "answer_sql": "SELECT \n  (SELECT COUNT(*) FROM t.TransactionsHeaders WHERE TransactionTypeID = 2 AND ISNULL(IsVoid, 0) = 0) AS return_invoices_count,\n  (SELECT COUNT(*) FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0) AS sales_invoices_count",
+    "sources": [
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 9,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA10",
+    "persona": "customer_success",
+    "angle": "suspended",
+    "purpose": "زبائن معلقين",
+    "question": "كم زبون معلّق IsSuspended عندنا؟ وهل منهم من لديه فواتير بيع سابقة غير ملغاة؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 12.23,
+    "answer": "- **إجمالي الزبائن المعلقين (IsSuspended):** **9 زبائن**\n- **منهم من لديه فواتير بيع سابقة غير ملغاة:** **0** — أي أنه لا يوجد أيٌّ من الزبائن المعلقين التسعة له فواتير بيع سابقة غير ملغاة في السجلات.\n\n**الاستنتاج:** الزبائن المعلقون التسعة بلا تاريخ فواتير بيع صادرة، لذا إيقافهم لا يمسّ أي فواتير بيع قائمة.\n\nSQL المستخدم:\n```sql\nSELECT COUNT(*) AS suspended_customers\nFROM t.Customers\nWHERE ISNULL(IsSuspended, 0) = 1;\n\nSELECT COUNT(DISTINCT c.ID) AS suspended_with_invoices\nFROM t.Customers c\nWHERE ISNULL(c.IsSuspended, 0) = 1\n  AND EXISTS (SELECT 1 FROM t.TransactionsHeaders th\n              WHERE th.CompanyID = c.CompanyID\n                AND th.CustomerID = c.ID\n                AND th.TransactionTypeID = 1\n                AND ISNULL(th.IsVoid, 0) = 0);\n```\n\nإذا كنت تقصد الزبائن المعلقين في التفاصيل المالية (`CustomersFinancialDetails.IsSuspended`) بدلاً من سجل الزبون نفسه، قلّ وسأعيد الحساب وفق ذلك.",
+    "answer_sql": "SELECT COUNT(*) AS suspended_customers\nFROM t.Customers\nWHERE ISNULL(IsSuspended, 0) = 1; SELECT COUNT(DISTINCT c.ID) AS suspended_with_invoices\nFROM t.Customers c\nWHERE ISNULL(c.IsSuspended, 0) = 1\n  AND EXISTS (SELECT 1 FROM t.TransactionsHeaders th\n              WHERE th.CompanyID = c.CompanyID\n                AND th.CustomerID = c.ID\n                AND th.TransactionTypeID = 1\n                AND ISNULL(th.IsVoid, 0) = 0)",
+    "sources": [
+      "Customers",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 9,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA11",
+    "persona": "finance",
+    "angle": "avg_ticket",
+    "purpose": "متوسط الفاتورة",
+    "question": "ما متوسط قيمة فاتورة البيع غير الملغاة (إجمالي المبيعات ÷ عدد الفواتير)؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 26.45,
+    "answer": "أعذرني، استخدمت أداة غير مناسبة. دعني أجري العملية بالشكل الصحيح — المتوسط = القسمة.\n\nإجمالي المبيعات = 2,203,818.07 (من بنود الفواتير غير الملغاة، النوع 1)\nعدد الفواتير غير الملغاة = 238\nإجمالي الخصومات على رؤوس الفواتير ≈ -27.70 (شبه معدوم)\n\nالمتوسط = 2,203,818.07 ÷ 238 ≈ **9,260** لكل فاتورة.\n\n## النتيجة\n\n**متوسط قيمة فاتورة البيع غير الملغاة ≈ 9,260** (أي ما يقارب ٩,٢٦٠ وحدة عملة).\n\n- إجمالي المبيعات (مجموع الكمية × السعر لكل البنود في فواتير البيع غير الملغاة، النوع 1): **2,203,818.07**\n- عدد فواتير البيع غير الملغاة: **238 فاتورة**\n- إجمالي الخصومات على رؤوس الفواتير: **-27.70** (قيمة شبه معدومة فلا تؤثر على المتوسط)\n\nالاستعلام المستخدم:\n\n```sql\nSELECT\n  (SELECT COUNT(*) FROM t.TransactionsHeaders thc\n   WHERE thc.TransactionTypeID = 1 AND ISNULL(thc.IsVoid, 0) = 0) AS invoice_count,\n  SUM(td.Quantity * td.Price) AS gross_amount\nFROM t.TransactionsHeaders th\nINNER JOIN t.TransactionsDetails td\n  ON th.CompanyID = td.CompanyID\n AND th.TransactionTypeID = td.TransactionTypeID\n AND th.TransactionYear = td.TransactionYear\n AND th.TransactionNo = td.TransactionNo\nWHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0\n```\n\nلاحظ أن هذا المتوسط مبني على \"إجمالي البنود\" (الكمية × السعر) دون طرح خصومات بنود منفردة وضرائب؛ وإن كنت تقصد متوسط \"صافي قيمة الفاتورة بعد الخصومات والضرائب\" فقل لي وسأعيد الحساب على أساس قيم الفواتير الصافية.",
+    "answer_sql": "SELECT (SELECT COUNT(*) FROM t.TransactionsHeaders thc WHERE thc.TransactionTypeID = 1 AND ISNULL(thc.IsVoid, 0) = 0 AND thc.CompanyID = 2) AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2; SELECT \n  COUNT(*) AS invoice_count,\n  SUM(th.DiscountAmount + ISNULL(th.CustomerDiscountAmount,0)) AS total_discounts\nFROM t.TransactionsHeaders th \nWHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0",
+    "sources": [
+      "TransactionsDetails",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 9,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA12",
+    "persona": "owner",
+    "angle": "seasonality",
+    "purpose": "أفضل شهر",
+    "question": "أي شهر في 2025 حقق أعلى مبيعات فواتير البيع غير الملغاة؟ وكم كانت القيمة؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 11.9,
+    "answer": "**الافتراض:** المبيعات هي فواتير البيع (`TransactionTypeID = 1`) غير الملغاة (`IsVoid = 0`)، بالقيمة الإجمالية (الكمية × السعر).\n\nأعلى شهر في 2025 كان **أبريل (الشهر 4)** بقيمة مبيعات **5,632.96** — يليه يونيو (4,838.28) ثم مايو (3,737.85).\n\nملاحظة على حدّ البيانات المتاحة: البيانات في هذه الجلسة تمتد فقط حتى يوليو 2025، والمدخلات مسجلة لأشهر أبريل، مايو، يونيو، يوليو فقط.\n\nالترتيب الشهري الكامل:\n\n| الشهر | القيمة |\n|-------|--------|\n| أبريل | 5,632.96 |\n| يونيو | 4,838.28 |\n| مايو | 3,737.85 |\n| يوليو | 432.58 |\n\nSQL المستخدم:\n```sql\nSELECT YEAR(th.TransactionDate) AS Yr, MONTH(th.TransactionDate) AS Mo,\n       SUM(td.Quantity * td.Price) AS gross_amount\nFROM t.TransactionsHeaders th\nINNER JOIN t.TransactionsDetails td\n  ON th.CompanyID = td.CompanyID\n AND th.TransactionTypeID = td.TransactionTypeID\n AND th.TransactionYear = td.TransactionYear\n AND th.TransactionNo = td.TransactionNo\nWHERE th.TransactionTypeID = 1\n  AND ISNULL(th.IsVoid, 0) = 0\n  AND th.TransactionDate >= '2025-01-01' AND th.TransactionDate < '2026-01-01'\nGROUP BY YEAR(th.TransactionDate), MONTH(th.TransactionDate)\nORDER BY gross_amount DESC\n```\n\nإذا كنت تقصد عدد فواتير البيع بدل القيمة، أو تشمل مبالغ صافية بعد الخصومات/الضرائب، قل لي.",
+    "answer_sql": "SELECT YEAR(th.TransactionDate) AS Yr, MONTH(th.TransactionDate) AS Mo,\n       SUM(td.Quantity * td.Price) AS gross_amount\nFROM t.TransactionsHeaders th\nINNER JOIN t.TransactionsDetails td\n  ON th.CompanyID = td.CompanyID\n AND th.TransactionTypeID = td.TransactionTypeID\n AND th.TransactionYear = td.TransactionYear\n AND th.TransactionNo = td.TransactionNo\nWHERE th.TransactionTypeID = 1\n  AND ISNULL(th.IsVoid, 0) = 0\n  AND th.TransactionDate >= '2025-01-01' AND th.TransactionDate < '2026-01-01'\nGROUP BY YEAR(th.TransactionDate), MONTH(th.TransactionDate)\nORDER BY gross_amount DESC",
+    "sources": [
+      "TransactionsDetails",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 10,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "states assumptions or interpretation",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA13",
+    "persona": "sales_manager",
+    "angle": "rep_comparison",
+    "purpose": "مقارنة مناديب",
+    "question": "قارن بين مندوبي المبيعات Imad و wael: عدد فواتير البيع غير الملغاة وإجمالي المبيعات لكل منهما.",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 14.33,
+    "answer": "إليك المقارنة بين المندوبين **Imad** و **wael**:\n\n| المندوب | عدد فواتير البيع غير الملغاة | إجمالي المبيعات |\n|--------|------------------------------|-----------------|\n| **Imad** | 130 | **1,379,456.19** |\n| **wael** | 108 | **824,361.88** |\n\n- **Imad** (المعرف 1) أصدر **130 فاتورة** بإجمالي مبيعات **≈ 1,379,456**.\n- **wael** (المعرف 4) أصدر **108 فواتير** بإجمالي مبيعات **≈ 824,362**.\n\nإذن **Imad** متفوق على wael في كلا المعيارين — بعدد أكبر من الفواتير (130 مقابل 108) وبإجمالي مبيعات أعلى بنحو **~555,094**.\n\n```sql\n-- عدد فواتير البيع غير الملغاة لكل مندوب\nSELECT SalesPersonID, COUNT(*) AS invoice_count\nFROM t.TransactionsHeaders\nWHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0\n  AND SalesPersonID IN (1, 4)\nGROUP BY SalesPersonID;\n\n-- إجمالي المبيعات عبر run_metric (net_sales_by_salesperson)\n```\n\nإذا تقصد فترة زمنية محددة أو مقارنة على صافي المبيعات بعد الخصومات، قل لي وسأعدّل الحساب.",
+    "answer_sql": "SELECT SalesPersonID, COUNT(*) AS invoice_count FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0 AND SalesPersonID IN (1, 4) GROUP BY SalesPersonID; SELECT th.SalesPersonID, sp.Name AS SalesPersonName, COUNT(*) AS invoice_count, (SELECT SUM(td.Quantity * td.Price) FROM t.TransactionsHeaders th2 INNER JOIN t.TransactionsDetails td ON th2.CompanyID = td.CompanyID AND th2.TransactionTypeID = td.TransactionTypeID AND th2.TransactionYear = td.TransactionYear AND th2.TransactionNo = td.TransactionNo WHERE th2.SalesPersonID = th.SalesPersonID AND th2.TransactionTypeID = 1 AND ISNULL(th2.IsVoid, 0) = 0 AND th2.CompanyID = 2 AND td.CompanyID = 2) AS gross_amount FROM t.TransactionsHeaders th INNER JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID AND sp.CompanyID = th.CompanyID WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND sp.CompanyID = 2 GROUP BY th.SalesPersonID, sp.Name ORDER BY gross_amount DESC; SELECT ID, Name, ForeignName, PositionID, IsSuspended, GroupID FROM t.SalesPersons",
+    "sources": [
+      "SalesPersons",
+      "TransactionsDetails",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 9,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA14",
+    "persona": "operations",
+    "angle": "pipeline",
+    "purpose": "طلبات بلا فواتير",
+    "question": "كم طلب بيع لدينا وكم فاتورة بيع غير ملغاة؟ وما الفجوة بينهما كمؤشر على طلبات لم تُحوّل لفواتير بعد؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 13.47,
+    "answer": "إليك النتائج:\n\n- **عدد الطلبات (OrdersHeaders):** 132 طلب بيع\n- **عدد فواتير البيع غير الملغاة (فواتير بيع نوع 1 وغير ملغاة):** 238\n\n**الفجوة:** 238 − 132 = **+106** (الفواتير أكثر من الطلبات بـ 106).\n\nهذه النتيجة عكس الفرضية المطروحة — أي أن عدد فواتير البيع **أعلى** من عدد الطلبات. الفجوة هنا **ليست مؤشراً على طلبات لم تُحوّل بعد**، بل تعني أن جزءاً كبيراً من الفواتير لم يُنشأ من طلبات أصلًا (فواتير مباشرة)، أو أن هناك تحويلات متعددة/تقسيمات لطلب واحد.\n\nنقطة مهمة في الدلالة: الطلبات (132) والفواتير (238) مسارات **مستقلة** في هذه القاعدة (`OrdersHeaders` جدول مستقل عن `TransactionsHeaders`)، فلا يصح طرحهما لاستنتاج طلبات مُعلّقة. للكشف عن الطلبات التي لم تُحوّل لفواتير، نحتاج مقارنة على مستوى كل طلب (مثلاً عبر `InvoiceReturnLink` أو حقول الربط مثل `RefOrderYear/RefOrderNo` في فواتير التوصيل)، وليس بطرح العددين الكليين.\n\nلو تقصد عدد الطلبات **غير المسلّمة/غير المحوّلة** تحديداً، قل لي وسأتحقق على مستوى الرؤوس.",
+    "answer_sql": "SELECT COUNT(*) AS total_orders FROM t.OrdersHeaders; SELECT COUNT(*) AS total_sales_invoices FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0",
+    "sources": [
+      "OrdersHeaders",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 10,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "distinguishes orders from invoices",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA15",
+    "persona": "owner",
+    "angle": "concentration",
+    "purpose": "تركّز العملاء",
+    "question": "ما نسبة مبيعات أفضل 3 عملاء من إجمالي مبيعات الشركة (فواتير بيع غير ملغاة)؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 19.34,
+    "answer": "**نتيجة الحساب:**\n\n- **إجمالي مبيعات الشركة** (فواتير بيع غير ملغاة، كل الفترة): **2,203,818.07**\n- **مبيعات أفضل 3 عملاء:**\n  - كارفور - طريق ديراب: **799,746.91**\n  - كارفور - طريق خريص: **685,088.20**\n  - ماركت الساعة: **332,542.70**\n  - المجموع: **1,817,377.80**\n\n**النسبة = 1,817,377.80 ÷ 2,203,818.07 ≈ 82.46%**\n\nأي أن أفضل 3 عملاء يستحوذون على **حوالي 82.5%** من إجمالي مبيعات الشركة.\n\n**SQL المستخدم:**\n\n```sql\n-- الإجمالي\nSELECT COUNT(*) AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount\nFROM t.TransactionsHeaders th\nINNER JOIN t.TransactionsDetails td\n  ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID\n AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo\nWHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0;\n\n-- أفضل 3 عملاء\nSELECT TOP 3 c.ID AS CustomerID, c.Name, SUM(td.Quantity * td.Price) AS cust_sales\nFROM t.TransactionsHeaders th\nINNER JOIN t.TransactionsDetails td\n  ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID\n AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo\nINNER JOIN t.Customers c ON c.CompanyID = th.CompanyID AND c.ID = th.CustomerID\nWHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0\nGROUP BY c.ID, c.Name\nORDER BY cust_sales DESC;\n```\n\nإذا تقصد نسبة مبيعاتهم خلال شهر محدد أو حسب عدد الفواتير (وليس القيمة)، قل لي لأعدل الحساب.",
+    "answer_sql": "SELECT (SELECT COUNT(*) FROM t.TransactionsHeaders thc WHERE thc.TransactionTypeID = 1 AND ISNULL(thc.IsVoid, 0) = 0 AND thc.CompanyID = 2) AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2; SELECT TOP 3 c.ID AS CustomerID, c.Name, SUM(td.Quantity * td.Price) AS cust_sales\nFROM t.TransactionsHeaders th\nINNER JOIN t.TransactionsDetails td\n  ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID\n AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo\nINNER JOIN t.Customers c ON c.CompanyID = th.CompanyID AND c.ID = th.CustomerID\nWHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0\nGROUP BY c.ID, c.Name\nORDER BY cust_sales DESC",
+    "sources": [
+      "Customers",
+      "TransactionsDetails",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 9,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA16",
+    "persona": "accountant",
+    "angle": "timing",
+    "purpose": "آخر تحصيل vs آخر بيع",
+    "question": "ما آخر تاريخ لفاتورة مبيعات غير ملغاة وما آخر تاريخ لسند قبض غير ملغى؟ هل هناك فجوة زمنية بينهما؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 14.0,
+    "answer": "**الافتراض:** آخر تاريخ يُحسب لأحدث فاتورة بيع غير ملغاة (`TransactionTypeID = 1` و`IsVoid = 0`) ولأحدث سند قبض غير ملغى (`IsVoid = 0`).\n\nالنتائج:\n- **آخر فاتورة مبيعات غير ملغاة:** **2025-07-15**\n- **آخر سند قبض غير ملغى:** **2026-06-15**\n\nنعم، هناك **فجوة زمنية واضحة** — سندات القبض ممتدة إلى **11 شهراً** أبعد من آخر فاتورة بيع (تقريباً **335 يوم**). أي أن آخر سند قبض (يونيو 2026) أحدث بكثير من آخر فاتورة بيع (يوليو 2025).\n\n**ملاحظة هامة:** هذه النتيجة غير معتادة وتستدعي التحقق — عادةً ما تكون سندات القبض لاحقةً أو محاذيةً لفواتير البيع، وليس أن تمتد القبضات لأكثر من 11 شهراً بعد آخر فاتورة. قد يشير ذلك إلى بيانات فارات/مؤجلة أو تسويات خارج نطاق المبيعات. هل تريد أن أعرض التوزيع الشهري لسندات القبض بعد يوليو 2025 للتأكد؟",
+    "answer_sql": "SELECT MAX(TransactionDate) AS last_invoice_date FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0; SELECT MAX(TransactionDate) AS last_receipt_date FROM t.Receipts WHERE ISNULL(IsVoid, 0) = 0",
+    "sources": [
+      "Receipts",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 10,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "states assumptions or interpretation",
+        "addresses receipts/collections",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA17",
+    "persona": "sales_manager",
+    "angle": "one_time_buyers",
+    "purpose": "عملاء بفاتورة واحدة",
+    "question": "كم زبون لديه فاتورة بيع واحدة فقط (غير ملغاة)؟ هل هذا مؤشر على عملاء جدد أم churn؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 32.6,
+    "answer": "لدينا البيانات الكافية الآن. لاحظ الفرق المهم: بيانات الفواتير تُظهر حوالي 12 عميلاً فقط لديهم فواتير، بينما تظهر بيانات cfd_assignment أعداداً أكبر بكثير (16-17 لكل مندوب) لأنها تشمل كل العملاء المخصصين للمندوبين بغض النظر عن وجود فواتير.\n\nدعني أوضح النتيجة للعميل.\n\nالإجابة:\n\n**عدد العملاء الذين لديهم فاتورة بيع واحدة فقط (غير ملغاة): عميل واحد فقط** (CustomerID=15، \"أسواق السدحان - حي الصحافة\").\n\n**التفاصيل:**\n- هذا العميل لديه فاتورة واحدة بتاريخ **2023-10-05** (السنة 2023).\n- من إجمالي قاعدة العملاء (حوالي 12 عميلاً لديهم فواتير أصلاً)، 11 عميلاً لديهم أكثر من فاتورة واحدة، و8 عملاء لديهم 7 فواتير أو أكثر.\n\nبخصوص سؤالك عن **مؤشر عملاء جدد أم churn**: لا يمكنني الجزم بذلك بشكل قاطع لأن حقل `CreateDate` فارغ لجميع العملاء (لا توجد بيانات عن تاريخ إنشاء الحساب). لكن بالنظر إلى أن آخر فاتورة له كانت في **أكتوبر 2023**، وهذا يبدو قديماً نسبياً، فإن السيناريو الأرجح هو **churn (توقف عن الشراء)** وليس عميلاً جديداً — أي عميل بدأ بفاتورة تجريبية واحدة ولم يعد يشتري منذ ذلك الحين.\n\n**تحذير مهم:** هذا التحليل يستند فقط إلى العملاء الذين لديهم فواتير في جدول `TransactionsHeaders` (12 عميلاً). قاعدة العملاء الكاملة في النظام أكبر بكثير (كما يظهر من توزيع cfd_assignment بحوالي 16-17 عميلاً لكل مندوب عبر 6 مندوبين)، ومعظم هؤلاء العملاء إما لم يصدر لهم أي فاتورة بيع بعد أو أن بياناتهم غير ممثلة في هذا الجدول.\n\n**SQL المستخدم:**\n```sql\nSELECT CustomerID, COUNT(*) AS invoice_count\nFROM t.TransactionsHeaders\nWHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0\nGROUP BY CustomerID\nORDER BY invoice_count\n```\n\nإذا أردت مقارنة أوسع تشمل كل العملاء (حتى من دون فواتير) لتقدير نسبة العملاء الجدد المحتملين، يمكنني الاستعلام عن ذلك.",
+    "answer_sql": "SELECT CustomerID, COUNT(*) AS invoice_count\nFROM t.TransactionsHeaders\nWHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0\nGROUP BY CustomerID\nORDER BY invoice_count; SELECT c.ID, c.Name, c.CreateDate\nFROM t.Customers c\nWHERE c.IsSuspended = 0; SELECT TransactionDate, TransactionYear, TransactionNo\nFROM t.TransactionsHeaders\nWHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0 AND CustomerID = 15; SELECT sp.ID AS SalesPersonID, sp.Name AS SalesPersonName, COUNT(DISTINCT c.ID) AS customer_count FROM t.Customers c INNER JOIN t.CustomersFinancialDetails cfd ON cfd.CustomerID = c.ID AND cfd.CompanyID = c.CompanyID INNER JOIN t.SalesPersons sp ON sp.PositionID = cfd.PositionsID AND sp.CompanyID = cfd.CompanyID WHERE 1=1 AND c.CompanyID = 2 AND cfd.CompanyID = 2 AND sp.CompanyID = 2 GROUP BY sp.ID, sp.Name",
+    "sources": [
+      "Customers",
+      "CustomersFinancialDetails",
+      "SalesPersons",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 9,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA18",
+    "persona": "auditor",
+    "angle": "void_check",
+    "purpose": "فواتير ملغاة",
+    "question": "كم فاتورة بيع ملغاة IsVoid=1 عندنا؟ وهل يجب استبعادها من تقارير المبيعات الرسمية؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 18.08,
+    "answer": "النتائج واضحة:\n\n- **عدد فواتير البيع الملغاة (نوع 1، IsVoid=1):** **0 فاتورة** — لا توجد أي فواتير بيع ملغاة حاليًا لدينا.\n\n- **بخصوص استبعادها من تقارير المبيعات الرسمية:** على مستوانا في التحليل، التقارير المعتمدة (مثل `Rpt_SalesAndOrders` والمقياس `net_sales`) تستبعد الفواتير الملغاة تلقائيًا عبر الشرط `ISNULL(IsVoid, 0) = 0`، أي أنها تُحسب **بالملغاة أو غير الملغاة ولا تُدرج الملغاة منها** في إجمالي المبيعات. هذا هو المعيار المطبق في جميع حساباتنا السابقة (إجمالي مبيعات الشركة، أفضل 3 عملاء، أرقام المندوبين).\n\nملاحظة دليل المستخدم: لم يعُد بحث الوثائق بأي مقتطف محدّد عن سياسة الملغاة بشكل صريح، لكن ممارسة استبعاد الملغاة مثبتة في قوالب التقارير المعتمدة نفسها (`ISNULL(IsVoid, 0) = 0`).\n\n**الخلاصة:**\n- لدينا **0 فاتورة بيع ملغاة** حاليًا، لذا لا أثر فعليًا على الأرقام.\n- نعم، الملغاة مستبعدة من تقارير المبيعات الرسمية بالشرط `IsVoid = 0`، ويجب دائمًا الإبقاء على هذا الاستبعاد عند أي مقارنة مبيعات حتى لا تُضخم الإجماليات.\n\nهل تريد أن أعرض عدد الملغاة أيضًا لفواتير المرتجعات (نوع 2)، أو تفصيلها حسب المندوب؟",
+    "answer_sql": "SELECT COUNT(*) AS voided_sales_invoices FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 1; SELECT sp.ID AS SalesPersonID, sp.Name AS SalesPersonName, (SELECT COUNT(*) FROM t.OrdersHeaders oh WHERE oh.SalesPersonID = sp.ID) AS order_count, (SELECT COUNT(*) FROM t.TransactionsHeaders th WHERE th.SalesPersonID = sp.ID AND th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0) AS invoice_count FROM t.SalesPersons sp WHERE 1=1 ORDER BY invoice_count DESC",
+    "sources": [
+      "OrdersHeaders",
+      "SalesPersons",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 10,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "states assumptions or interpretation",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA19",
+    "persona": "warehouse",
+    "angle": "van_stock",
+    "purpose": "رصيد السيارة",
+    "question": "أي مندوب لديه أكبر كمية إجمالية في رصيد أصناف السيارة SalesPersonItemsBalance؟",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 9.95,
+    "answer": "المندوب صاحب أكبر كمية إجمالية في رصيد أصناف السيارة:\n\n- **الاسم:** Imad (المعرف 1)\n- **الكمية الإجمالية:** 15,000\n\n```sql\nSELECT TOP 1 sp.Name AS SalesPersonName, sp.ID AS SalesPersonID, SUM(b.ItemQuantity) AS TotalQty\nFROM t.SalesPersonItemsBalance b\nJOIN t.SalesPersons sp ON sp.CompanyID = b.CompanyID AND sp.ID = b.SalesPersonID\nGROUP BY sp.Name, sp.ID\nORDER BY SUM(b.ItemQuantity) DESC\n```\n\nإذا كنت تقصد كمية ضمن فترة زمنية معينة أو حسب منتج محدد، أخبرني.",
+    "answer_sql": "SELECT TOP 1 sp.Name AS SalesPersonName, sp.ID AS SalesPersonID, SUM(b.ItemQuantity) AS TotalQty\nFROM t.SalesPersonItemsBalance b\nJOIN t.SalesPersons sp ON sp.CompanyID = b.CompanyID AND sp.ID = b.SalesPersonID\nGROUP BY sp.Name, sp.ID\nORDER BY SUM(b.ItemQuantity) DESC",
+    "sources": [
+      "SalesPersonItemsBalance",
+      "SalesPersons"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "logical",
+      "logic_score": 7,
+      "notes": [
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  },
+  {
+    "id": "DA20",
+    "persona": "executive",
+    "angle": "summary",
+    "purpose": "ملخص تنفيذي",
+    "question": "أعطني ملخصاً تنفيذياً مختصراً: عدد العملاء النشطين (لديهم فاتورة بيع)، إجمالي المبيعات، عدد الطلبات غير المسلمة، وعدد سندات القبض.",
+    "validation": "analyst_logic",
+    "client": "105",
+    "company_id": 2,
+    "lang": "ar",
+    "elapsed_s": 10.5,
+    "answer": "**الملخص التنفيذي — الشركة (CompanyID=2):**\n\n- **العملاء النشطون (لديهم فاتورة بيع):** 12 عميلاً\n- **إجمالي المبيعات (فواتير بيع غير ملغاة):** 2,203,818.07\n- **الطلبات غير المسلمة:** 132 طلباً (كل الطلبات البالغة 132 غير مسلّمة)\n- **سندات القبض (غير الملغاة):** 213 سنداً\n\n**ملاحظة:** عدد العملاء النشطين في الفواتير (12) يختلف عن أعداد عملاء المندوبين في بيانات التخصيص (cfd_assignment) التي قد تكون أكبر، لأن الأخيرة تشمل كل العملاء المخصصين للمندوبين بغض النظر عن وجود فواتير لهم.\n\nالاستعلامات المستخدمة:\n\n```sql\n-- العملاء النشطون\nSELECT COUNT(DISTINCT CustomerID) FROM t.TransactionsHeaders\nWHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0;\n\n-- الطلبات غير المسلمة\nSELECT COUNT(*) FROM t.OrdersHeaders WHERE ISNULL(IsDelivered, 0) = 0;\n```",
+    "answer_sql": "SELECT (SELECT COUNT(*) FROM t.TransactionsHeaders thc WHERE thc.TransactionTypeID = 1 AND ISNULL(thc.IsVoid, 0) = 0 AND thc.CompanyID = 2) AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2; SELECT COUNT(*) AS total_orders, SUM(CASE WHEN ISNULL(oh.IsDelivered, 0) = 0 THEN 1 ELSE 0 END) AS undelivered_orders FROM t.OrdersHeaders oh WHERE 1=1 AND oh.CompanyID = 2 AND ISNULL(oh.IsDelivered, 0) = 0; SELECT COUNT(DISTINCT CustomerID) AS active_customers FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0; SELECT COUNT(*) AS receipts_count FROM t.Receipts WHERE ISNULL(IsVoid, 0) = 0",
+    "sources": [
+      "OrdersHeaders",
+      "Receipts",
+      "TransactionsDetails",
+      "TransactionsHeaders"
+    ],
+    "http_status": 200,
+    "evaluation": {
+      "verdict": "strong",
+      "logic_score": 10,
+      "notes": [
+        "respects void filter",
+        "uses sales invoice type",
+        "states assumptions or interpretation",
+        "gives quantitative answer",
+        "shows SQL evidence"
+      ]
+    }
+  }
+]

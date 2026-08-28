@@ -14,9 +14,14 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
 
-Tablet-side data table in OSFA_DB, synced to/from Back Office.
+**Tablet working copy of the planned visit list** — built by BO `OT_SendSalesmanData` from `SalesPersonsRoutes` + `CustomersFinancialDetails` + `RoutesInformation`, then deleted/rebuilt per salesman on each send.
+
+- One row per **customer × route date** (`RouteDate`, `CustomerNo`, `VisitOrder`, `RouteID`).
+- `Visited` is stamped during send from same-day `OT_ActionLog` ActionID=`0` — tablet UX, not BO truth.
+- **Chatbot must NOT query this table** — reconstruct plan from BO: `t.SalesPersonsRoutes` + `t.CustomersFinancialDetails` + `t.RoutesInformation`.
+
+Actual visits after they happen: BO `LogActionTransaction` via `OT_ImportActionLog`.
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

@@ -33,7 +33,7 @@ _DOMAIN_KEYWORDS: dict[str, dict] = {
     "cfd": {
         "label": "Customer financial details & territory (CFD)",
         "keywords": [
-            "cfd", "عملاء", "مندوب", "territory", "assignment", "positions",
+            "cfd", "عملاء المندوب", "زبائن المندوب", "territory", "assignment", "positions",
             "customersfinancialdetails", "financialdetails",
         ],
     },
@@ -49,7 +49,7 @@ _DOMAIN_KEYWORDS: dict[str, dict] = {
     },
     "routes": {
         "label": "Routes & visits",
-        "keywords": ["مسار", "route", "visit", "journey"],
+        "keywords": ["مسار", "route", "visit", "visits", "journey", "زيارات", "زيارة"],
     },
     "system_options": {
         "label": "System options & configuration",

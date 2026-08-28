@@ -65,6 +65,7 @@ class AskRequest(BaseModel):
     question: str
     client: str | None = None      # IGNORED — kept so old bodies don't 422
     session_id: str | None = None
+    company_id: int | None = None  # header dropdown; never ask in chat
 
 
 class FeedbackRequest(BaseModel):
@@ -173,12 +174,37 @@ def _match_company(question: str, companies: list) -> int | None:
 
 
 def _apply_pending_answer(session: dict, question: str, client: str) -> None:
+    # Company is chosen in the header dropdown, not parsed from chat.
     if session.get("pending_ask") == "CompanyID":
-        profile = params.discover_profile(client)
-        companies = profile.get("_companies") or []
-        match = _match_company(question, companies)
-        if match is not None:
-            session["conversation"]["CompanyID"] = match
+        session["pending_ask"] = None
+
+
+def _set_session_company(session: dict, conv: dict, cid: int) -> None:
+    prev = conv.get("CompanyID")
+    conv["CompanyID"] = cid
+    # Tenant switch mid-conversation: prior turns were answered under another
+    # company -- drop them so the model can never parrot an old company's
+    # number when the same question is asked again after the dropdown change.
+    if prev is not None and int(prev) != int(cid):
+        session["history"] = []
+        session.pop("last_turn", None)
+
+
+def _ensure_session_company(session: dict, client: str, company_id: int | None = None) -> None:
+    conv = session.setdefault("conversation", {})
+    live = _load_companies_live(client, conv)
+    valid = {int(c["id"]) for c in live}
+    if company_id is not None:
+        cid = int(company_id)
+        if not valid or cid in valid:
+            _set_session_company(session, conv, cid)
+            return
+    pinned = params.pin_company_id(conv, params.discover_profile(client))
+    if pinned is not None and (not valid or pinned in valid):
+        _set_session_company(session, conv, int(pinned))
+        return
+    if live:
+        _set_session_company(session, conv, int(live[0]["id"]))
 
 
 def _resolve_context_company_id(client: str, conversation: dict) -> int | None:
@@ -249,14 +275,19 @@ def _context_payload(client: str, conversation: dict) -> dict:
         "companies": companies,
         "clients_active": clients_active,
         "multi_company": len(companies) > 1,
+        "multi_company": len(companies) > 1,
     }
 
 
 @app.get("/context")
 def get_context(session_id: str | None = None):
     client = pinned_client()
-    session = SESSIONS.get(session_id) if session_id else None
-    conversation = session.get("conversation", {}) if session else {}
+    if session_id:
+        session = _touch_session(session_id, lambda: {"conversation": {}, "pending_ask": None})
+        _ensure_session_company(session, client)
+        conversation = session["conversation"]
+    else:
+        conversation = {}
     return _context_payload(client, conversation)
 
 
@@ -330,7 +361,7 @@ def set_context(req: ContextSetRequest):
     valid_ids = {c["id"] for c in companies}
     if req.company_id not in valid_ids:
         raise HTTPException(status_code=400, detail="invalid CompanyID for this client")
-    session["conversation"]["CompanyID"] = req.company_id
+    _set_session_company(session, session["conversation"], int(req.company_id))
     return _context_payload(client, session["conversation"])
 
 
@@ -343,6 +374,7 @@ async def ask(request: Request, req: AskRequest):
     session = _touch_session(req.session_id, lambda: {"conversation": {}, "pending_ask": None}) \
         if req.session_id else {"conversation": {}, "pending_ask": None}
     _apply_pending_answer(session, req.question, client)
+    _ensure_session_company(session, client, req.company_id)
 
     cancel = threading.Event()  # TRACK D: set on client disconnect
 

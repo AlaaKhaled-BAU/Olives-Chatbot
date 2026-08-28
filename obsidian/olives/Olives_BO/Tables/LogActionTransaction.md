@@ -3,7 +3,7 @@ type: table
 database: Olives_BO
 name: LogActionTransaction
 schema: dbo
-tags: [#backoffice, #log]
+tags: [#backoffice, #log, #sales, #visit]
 foreign_keys:
 referenced_by:
   - [[All_Visits]]
@@ -167,16 +167,26 @@ referenced_by:
   - [[Tech_No_Gps_Check_for_second_Visit]]
   - [[Technical_RestoreRoutefromlogaction]]
   - [[Tower_Visits_Coverage_Percentage]]
-support_relevance: low
-last_verified: 2026-07-05
+support_relevance: high
+last_verified: 2026-08-28
 ---
 # LogActionTransaction
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
 
-Core data table in the Back Office (server-side) — stores logactiontransaction records.
+**The field-activity log** — every salesman tablet action that `OT_ImportActionLog` copied from OSFA `OT_ActionLog` into BO (`OSFA_AutoID` is the tablet row). This is the source of truth for **actual** visits and for stamping GPS/location onto documents. Query `t.LogActionTransaction` (tenant via `CompNo`). `lookup_hot` loads the ActionID codebook (`LogActions`), not these fact rows.
+
+**Data1/Data2 meaning depends on ActionID — never treat Data1 as always a customer:**
+- `0` CustEntry / `3` CustLeave: `Data1` = customer id (visit). Count visits as `ActionID = N'0'`, not `7` (SystemLogin).
+- `8` NoSaleExit: `Data1` = customer. `14`/`15` prospective entry/leave. `21` will-not-visit. `31` postpone.
+- `4` InvoiceIssue, `5` OrderIssue, `9` ReturnInvoiceIssue, `12` PaymentIssue: `Data1` = **document year**, `Data2` = **document number**.
+- `10` StartJourney / `11` EndJourney: no customer. `45`/`46` open/close cash. `49` pending-invoice JSON in Data1 — exclude from visit counts.
+- SalesmanID is nvarchar; `TRY_CAST` to `SalesPersons.ID`. Not the route calendar (that is `SalesPersonsRoutes`).
+
+## ActionID codebook
+
+Live `LogActions` (use `lookup_hot` / `t.LogActions`). Visit-related: 0 CustEntry, 3 CustLeave, 8 NoSaleExit, 14/15 prospective, 21 will-not-visit, 31 postpone. Journey: 10 Start, 11 End. Documents: 4 invoice, 5 order, 9 return invoice, 12 payment, 13 return order, 16 quotation. 7 SystemLogin is app login, not a customer visit.
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -392,11 +402,10 @@ AutoID
 Typical business table
 ## Common Issues
 
-- **Orphan lines**: Detail rows without matching header — causes sync failures
-- **Posting failure**: IsPosted flag stuck false — check ERP integration log
-- **Duplicate vouchers**: Same VouNo generated for different transactions — run dedup check
-- **Currency mismatch**: ExRate different from CurrenciesRate table — financial reconciliation off
-- **Void inconsistency**: IsVoid flag but original transaction still active — check WF approval
+- **Data1 is overloaded**: customer id on 0/3/8; year+doc on 4/5/9/12 — joining Data1 to Customers on invoice rows is wrong
+- **Visit count**: `ActionID = N'0'` only; `7` SystemLogin is more frequent and is not a visit
+- **OSFA vs BO**: tablet writes `OT_ActionLog`; BO facts appear only after `OT_ImportActionLog` (Posted=1, OSFA_AutoID set)
+- **Action 49**: JSON payload, not a visit; import also fills `PendingInvoices`
 
 ## Related
 

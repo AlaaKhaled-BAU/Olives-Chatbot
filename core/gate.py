@@ -18,6 +18,10 @@ _ARABIC_RE = re.compile(r"[؀-ۿ]")
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _WRITE_TYPES = (exp.Insert, exp.Update, exp.Delete, exp.Create, exp.Drop, exp.Alter, exp.Merge)
 
+# Empty/unused BO objects — never query, never show in schema. Past visits
+# are LogActionTransaction; planned visits are SalesPersonsRoutes + CFD.RouteID.
+HIDDEN_TABLES = frozenset({"salesmanvisitssummary"})
+
 # Keep in sync with setup/02_introspect.py — unscoped reference tables.
 _REFERENCE_TABLES = {
     "ActivityList", "CustomerLoginActions", "Currencies", "DeviceReportsList",
@@ -45,6 +49,22 @@ _INVOICE_GRAIN_ERROR = (
 
 class GateError(Exception):
     pass
+
+
+def _table_bare_name(tbl: exp.Table) -> str:
+    return (tbl.name or "").split(".")[-1].lower()
+
+
+def _reject_hidden_tables(stmt):
+    for tbl in stmt.find_all(exp.Table):
+        if _table_bare_name(tbl) in HIDDEN_TABLES:
+            raise GateError(
+                "SalesmanVisitsSummary is unused and empty. "
+                "Actual visits: t.LogActionTransaction "
+                "(ActionID N'0' login / N'3' logout, Data1 = customer). "
+                "Planned/future visits: t.SalesPersonsRoutes + "
+                "t.CustomersFinancialDetails.RouteID."
+            )
 
 
 def invoice_grain_error(sql: str) -> str | None:
@@ -234,6 +254,7 @@ def validate(
         raise GateError(
             f"only SELECT or allow-listed EXEC is permitted, got {type(stmt).__name__}"
         )
+    _reject_hidden_tables(stmt)
     if any(sel.args.get("into") for sel in stmt.find_all(exp.Select)):
         raise GateError("SELECT ... INTO is not allowed (creates a table)")
     if next(stmt.find_all(_WRITE_TYPES), None) is not None:

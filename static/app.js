@@ -80,16 +80,28 @@ async function loadContext() {
       max_invoice_date: ctx.max_invoice_date || null,
     };
     updateAsOfLabel(contextAsOf.calendar_today, contextAsOf.max_invoice_date);
-    if (ctx.multi_company && ctx.companies.length > 1) {
-      companySelect.classList.remove("hidden");
+    const companies = ctx.companies || [];
+    const multi = !!(ctx.multi_company || ctx.multi_company || companies.length > 1);
+    if (companies.length) {
       companySelect.innerHTML = "";
-      ctx.companies.forEach((c) => {
+      companies.forEach((c) => {
         const opt = document.createElement("option");
         opt.value = c.id;
         opt.textContent = `${c.name} (${c.id})`;
-        if (c.id === ctx.company_id) opt.selected = true;
+        if (Number(c.id) === Number(ctx.company_id)) opt.selected = true;
         companySelect.appendChild(opt);
       });
+      companySelect.classList.toggle("hidden", !multi);
+      if (companySelect.value) {
+        await fetch("/context", {
+          method: "POST",
+          headers: apiHeaders(),
+          body: JSON.stringify({
+            session_id: sessionId(),
+            company_id: Number(companySelect.value),
+          }),
+        });
+      }
     }
   } catch (e) {
     companyLabel.textContent = "";
@@ -102,25 +114,7 @@ companySelect.addEventListener("change", async () => {
     headers: apiHeaders(),
     body: JSON.stringify({ session_id: sessionId(), company_id: Number(companySelect.value) }),
   });
-  await // Auto theme: dark default, follows OS light preference (D1=A)
-(function () {
-  const root = document.documentElement;
-  const mq = window.matchMedia("(prefers-color-scheme: light)");
-  const apply = () => { root.setAttribute("data-theme", mq.matches ? "light" : "dark"); };
-  apply();
-  mq.addEventListener ? mq.addEventListener("change", apply) : mq.addListener(apply);
-})();
-
-// Empty-state starter questions
-document.querySelectorAll("#empty-state .chip-btn").forEach((b) => {
-  b.addEventListener("click", () => {
-    const q = document.getElementById("question");
-    q.value = b.dataset.q;
-    document.getElementById("ask-form").requestSubmit();
-  });
-});
-
-loadContext();
+  await loadContext();
 });
 
 function addMessage(text, role) {
@@ -129,20 +123,16 @@ function addMessage(text, role) {
   const div = document.createElement("div");
   div.className = `msg ${role}`;
   if (!ARABIC_RE.test(text)) div.classList.add("en");
-  if (role === "bot") {
-    div.innerHTML = renderRich(text);
-    div.style.unicodeBidi = "plaintext";
-  } else {
-    div.textContent = text;
-    div.style.unicodeBidi = "plaintext";
-  }
+  if (role === "bot") div.innerHTML = renderRich(text);
+  else div.textContent = text;
+  div.style.unicodeBidi = "plaintext";
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
   return div;
 }
 
 /* markdown-lite: escape-first, then transform — fences, inline code, bold,
-   pipe-tables, lists. Kills raw ```sql leaks (qa ISSUE-002) safely. */
+   pipe-tables, lists (kills raw sql-fence leaks, qa ISSUE-002). */
 function escHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -162,7 +152,7 @@ function renderRich(text) {
       const body = [];
       i++;
       while (i < lines.length && !/^```\s*$/.test(lines[i])) { body.push(lines[i]); i++; }
-      i++; // closing fence
+      i++;
       out.push(
         `<div class="md-codeblock"><span class="cb-lang">${fence[1] || "code"}</span>` +
         `<pre><code>${body.join("\n")}</code></pre></div>`);
@@ -176,12 +166,12 @@ function renderRich(text) {
       if (rows.length >= 2 && /^[\s|:-]+$/.test(rows[1])) {
         const head = cells(rows[0]);
         let html = '<div class="md-table-wrap"><table><thead><tr>' +
-          head.map((h) => `<th>${/[\d٪%]/.test(h) ? ` class="num">${h}` : `>${h}`}`).join("") +
+          head.map((h) => `<th>${h}</th>`).join("") +
           "</tr></thead><tbody>";
         for (const r of rows.slice(2)) {
           const cs = cells(r);
-          html += "<tr>" + cs.map((c, ci) => {
-            const num = /^[\s\d.,٪%\-+]+$/.test(c);
+          html += "<tr>" + cs.map((c) => {
+            const num = /^[\s\d.,%\-+]+$/.test(c);
             return `<td${num ? ' class="num"' : ""}>${c}</td>`;
           }).join("") + "</tr>";
         }
@@ -192,11 +182,11 @@ function renderRich(text) {
       }
       continue;
     }
-    if (/^\s*[-•]\s+/.test(line) || /^\s*\d+[.)]\s+/.test(line)) {
+    if (/^\s*[-\u2022]\s+/.test(line) || /^\s*\d+[.)]\s+/.test(line)) {
       flush();
       const items = [];
-      while (i < lines.length && (/^\s*[-•]\s+/.test(lines[i]) || /^\s*\d+[.)]\s+/.test(lines[i]))) {
-        items.push(lines[i].replace(/^\s*([-•]|\d+[.)])\s+/, ""));
+      while (i < lines.length && (/^\s*[-\u2022]\s+/.test(lines[i]) || /^\s*\d+[.)]\s+/.test(lines[i]))) {
+        items.push(lines[i].replace(/^\s*([-\u2022]|\d+[.)])\s+/, ""));
         i++;
       }
       out.push(`<ul>${items.map((it) => `<li>${it}</li>`).join("")}</ul>`);
@@ -212,35 +202,30 @@ function renderRich(text) {
     .replace(/`([^`\n]+)`/g, "<code>$1</code>");
 }
 
-function showTyping() {
-  const t = document.createElement("div");
-  t.className = "typing";
-  t.id = "typing-indicator";
-  t.innerHTML = "<i></i><i></i><i></i>";
-  messages.appendChild(t);
-  messages.scrollTop = messages.scrollHeight;
-  return t;
-}
-
 async function ask(question) {
-  const bot = addMessage("", "bot");
-  bot.innerHTML = '<div class="typing"><i></i><i></i><i></i></div>';
+  if (!companySelect.value) {
+    await loadContext();
+  }
+  const bot = addMessage("...", "bot");
   let resp;
   try {
+    const companyId = companySelect.value ? Number(companySelect.value) : undefined;
     resp = await fetch("/ask", {
       method: "POST",
       headers: apiHeaders(),
-      body: JSON.stringify({ question, session_id: sessionId() }),
+      body: JSON.stringify({
+        question,
+        session_id: sessionId(),
+        company_id: companyId,
+      }),
     });
   } catch (e) {
-    bot.innerHTML = "";
     bot.textContent = "تعذر الاتصال بالخادم";
     bot.className = "msg error";
     return;
   }
 
   if (!resp.ok) {
-    bot.innerHTML = "";
     bot.textContent = `خطأ (${resp.status})`;
     bot.className = "msg error";
     return;
@@ -268,14 +253,12 @@ async function ask(question) {
       gotAnything = true;
       if (data.step) {
         if (!streaming) {
-          bot.innerHTML = "";
           bot.textContent = `${data.step}…`;
           bot.classList.add("en");
         }
       } else if (data.answer_chunk) {
         if (!streaming) {
           streaming = true;
-          bot.innerHTML = "";
           bot.textContent = "";
         }
         streamedText += data.answer_chunk;
@@ -283,8 +266,7 @@ async function ask(question) {
         bot.classList.toggle("en", !ARABIC_RE.test(streamedText));
         messages.scrollTop = messages.scrollHeight;
       } else if (data.answer && String(data.answer).trim()) {
-        bot.innerHTML = "";
-        bot.innerHTML = renderRich(String(data.answer));
+        bot.textContent = data.answer;
         bot.classList.toggle("en", !ARABIC_RE.test(data.answer));
         if (data.answer_sql) lastAnswerSql = data.answer_sql;
         const asOf = extractAsOfFromDone(data);
@@ -515,38 +497,39 @@ form.addEventListener("submit", (e) => {
   ask(question);
 });
 
-// Auto theme: dark default, follows OS light preference (D1=A)
-(function () {
-  const root = document.documentElement;
-  const mq = window.matchMedia("(prefers-color-scheme: light)");
-  const apply = () => { root.setAttribute("data-theme", mq.matches ? "light" : "dark"); };
-  apply();
-  mq.addEventListener ? mq.addEventListener("change", apply) : mq.addListener(apply);
-})();
-
-// Empty-state starter questions
-document.querySelectorAll("#empty-state .chip-btn").forEach((b) => {
-  b.addEventListener("click", () => {
-    const q = document.getElementById("question");
-    q.value = b.dataset.q;
-    document.getElementById("ask-form").requestSubmit();
+document.querySelectorAll(".chip-btn, .chip-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const q = btn.dataset.q;
+    if (!q) return;
+    addMessage(q, "user");
+    ask(q);
   });
 });
 
 loadContext();
 
 
-/* ===== مصدر البيانات — operator connection console ===== */
+/* ===== إعدادات الاتصال ===== */
 (function () {
   const el = (id) => document.getElementById(id);
-  const card = el("db-console"), head = el("db-toggle"), body = el("db-body");
-  const orb = el("db-orb"), badge = el("db-badge"), chev = el("db-chev");
+  const modal = el("db-modal"), openBtn = el("db-open-btn"), closeBtn = el("db-close");
+  if (!modal || !openBtn || !closeBtn) return;
+  const orb = el("db-orb"), badge = el("db-badge");
   const serverIn = el("db-server"), portIn = el("db-port"), userIn = el("db-user");
   const passIn = el("db-pass"), eyeBtn = el("db-eye"), chipLocal = el("db-local-chip");
   const nameSel = el("db-name-select"), nameIn = el("db-name"), trustedChk = el("db-trusted");
   const testBtn = el("db-test"), saveBtn = el("db-save"), resetBtn = el("db-reset");
   const msgEl = el("db-msg");
   let lastProbe = null;
+
+  function openModal() {
+    modal.classList.remove("hidden");
+    openBtn.setAttribute("aria-expanded", "true");
+  }
+  function closeModal() {
+    modal.classList.add("hidden");
+    openBtn.setAttribute("aria-expanded", "false");
+  }
 
   function setMsg(text, kind) {
     msgEl.textContent = text || "";
@@ -587,11 +570,11 @@ loadContext();
     catch { /* console is best-effort */ }
   }
 
-  head.addEventListener("click", () => {
-    // .open owns visibility (CSS); hidden class kept for aria/compat only.
-    const open = card.classList.toggle("open");
-    body.classList.toggle("hidden", !open);
-    head.setAttribute("aria-expanded", String(open));
+  openBtn.addEventListener("click", openModal);
+  closeBtn.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.classList.contains("hidden")) closeModal();
   });
 
   chipLocal.addEventListener("click", () => {
@@ -660,25 +643,7 @@ loadContext();
         paintStatus({ source: "live", active: res.active });
         const n = (lastProbe && Array.isArray(lastProbe.databases)) ? lastProbe.databases.length : null;
         setMsg(`✓ تم تثبيت المصدر الحي: ${res.probe.server_name}${n !== null ? ` (${n} قاعدة)` : ""}`, "ok");
-        try { await // Auto theme: dark default, follows OS light preference (D1=A)
-(function () {
-  const root = document.documentElement;
-  const mq = window.matchMedia("(prefers-color-scheme: light)");
-  const apply = () => { root.setAttribute("data-theme", mq.matches ? "light" : "dark"); };
-  apply();
-  mq.addEventListener ? mq.addEventListener("change", apply) : mq.addListener(apply);
-})();
-
-// Empty-state starter questions
-document.querySelectorAll("#empty-state .chip-btn").forEach((b) => {
-  b.addEventListener("click", () => {
-    const q = document.getElementById("question");
-    q.value = b.dataset.q;
-    document.getElementById("ask-form").requestSubmit();
-  });
-});
-
-loadContext(); } catch {}
+        try { await loadContext(); } catch {}
       }
     } catch { setMsg("تعذر الوصول للخدمة", "error"); }
     saveBtn.textContent = "اتصال وتثبيت";
@@ -687,25 +652,7 @@ loadContext(); } catch {}
   resetBtn.addEventListener("click", async () => {
     await fetch("/db/reset", { method: "POST" });
     refreshStatus();
-    try { await // Auto theme: dark default, follows OS light preference (D1=A)
-(function () {
-  const root = document.documentElement;
-  const mq = window.matchMedia("(prefers-color-scheme: light)");
-  const apply = () => { root.setAttribute("data-theme", mq.matches ? "light" : "dark"); };
-  apply();
-  mq.addEventListener ? mq.addEventListener("change", apply) : mq.addListener(apply);
-})();
-
-// Empty-state starter questions
-document.querySelectorAll("#empty-state .chip-btn").forEach((b) => {
-  b.addEventListener("click", () => {
-    const q = document.getElementById("question");
-    q.value = b.dataset.q;
-    document.getElementById("ask-form").requestSubmit();
-  });
-});
-
-loadContext(); } catch {}
+    try { await loadContext(); } catch {}
   });
 
   refreshStatus();

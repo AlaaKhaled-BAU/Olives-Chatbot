@@ -79,8 +79,14 @@ DOMAIN_SEEDS: dict[str, dict] = {
     "routes": {
         "label": "Routes & visits",
         "tags": {"#route"},
-        "seeds": {"RoutesInformation", "SalespersonRouteByDate", "SalespersonCustomersVisitsByDate"},
-        "hints": [],
+        "seeds": {
+            "RoutesInformation", "SalesPersonsRoutes", "LogActionTransaction",
+            "LogActions", "SalespersonRouteByDate",
+        },
+        "hints": [
+            "Actual visits: LogActionTransaction ActionID N'0' (login) / N'3' (logout); Data1 = customer.",
+            "Planned/future visits: SalesPersonsRoutes weekday calendar + CustomersFinancialDetails.RouteID.",
+        ],
     },
     "system_options": {
         "label": "System options & configuration",

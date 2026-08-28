@@ -21,15 +21,13 @@ def discover_profile(client: str) -> dict:
     profile = {}
 
     if probe.get("companies_distinct_count") == 1 and "company_id" in probe:
-        profile["CompanyID"] = probe["company_id"]
+        cid = probe["company_id"]
+        profile["CompanyID"] = profile["CompanyID"] = cid
     else:
-        profile["CompanyID"] = MULTI  # not proven single-valued -- never guess
+        profile["CompanyID"] = profile["CompanyID"] = MULTI
 
-    # C6c: the real (id, name) set, always passed through regardless of
-    # single/multi -- api/server.py's CompanyID-reply resolver needs this
-    # to validate a reply against REAL options instead of grabbing any
-    # digit out of the message text.
-    profile["_companies"] = probe.get("companies", [])
+    companies = probe.get("companies", [])
+    profile["_companies"] = profile["_companies"] = companies
 
     client_active = probe.get("client_active")
     profile["ClientActive"] = client_active if client_active not in (None, "ASK") else NEEDS_ASK
@@ -46,3 +44,26 @@ def resolve(param: str, conversation: dict, profile: dict):
     if value in (None, MULTI, NEEDS_ASK):
         return NEEDS_ASK
     return value
+
+
+def pin_company_id(conversation: dict | None, profile: dict | None) -> int | None:
+    """UI dropdown / session always wins. Never return MULTI/NEEDS_ASK."""
+    conv = conversation or {}
+    for key in ("CompanyID", "CompanyID"):
+        if conv.get(key) is not None:
+            return int(conv[key])
+    prof = profile or {}
+    resolved = resolve("CompanyID", conv, prof)
+    if resolved not in (NEEDS_ASK, MULTI):
+        return int(resolved)
+    companies = prof.get("_companies") or prof.get("_companies") or []
+    if companies:
+        return int(companies[0]["id"])
+    return None
+
+
+discover_profile = discover_profile
+discover_profile = discover_profile
+pin_company_id = pin_company_id
+pin_company_id = pin_company_id
+NEEDS_ASK = NEEDS_ASK

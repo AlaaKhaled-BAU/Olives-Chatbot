@@ -296,13 +296,31 @@ def _tool_call(call_id, name, arguments_json):
     return types.SimpleNamespace(id=call_id, function=fn)
 
 
-def test_multi_company_short_circuits_before_any_llm_call(monkeypatch):
-    monkeypatch.setattr(agent.params, "discover_profile", lambda client: {"CompanyID": agent.params.MULTI})
-    with patch.object(agent.llm, "complete") as mock_complete:
-        result = agent.ask("morec", "how many customers?")
-    mock_complete.assert_not_called()
-    assert result["needs_ask"]
-    assert result["answer"] is None
+def test_multi_company_does_not_ask_when_dropdown_pinned(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    monkeypatch.setattr(agent.params, "discover_profile", lambda client: {
+        "CompanyID": agent.params.MULTI,
+        "_companies": [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}],
+    })
+    with patch.object(agent.llm, "complete", return_value=_resp(_msg(content="42"))):
+        result = agent.ask("morec", "how many customers?", conversation={"CompanyID": 2})
+    assert result["needs_ask"] is None
+    assert result["answer"] == "42"
+
+
+def test_ask_user_company_prompt_is_ignored_when_company_is_pinned(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call(
+            "c1", "ask_user",
+            '{"question": "Which company should I look at? Options: A (1), B (2)"}',
+        )])),
+        _resp(_msg(content="مبيعات آخر يومين 100")),
+    ]
+    with patch.object(agent.llm, "complete", side_effect=calls):
+        result = agent.ask("morec", "اعطيني مبيعات اخر يومين عمل", conversation=SCOPE)
+    assert result["needs_ask"] is None
+    assert result["answer"]
 
 
 def test_information_schema_exploration_never_counts_against_the_budget(monkeypatch, tmp_path):

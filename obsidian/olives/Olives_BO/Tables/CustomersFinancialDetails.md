@@ -311,9 +311,12 @@ related_workflows:
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
 
-Core data table in the Back Office (server-side) — stores customersfinancialdetails records.
+Customer financial / territory rows: credit, position assignment, **route membership**, visit order.
+
+`RouteID` → `RoutesInformation` (which planned route this customer is on). `VisitOrder` = stop sequence on that route. `PositionsID` → `Positions` → `SalesPersons.PositionID`.
+
+Used with `SalesPersonsRoutes` for **future/planned** visits. Past visits are `LogActionTransaction`.
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

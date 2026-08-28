@@ -74,7 +74,9 @@ def test_allowlisted_exec_allowed():
     assert "GetCustomer" in out
 
 
-def test_exec_denied_when_allowlist_empty():
+def test_salesman_visits_summary_select_rejected():
+    with pytest.raises(GateError, match="LogActionTransaction"):
+        validate("SELECT * FROM t.SalesmanVisitsSummary")
     with pytest.raises(GateError, match="not an allow-listed procedure"):
         validate("EXEC dbo.Rpt_SalesmanSalesSummary @CompanyID = 1", allowed_procs=[])
 

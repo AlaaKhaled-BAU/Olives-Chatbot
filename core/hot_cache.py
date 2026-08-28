@@ -23,10 +23,15 @@ L1_QUERIES = {
     "ClientsActive": "SELECT ClientID FROM t.ClientsActive",
     "DocumentsTypes": "SELECT ID, Name, TransactionTypeID FROM t.DocumentsTypes",
     "TransactionsTypes": "SELECT ID, Name FROM t.TransactionsTypes",
+    "LogActions": "SELECT ActionId, ActionDesc FROM t.LogActions",
     "PriceLists": "SELECT ID, Name, IsSuspended FROM t.PriceLists",
 }
 
-L1_TABLES = frozenset(L1_QUERIES.keys())
+# Fact log is too large to snapshot. lookup_hot("LogActionTransaction") serves
+# the ActionID codebook (same rows as LogActions) plus a grain note.
+L1_ALIASES = {"LogActionTransaction": "LogActions"}
+
+L1_TABLES = frozenset(L1_QUERIES.keys()) | frozenset(L1_ALIASES)
 
 _CUSTOMERS_BASE_COLS = ("ID", "Name", "ForeignName", "IsSuspended")
 
@@ -44,7 +49,8 @@ def l1_sql(table: str, client: str | None = None) -> str | None:
     """Return the L1 SELECT for a master table. Customers may include Code
     when introspection shows that column on dbo.Customers."""
     base = table.strip().split(".")[-1]
-    if base not in L1_TABLES:
+    base = L1_ALIASES.get(base, base)
+    if base not in L1_QUERIES:
         return None
     if base == "Customers" and client:
         cols = list(_CUSTOMERS_BASE_COLS)
@@ -69,14 +75,30 @@ def lookup(table_name: str, company_id: int, client: str) -> dict:
     """Return cached L1 master rows or fetch live. Free — does not spend MAX_QUERIES."""
     table = table_name.strip()
     base = table.split(".")[-1]
-    if base not in L1_TABLES:
+    requested = base
+    codebook_alias = base in L1_ALIASES
+    base = L1_ALIASES.get(base, base)
+    if base not in L1_QUERIES:
         return {"error": f"{table!r} is not an L1 master table. Use run_select for fact data."}
     schema_version = _schema_version(client)
     key = cache_key(client, company_id, base, schema_version)
     cached = memory.get_result(key, ttl_seconds=TTL_SECONDS)
+    source = "l1_cache"
     if cached is not None:
-        return {"table": base, "rows": cached, "source": "l1_cache"}
-    sql_text = l1_sql(base, client)
-    rows = sql.run_select(sql_text, company_id, client)
-    memory.set_result(key, rows)
-    return {"table": base, "rows": rows, "source": "live"}
+        rows = cached
+    else:
+        sql_text = l1_sql(base, client)
+        rows = sql.run_select(sql_text, company_id, client)
+        memory.set_result(key, rows)
+        source = "live"
+    out = {"table": base, "rows": rows, "source": source}
+    if codebook_alias:
+        out["requested"] = requested
+        out["note"] = (
+            "LogActionTransaction is a high-volume fact log and is not snapshotted. "
+            "These rows are t.LogActions (ActionID codebook). "
+            "Customer visits: ActionID N'0' CustEntry / N'3' CustLeave, Data1=customer. "
+            "Do not count ActionID 7 SystemLogin. Document actions 4/5/9/12 use Data1=year, Data2=doc no. "
+            "Query facts with run_select on t.LogActionTransaction."
+        )
+    return out

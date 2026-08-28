@@ -14,9 +14,12 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
 
-Core data table in the Back Office (server-side) — stores salespersonroutebydate records.
+Sparse **date-specific route override** — not the main weekly calendar ([[SalesPersonsRoutes]]).
+
+When populated, [[OT_SendSalesmanData]] can merge these rows into the tablet route plan (`OT_SalesmanRoute` / `OT_RouteMF`) for specific clients (e.g. ClientActive=74). Local dev DB: ~12 rows, often no future dates — treat as exception layer only.
+
+Main planned visits still come from `SalesPersonsRoutes` × `CustomersFinancialDetails.RouteID` + `VisitOrder`.
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

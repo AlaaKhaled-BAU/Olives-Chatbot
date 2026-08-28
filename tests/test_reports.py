@@ -17,7 +17,10 @@ def schema_tables():
     return load_schema_tables()
 
 
-def test_match_reports_arabic_salesman_sales_summary():
+def test_match_reports_visits_question_skips_sales_summary():
+    hits = reports.match_reports("اعطيني زيارات المندوب اخر اسبوع", "105")
+    names = [h["name"] for h in hits]
+    assert "Rpt_SalesmanSalesSummary" not in names
     hits = reports.match_reports("تقرير مبيعات المندوب", "105")
     assert hits
     assert hits[0]["name"] == "Rpt_SalesmanSalesSummary"

@@ -13,6 +13,7 @@ FILES = {
     # Lane A: headed copy (setup/inject_doc_headings.py) — chunker needs # headings.
     "user_guide.md": REPO_ROOT / "knowledge" / "guide-headed" / "user_guide.md",
     "sql_documentation.md": REPO_ROOT / "knowledge" / "reference" / "Olives SQL_Documentation.md",
+    "visits_grain.md": REPO_ROOT / "knowledge" / "reference" / "visits_grain.md",
     "tables_summary.md": REPO_ROOT / "knowledge" / "reference" / "tables summary.md",
     # C5: support-agent/system_options_guide.md over the repo-root "system
     # option explained.md" -- same 754 options, but this one is already

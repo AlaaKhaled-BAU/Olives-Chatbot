@@ -46,3 +46,11 @@ def test_l1_sql_customers_omits_code_when_absent(monkeypatch):
     )
     sql = hot_cache.l1_sql("Customers", client="morec")
     assert "Code" not in sql
+
+
+def test_logactions_is_l1_identity_projection():
+    sql = hot_cache.L1_QUERIES["LogActions"]
+    assert "SELECT *" not in sql.upper()
+    assert "ActionId" in sql and "ActionDesc" in sql
+    assert hot_cache.l1_sql("LogActionTransaction") == hot_cache.L1_QUERIES["LogActions"]
+    assert "LogActionTransaction" in hot_cache.L1_TABLES

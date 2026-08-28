@@ -6,16 +6,17 @@ schema: dbo
 tags: [#backoffice, #log]
 foreign_keys:
 referenced_by:
-support_relevance: low
-last_verified: 2026-07-05
+support_relevance: high
+last_verified: 2026-08-28
 ---
 # LogActions
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
 
-Core data table in the Back Office (server-side) — stores logactions records.
+L1 codebook for `LogActionTransaction.ActionID` (`lookup_hot` table `LogActions` or `LogActionTransaction`).
+`ActionId` + `ActionDesc`: 0 CustEntry, 3 CustLeave, 4 InvoiceIssue, 5 OrderIssue, 7 SystemLogin, 8 NoSaleExit, 9 ReturnInvoiceIssue, 10/11 journey, 12 PaymentIssue, 49 Pending Invoice JSON, plus ~40 other tablet actions.
+Join `t.LogActions.ActionId` = log.`ActionID`. This table has no event rows.
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

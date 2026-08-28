@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from . import config
+from . import config, gate
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 VAULT = BASE_DIR / "obsidian" / "olives"
@@ -217,6 +217,9 @@ def search_schema_notes(
         if n["subdir"] in ("Tables", "Procedures", "Relations") or note_type in ("table", "procedure", "relation"):
             if not rx.search(content):
                 continue
+            name = fm.get("name", n["fname"].replace(".md", ""))
+            if str(name).lower() in gate.HIDDEN_TABLES:
+                continue
             excerpt = content[max(0, rx.search(content).start() - 60):rx.search(content).start() + 80].replace("\n", " ")
             results.append({
                 "path": n["rel"],
@@ -242,6 +245,8 @@ def read_schema_note(
             cand = VAULT / (path + ".md")
         if not cand.exists():
             return {"error": f"Note at path '{path}' not found."}
+        if cand.stem.lower() in gate.HIDDEN_TABLES:
+            return {"error": "Table is not a queryable data source. Use LogActionTransaction for actual visits."}
         with open(cand, "r", encoding="utf-8") as f:
             content = f.read()
         rel = os.path.relpath(cand, VAULT)
@@ -251,6 +256,8 @@ def read_schema_note(
         sanitized = sanitize_note_content(content, fm, subdir)
         return {"path": rel, "name": fm.get("name", cand.stem), "content": sanitized}
     target = (name or "").upper()
+    if name and name.lower() in gate.HIDDEN_TABLES:
+        return {"error": "Table is not a queryable data source. Use LogActionTransaction for actual visits."}
     for n in NOTES_INDEX:
         try:
             with open(n["path"], "r", encoding="utf-8") as f:
@@ -540,6 +547,11 @@ def get_joins(
 _TOKEN_RE = re.compile(r"[a-zA-Z\u0600-\u06FF]{2,}")
 
 ARABIC_ALIASES = {
+    "زيارات قادمة": ["SalesPersonsRoutes", "CustomersFinancialDetails", "RoutesInformation"],
+    "الزيارات القادمة": ["SalesPersonsRoutes", "CustomersFinancialDetails", "RoutesInformation"],
+    "زيارات المندوب": ["LogActionTransaction"],
+    "زيارات": ["LogActionTransaction"],
+    "زيارة": ["LogActionTransaction"],
     "مبيعات": ["TransactionsHeaders"],
     "مرتجعات": ["TransactionsHeaders"],
     "تحصيل": ["Receipts"],
@@ -561,7 +573,23 @@ PLAYBOOK_OVERRIDES = {
 }
 
 _TERRITORY_HINTS = re.compile(
-    r"مندوب|عملاء|territory|salesperson\s+assign|customers?\s+per\s+sales",
+    r"عملاء المندوب|زبائن المندوب|عملاء كل مندوب|territory|salesperson\s+assign|customers?\s+per\s+sales",
+    re.IGNORECASE,
+)
+_VISIT_PAST_HINTS = re.compile(r"زيارات|زيارة|\bvisits?\b", re.IGNORECASE)
+_VISIT_FUTURE_HINTS = re.compile(
+    r"قادم|القادم|مستقبل|المقرر|scheduled|upcoming|\bfuture\b|"
+    r"الاسبوع القادم|الأسبوع القادم|الغد|بكرة|\btomorrow\b|next\s+week",
+    re.IGNORECASE,
+)
+_VISIT_FORECAST_HINTS = re.compile(
+    r"توقع|توقعات|المتوقعة|تحليل|اتجاه|رأيك|رأي|كمحلل|تقدير|"
+    r"predict|forecast|trend|projection|analyst",
+    re.IGNORECASE,
+)
+_VISIT_PLAN_ROUTE_HINTS = re.compile(
+    r"خطة المسار|المخطط|المجدول|جدول المسار|route\s+plan|route\s+calendar|"
+    r"SalesPersonsRoutes|schedule",
     re.IGNORECASE,
 )
 
@@ -628,7 +656,10 @@ def retrieve_cards(question: str, client: str, limit: int = 3) -> list[dict]:
     if not all_cards:
         return []
 
-    table_cards = [c for c in all_cards if c["kind"] == "table"]
+    table_cards = [
+        c for c in all_cards
+        if c["kind"] == "table" and str(c.get("name", "")).lower() not in gate.HIDDEN_TABLES
+    ]
     relation_cards = [c for c in all_cards if c["kind"] == "relation"]
     q_tokens = _tokens(question)
     alias_tables = {t.lower() for t in _alias_hits(question)}
@@ -644,7 +675,7 @@ def retrieve_cards(question: str, client: str, limit: int = 3) -> list[dict]:
     scored.sort(key=lambda x: (-x[0], x[1].get("name", "")))
 
     # Territory questions: boost playbook tables even if token overlap is weak
-    if _TERRITORY_HINTS.search(question):
+    if _TERRITORY_HINTS.search(question) and not _VISIT_PAST_HINTS.search(question):
         boost = PLAYBOOK_OVERRIDES["Customers--SalesPersons"]["boost_tables"]
         picked_names = {c["name"] for _, c in scored[:limit]}
         for name in boost:
@@ -653,6 +684,27 @@ def retrieve_cards(question: str, client: str, limit: int = 3) -> list[dict]:
                     if card["name"] == name:
                         scored.append((3, card))
                         break
+
+    if _VISIT_PAST_HINTS.search(question):
+        future = bool(_VISIT_FUTURE_HINTS.search(question))
+        forecast = future and _VISIT_FORECAST_HINTS.search(question) and not _VISIT_PLAN_ROUTE_HINTS.search(question)
+        if future and forecast:
+            boost = ["LogActionTransaction", "LogActions", "SalesPersons"]
+        elif future:
+            boost = [
+                "SalesPersonsRoutes",
+                "CustomersFinancialDetails",
+                "RoutesInformation",
+                "SalespersonRouteByDate",
+                "SalesPersons",
+            ]
+        else:
+            boost = ["LogActionTransaction", "LogActions", "SalesPersons"]
+        for i, name in enumerate(boost):
+            for card in table_cards:
+                if card["name"] == name:
+                    scored.append((20 - i, card))
+                    break
 
     seen: set[str] = set()
     top_tables: list[dict] = []

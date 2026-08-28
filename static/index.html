@@ -25,54 +25,61 @@
       <select id="company-select" class="hidden" aria-label="Company"></select>
       <span id="client-label"></span>
       <span id="as-of-label" class="as-of-label hidden" aria-label="As-of dates"></span>
+      <button type="button" id="db-open-btn" class="settings-btn settings-btn" title="الإعدادات" aria-label="الإعدادات">إعدادات</button>
     </div>
   </header>
 
-  <section id="db-console" class="db-card">
-    <button type="button" id="db-toggle" class="db-head" aria-expanded="false">
-      <span id="db-orb" class="orb amber" aria-hidden="true"></span>
-      <span class="db-title">مصدر البيانات</span>
-      <span id="db-badge" class="badge badge-snapshot">نسخة محلية</span>
-      <span id="db-chev" class="chev">▾</span>
-    </button>
-    <div id="db-body" class="db-body hidden">
+  <div id="db-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="db-modal-title">
+    <div class="modal-card">
+      <div class="modal-head">
+        <span id="db-orb" class="orb amber" aria-hidden="true"></span>
+        <h3 id="db-modal-title">الاتصال</h3>
+        <span id="db-badge" class="badge badge-snapshot">محلي</span>
+        <button type="button" id="db-close" class="modal-x" aria-label="إغلاق">✕</button>
+      </div>
       <div class="grid4">
         <label>الخادم
           <div class="srv-wrap">
             <input id="db-server" placeholder="(.) أو host:port" autocomplete="off" spellcheck="false" dir="ltr">
-            <button type="button" id="db-local-chip" class="chip" title="الخادم المحلي">(.)</button>
+            <button type="button" id="db-local-chip" class="chip" title="محلي">(.)</button>
           </div>
+          <span class="hint">(.) = هذا الجهاز</span>
         </label>
         <label>المنفذ
           <input id="db-port" type="number" min="1" max="65535" value="1433">
+          <span class="hint">عادة 1433</span>
         </label>
         <label>المستخدم
           <input id="db-user" autocomplete="username" spellcheck="false" dir="ltr">
+          <span class="hint">حساب قراءة فقط</span>
         </label>
         <label>كلمة المرور
           <div class="pw-wrap">
             <input id="db-pass" type="password" autocomplete="current-password" dir="ltr">
             <button type="button" id="db-eye" class="chip" aria-label="إظهار كلمة المرور">👁</button>
           </div>
+          <span class="hint">تبقى على هذا الجهاز</span>
         </label>
       </div>
       <div class="grid4">
         <label class="span2">قاعدة البيانات
           <select id="db-name-select" class="hidden"></select>
           <input id="db-name" placeholder="Olives_BO" spellcheck="false" dir="ltr">
+          <span class="hint">«فحص» يملأ القائمة</span>
         </label>
         <label class="trusted-label">
           <input type="checkbox" id="db-trusted"> Windows Auth
+          <span class="hint">بدون كلمة مرور</span>
         </label>
         <div class="btn-row">
-          <button type="button" id="db-test" class="ghost-btn">فحص الاتصال</button>
-          <button type="button" id="db-save" class="primary-btn">اتصال وتثبيت</button>
-          <button type="button" id="db-reset" class="danger-btn hidden">رجوع للنسخة المحلية</button>
+          <button type="button" id="db-test" class="ghost-btn">فحص</button>
+          <button type="button" id="db-save" class="primary-btn">حفظ واتصال</button>
+          <button type="button" id="db-reset" class="danger-btn hidden">النسخة المحلية</button>
         </div>
       </div>
       <div id="db-msg" class="db-msg hidden"></div>
     </div>
-  </section>
+  </div>
 
   <section id="empty-state" aria-hidden="false">
     <span class="hero-mark" aria-hidden="true">
@@ -81,12 +88,12 @@
       </svg>
     </span>
     <h2>اسأل بياناتك مباشرة</h2>
-    <p>أجيب بالأرقام مع الاستعلام الذي أنتجها — جرّب أحد هذه الأسئلة:</p>
+    <p>أجيب بالأرقام مع الاستعلام الذي أنتجها — الشركة من القائمة أعلاه.</p>
     <div class="hero-chips">
-      <button type="button" class="chip-btn" data-q="كم عدد الزبائن النشطين؟">كم عدد الزبائن النشطين؟</button>
-      <button type="button" class="chip-btn" data-q="كم مبيعات يوليو 2025؟">مبيعات يوليو 2025؟</button>
-      <button type="button" class="chip-btn" data-q="مين أفضل مندوب عندنا؟">أفضل مندوب؟</button>
-      <button type="button" class="chip-btn" data-q="كيف أضيف عميل جديد؟">كيف أضيف عميل جديد؟</button>
+      <button type="button" class="chip-btn chip-btn" data-q="كم عدد الزبائن النشطين؟">كم عدد الزبائن النشطين؟</button>
+      <button type="button" class="chip-btn chip-btn" data-q="كم مبيعات يوليو 2025؟">مبيعات يوليو 2025؟</button>
+      <button type="button" class="chip-btn chip-btn" data-q="مين أفضل مندوب عندنا؟">أفضل مندوب؟</button>
+      <button type="button" class="chip-btn chip-btn" data-q="كيف أضيف عميل جديد؟">كيف أضيف عميل جديد؟</button>
     </div>
   </section>
 
