@@ -752,22 +752,23 @@ def _is_fast_count_path(question: str) -> bool:
     return any(term in q_lower for term in _MASTER_COUNT_TERMS)
 
 
+_RPT_STEM_RE = re.compile(r"\bRpt_[A-Za-z0-9_]+", re.IGNORECASE)
+
+
 def _is_report_path(question: str, client: str) -> bool:
-    """Named report questions — prefer run_report, skip docs thrash."""
-    matches = reports.match_reports(question, client, limit=1)
-    if not matches:
+    """Named report questions — lock tools only on explicit report intent (R0)."""
+    q = (question or "").strip()
+    if not q:
         return False
-    if _REPORT_HINT_RE.search(question):
+    if not (_REPORT_HINT_RE.search(q) or _RPT_STEM_RE.search(q)):
+        return False
+    matches = reports.match_reports(q, client, limit=1)
+    if not matches:
+        return bool(_RPT_STEM_RE.search(q))
+    name = matches[0].get("name", "")
+    if name in reports.templates_by_name():
         return True
-    card = matches[0]
-    q_lower = question.lower()
-    for alias in card.get("aliases") or []:
-        if len(alias) >= 6 and alias.lower() in q_lower:
-            return True
-    name = card.get("name", "")
-    if name and name.lower().replace("rpt_", "") in q_lower.replace(" ", ""):
-        return True
-    return False
+    return bool(_RPT_STEM_RE.search(q))
 
 
 def _is_howto_path(question: str, client: str) -> bool:
@@ -1240,8 +1241,11 @@ def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, 
             client,
             params=args.get("params"),
             allowed_procs=allowed_proc_names,
+            question=state.get("question"),
         )
         state["report_name"] = report_name
+        if result.get("status") == "not_certified":
+            state["report_path"] = False
         if result.get("sql") and "error" not in result:
             state["queries"].append(result["sql"])
             rows = result.get("rows")
@@ -1536,17 +1540,20 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             "content": f"Known bad patterns for this client and CompanyID — do not repeat:\n{bad}",
         })
     report_cards = reports.match_reports(question, client, limit=2)
+    certified = reports.templates_by_name()
+    report_cards = [c for c in report_cards if c.get("name") in certified]
     if report_cards:
         cards = "\n".join(
-            f"- {c['name']}: {c.get('purpose', '')[:200]} | tables: {', '.join(c.get('tables', []))}"
+            f"- {c['name']}: {certified[c['name']].get('purpose', '')[:200]} "
+            f"(equivalent grain on t.; params: {', '.join(certified[c['name']].get('params') or [])})"
             for c in report_cards
         )
         messages.append({
             "role": "system",
             "content": (
-                "Matching report metadata — use run_report with the catalog name. "
-                "Certified SELECT templates run on t. only; no EXEC in this release "
-                "(audited read-only Rpt_* EXEC requires a later signed allow-list + GRANT):\n"
+                "Matching certified report templates — use run_report with the template name. "
+                "SELECT templates are equivalent grain on t. only (not Olives print); no EXEC "
+                "until a signed allow-list + GRANT exists:\n"
                 f"{cards}"
             ),
         })

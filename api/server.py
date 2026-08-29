@@ -273,12 +273,12 @@ def _context_payload(client: str, conversation: dict) -> dict:
         finally:
             conn.close()
     return {
+        "lab_db_ui": os.environ.get("CHATBOT_LAB_DB", "").strip() in ("1", "true", "yes"),
         "client": client,
         "company_id": company_id,
         "company": company_row,
         "companies": companies,
         "clients_active": clients_active,
-        "multi_company": len(companies) > 1,
         "multi_company": len(companies) > 1,
     }
 

@@ -1025,3 +1025,25 @@ def test_vault_tool_increments_counter():
     with patch.object(agent.vault, "get_joins", return_value={"joins": []}):
         agent._run_tool("get_joins", {"table": "Customers"}, {}, {}, [], 1, "105", state)
     assert state["vault_searches"] == 1
+
+
+def test_is_report_path_false_for_metric_july():
+    assert not agent._is_report_path("كم مبيعات يوليو؟", "105")
+
+
+def test_is_report_path_false_for_salesman_alias_without_report_word():
+    assert not agent._is_report_path("مبيعات المندوب هذا الشهر", "105")
+
+
+def test_not_certified_clears_report_path_lock():
+    state = {
+        "queries": [],
+        "last_rows": None,
+        "doc_source_pairs": [],
+        "report_path": True,
+        "question": "تقرير Rpt_Foo",
+    }
+    with patch.object(agent.reports, "build_report_sql", return_value=None), \
+         patch.object(agent.reports, "_catalog_card", return_value={"name": "Rpt_Foo", "purpose": "x"}):
+        agent._run_tool("run_report", {"name": "Rpt_Foo"}, {}, {}, [], 2, "105", state)
+    assert state.get("report_path") is False
