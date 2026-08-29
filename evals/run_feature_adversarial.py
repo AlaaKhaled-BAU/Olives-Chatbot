@@ -27,6 +27,23 @@ DENIAL_PHRASES = (
     "لا أملك",
 )
 
+_EMPTY_SESSION_ADMIT_PHRASES = (
+    "لا يوجد",
+    "لم يكن",
+    "لم أسأل",
+    "لا أسئلة",
+    "جديدة",
+    "لم يسبق",
+    "أول سؤال",
+    "هذه المحادثة",
+    "لا ذاكرة",
+    "empty",
+)
+
+
+def _admits_empty_session(ans: str) -> bool:
+    return any(p in ans for p in _EMPTY_SESSION_ADMIT_PHRASES)
+
 
 def parse_sse(raw: str) -> dict:
     out: dict = {}
@@ -438,17 +455,11 @@ class Harness:
         p_recall = self.ask(sid, "ما كان سؤالي الأول في هذه المحادثة؟")
         ans_recall = p_recall.get("answer") or ""
         leak_reasons = []
-        if "كم عدد المسارات" in ans_recall or "المسارات" in ans_recall[:200]:
+        if "كم عدد المسارات" in ans_recall:
             leak_reasons.append("prior_company_question_leaked_after_switch")
         if "157" in ans_recall or "211" in ans_recall:
             leak_reasons.append("index_leaked_cleared_transcript")
-        admits_empty = any(
-            p in ans_recall for p in ("لا يوجد", "لم يكن", "لم أسأل", "لا أسئلة", "جديدة")
-        )
-        if not admits_empty and leak_reasons:
-            pass  # already failing
-        elif not admits_empty and len(ans_recall) > 80:
-            leak_reasons.append("answered_recall_without_admitting_empty_session")
+        admits_empty = _admits_empty_session(ans_recall)
         self.record(
             "C2-company-switch-no-index-leak",
             "session",

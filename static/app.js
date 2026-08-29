@@ -64,6 +64,8 @@ async function loadContext() {
     const resp = await fetch(`/context?session_id=${encodeURIComponent(sessionId())}`);
     if (!resp.ok) return;
     const ctx = await resp.json();
+    const dbBtn = document.getElementById("db-open-btn");
+    if (dbBtn) dbBtn.classList.toggle("hidden", !ctx.lab_db_ui);
     if (ctx.company) {
       companyLabel.textContent = `CompanyID: ${ctx.company.ID} — ${ctx.company.Name}`;
     } else if (ctx.company_id) {

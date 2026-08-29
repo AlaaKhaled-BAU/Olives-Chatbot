@@ -61,6 +61,15 @@ Historical weekly counts from `LogActionTransaction` where `ActionID = N'0'`, GR
 ## ClientsActive
 - `(CompanyID, ClientID)` identifies which Olives product fork is active — not a shop or customer row.
 
+## Price lists (PriceLists / PriceListDetails)
+- Table name is **`PriceListDetails`** (singular *List*), not `PriceListsDetails`.
+- Header: `PriceLists` (ID, Name, IsSuspended). L1 snapshot via `lookup_hot` table `PriceLists`.
+- Line prices: `PriceListDetails` — PK `(CompanyID, PriceListID, ItemCode, UnitID)`; columns include `Price`, `DiscountPercent`, `UseInSales`, `UseInReturn`.
+- Customer's assigned list: `CustomersFinancialDetails.PriceListID` → `PriceLists.ID` (per position/business unit — **not** on `Customers`).
+- Order snapshot: `OrdersHeaders.PriceListID` → `PriceLists` when the question is about the list used on an order.
+- Join item prices: `PriceListDetails` ⋈ `Items` on `CompanyID` + `ItemCode`; ⋈ `ItemsUnits` on `CompanyID` + `UnitID`.
+- Filter active lists: `ISNULL(PriceLists.IsSuspended, 0) = 0` when the user means current pricing.
+
 ## Receipts / checks
 - Receipt header: `Receipts`; tie to customers and salespeople via documented FK relation notes in the vault.
 - Exclude voided receipts: `ISNULL(Receipts.IsVoid, 0) = 0` — on many tenants `IsVoid` is NULL for all active rows; bare `IsVoid = 0` wrongly drops them.

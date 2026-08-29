@@ -44,10 +44,11 @@ def test_match_reports_coverage_alias_still_hits():
     assert hits[0]["name"] == "Rpt_Coverage"
 
 
-def test_list_template_names_has_ten():
+def test_list_template_names_has_eleven():
     names = reports.list_template_names()
-    assert len(names) == 10
+    assert len(names) == 11
     assert "Rpt_SalesmanSalesSummary" in names
+    assert "Rpt_RouteSummaryBySalesman" in names
 
 
 def test_build_report_sql_is_select_only():
@@ -203,3 +204,23 @@ def test_receipt_date_filter_placeholder_uses_transaction_date():
     assert "r.TransactionDate >=" in sql_text
     assert "ReceiptDate" not in sql_text
 
+
+
+def test_match_reports_visit_skips_route_summary():
+    hits = reports.match_reports("كم زيارة للمندوب أمس", "105")
+    names = [h["name"] for h in hits]
+    assert "Rpt_RouteSummaryBySalesman" not in names
+    assert "Rpt_Coverage" not in names
+
+
+def test_run_report_route_summary_needs_salesman():
+    result = reports.run_report(
+        "Rpt_RouteSummaryBySalesman",
+        2,
+        "105",
+        params={"from_date": "2025-07-01"},
+        allowed_procs=[],
+        question="تقرير ملخص المسار ليوم أمس",
+    )
+    assert result.get("status") == "needs_ask"
+    assert result.get("missing") == "sales_person_id"

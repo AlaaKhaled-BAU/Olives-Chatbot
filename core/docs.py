@@ -350,6 +350,12 @@ def _question_tokens(question: str) -> set[str]:
     return tokens
 
 
+def fold_tokens(text: str) -> set[str]:
+    """Token set for overlap scoring: alef fold + leading-ال strip.
+    Same as FTS query tokens; not an FTS query. Used by transcript recall."""
+    return _question_tokens(text or "")
+
+
 def _fts_query(question: str, locale: str | None = None) -> str:
     """Every word double-quoted (embedded quotes doubled per FTS5 escaping)
     and OR'd together -- an arbitrary user question can never be read as

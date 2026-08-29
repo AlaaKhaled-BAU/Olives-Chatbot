@@ -189,15 +189,90 @@ def _transcript_index_block(transcript: list | None) -> str | None:
             questions.append(q)
     if not questions:
         return None
-    if len(questions) > _TRANSCRIPT_INDEX_MAX_Q:
-        questions = [questions[0]] + questions[-(_TRANSCRIPT_INDEX_MAX_Q - 1):]
+    numbered = list(enumerate(questions, 1))
+    if len(numbered) > _TRANSCRIPT_INDEX_MAX_Q:
+        numbered = [numbered[0]] + numbered[-(_TRANSCRIPT_INDEX_MAX_Q - 1):]
     lines = [_TRANSCRIPT_INDEX_HEADER]
-    for i, q in enumerate(questions, 1):
+    for i, q in numbered:
         lines.append(f"{i}. {_compress_for_history(q, _TRANSCRIPT_INDEX_Q_CHARS)}")
     block = "\n".join(lines)
     if len(block) > _TRANSCRIPT_INDEX_BLOCK_CHARS:
         block = block[:_TRANSCRIPT_INDEX_BLOCK_CHARS].rsplit("\n", 1)[0]
     return block
+
+
+_DIGIT_RE = re.compile(r"\d+")
+_RECALL_NUDGE_RE = re.compile(r"نفس|السابق|قارن")
+_RECALL_SQL_NUDGE = (
+    "أرقام الاسترجاع ليست دليلاً — أعد كتابة التواريخ/الحبة ونفّذ SQL "
+    "(run_select / run_metric / run_report). لا تنسخ أرقاماً من الجواب السابق."
+)
+
+
+def _entities_hint(answer: str | None) -> str:
+    stripped = _DIGIT_RE.sub("", str(answer or ""))
+    return _compress_for_history(stripped, 120)
+
+
+def _transcript_q_rows(transcript: list | None) -> list[tuple[int, dict]]:
+    rows: list[tuple[int, dict]] = []
+    n = 0
+    for entry in transcript or []:
+        if not isinstance(entry, dict):
+            continue
+        q = str(entry.get("q") or "").strip()
+        if not q:
+            continue
+        n += 1
+        rows.append((n, entry))
+    return rows
+
+
+def _overlap_score(query: str, entry: dict) -> int:
+    blob = " ".join((
+        str(entry.get("q") or ""),
+        str(entry.get("sql") or ""),
+        str(entry.get("a") or ""),
+    ))
+    qtok = docs.fold_tokens(query)
+    etok = docs.fold_tokens(blob)
+    if not qtok or not etok:
+        return 0
+    return len(qtok & etok)
+
+
+def recall_turns(transcript: list | None, query: str, *, skip_last: int = MAX_HISTORY_TURNS,
+                 limit: int = 3) -> list[dict]:
+    """Rank older transcript rows by token overlap. Empty list if nothing matches."""
+    rows = _transcript_q_rows(transcript)
+    if skip_last > 0:
+        rows = rows[:-skip_last] if len(rows) > skip_last else []
+    scored: list[tuple[int, int, dict]] = []
+    for i, entry in rows:
+        score = _overlap_score(query, entry)
+        if score > 0:
+            scored.append((score, i, entry))
+    scored.sort(key=lambda t: (-t[0], -t[1]))
+    hits = []
+    for _score, i, entry in scored[:limit]:
+        hits.append({
+            "turn_id": entry.get("id"),
+            "i": i,
+            "q": entry.get("q"),
+            "sql": entry.get("sql") or "",
+            "entities_hint": _entities_hint(entry.get("a")),
+        })
+    return hits
+
+
+def _needs_recall_nudge(question: str | None, history: list | None) -> bool:
+    if not _RECALL_NUDGE_RE.search(question or ""):
+        return False
+    hist = (history or [])[-MAX_HISTORY_TURNS:]
+    blob = " ".join(f"{h.get('q') or ''} {h.get('sql') or ''}" for h in hist)
+    qtok = docs.fold_tokens(question or "")
+    htok = docs.fold_tokens(blob)
+    return bool(qtok) and len(qtok & htok) == 0
 
 
 def _schema_block(cache: dict) -> str:
@@ -288,7 +363,12 @@ _FAST_PATH_SKIP_TOOLS = frozenset({
     "search_docs", "search_schema_notes", "read_schema_note", "get_joins",
 })
 
-_REPORT_PATH_INITIAL_TOOLS = frozenset({"run_report", "ask_user", "analyze"})
+_REPORT_PATH_INITIAL_TOOLS = frozenset({
+    "run_report", "ask_user", "analyze", "lookup_hot", "recall_turns",
+})
+_REPORT_UNLOCK_TOOLS = frozenset({
+    "run_metric", "run_report", "ask_user", "analyze", "recall_turns",
+})
 
 _HOWTO_INITIAL_TOOLS = frozenset({"search_docs", "ask_user", "analyze"})
 
@@ -357,6 +437,7 @@ _STEP_LABELS = {
     "lookup_hot": "loading master data",
     "run_metric": "running metric query",
     "run_report": "running report query",
+    "recall_turns": "looking up earlier questions",
 }
 
 
@@ -423,13 +504,15 @@ def _stream_turn(messages, tools, gear: str = DEFAULT_GEAR, user_id: str | None 
     forwarding = False
     assembling_tools = False
     tool_calls = {}
+    last_choice = None
     for chunk in stream:
         if cancel is not None and cancel.is_set():
             stream.close()
             raise TurnCancelled("client disconnected")
         if not chunk.choices:
             continue
-        delta = chunk.choices[0].delta
+        last_choice = chunk.choices[0]
+        delta = last_choice.delta
         rc = getattr(delta, "reasoning_content", None)
         if rc:
             reasoning += rc  # scratch work — internal only, never streamed to users
@@ -456,8 +539,18 @@ def _stream_turn(messages, tools, gear: str = DEFAULT_GEAR, user_id: str | None 
                     slot["function"]["arguments"] += tcd.function.arguments
     if not forwarding and not assembling_tools and buffer and not _looks_like_malformed_tool_syntax(buffer):
         yield {"type": "answer_chunk", "text": buffer}  # short response, never crossed the buffering threshold
+    if not reasoning and last_choice is not None:
+        final_msg = getattr(last_choice, "message", None)
+        if final_msg is not None:
+            rc = getattr(final_msg, "reasoning_content", None)
+            if rc:
+                reasoning = rc
     message = {"role": "assistant", "content": buffer or None}
-    if reasoning:
+    if llm.GEARS[gear]["thinking"]:
+        # DeepSeek requires echoing this key on every follow-up in thinking mode,
+        # even when the model answered without tool_calls (e.g. recall nudge loop).
+        message["reasoning_content"] = reasoning
+    elif reasoning:
         message["reasoning_content"] = reasoning
     if tool_calls:
         message["tool_calls"] = [tool_calls[i] for i in sorted(tool_calls)]
@@ -714,6 +807,28 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "recall_turns",
+            "description": (
+                "Search earlier questions in this session (beyond the last 4 turns). "
+                "Returns question text and SQL to rewrite for the NEW dates/grain. "
+                "Retrieved answer snippets are not numbers to copy — re-run SQL. "
+                "Does not count against the query budget."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Follow-up text or search terms (names, dates, tables).",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
 ]
 
 
@@ -752,22 +867,39 @@ def _is_fast_count_path(question: str) -> bool:
     return any(term in q_lower for term in _MASTER_COUNT_TERMS)
 
 
+_RPT_STEM_RE = re.compile(r"\bRpt_[A-Za-z0-9_]+", re.IGNORECASE)
+
+
 def _is_report_path(question: str, client: str) -> bool:
-    """Named report questions — prefer run_report, skip docs thrash."""
-    matches = reports.match_reports(question, client, limit=1)
-    if not matches:
+    """Named report questions — lock tools only on explicit report intent (R0)."""
+    q = (question or "").strip()
+    if not q:
         return False
-    if _REPORT_HINT_RE.search(question):
+    if not (_REPORT_HINT_RE.search(q) or _RPT_STEM_RE.search(q)):
+        return False
+    matches = reports.match_reports(q, client, limit=1)
+    if not matches:
+        return bool(_RPT_STEM_RE.search(q))
+    name = matches[0].get("name", "")
+    if name in reports.templates_by_name():
         return True
-    card = matches[0]
-    q_lower = question.lower()
-    for alias in card.get("aliases") or []:
-        if len(alias) >= 6 and alias.lower() in q_lower:
-            return True
-    name = card.get("name", "")
-    if name and name.lower().replace("rpt_", "") in q_lower.replace(" ", ""):
-        return True
-    return False
+    return bool(_RPT_STEM_RE.search(q))
+
+
+_VISIT_FLEET_PHRASES = ("كل المناديب", "جميع المناديب", "all salesmen")
+_VISIT_SINGULAR_NAMED_RE = re.compile(
+    r"للمندوب\s+(?!ل?ا?لأ?سبوع|القادم|الجاي|هذا)[\u0600-\u06FFa-zA-Z]{3,}",
+)
+
+
+def _visit_plan_ask_salesman(question: str) -> bool:
+    """«للمندوب» with no name and not fleet-wide → ask which salesman."""
+    q = question or ""
+    if "للمندوب" not in q:
+        return False
+    if any(p in q for p in _VISIT_FLEET_PHRASES):
+        return False
+    return not bool(_VISIT_SINGULAR_NAMED_RE.search(q))
 
 
 def _is_howto_path(question: str, client: str) -> bool:
@@ -966,7 +1098,9 @@ def _active_tools(state: dict) -> list | None:
     tools = TOOLS
     if state.get("fast_count"):
         tools = [t for t in tools if t["function"]["name"] not in _FAST_PATH_SKIP_TOOLS]
-    if state.get("report_path"):
+    if state.get("report_unlock"):
+        tools = [t for t in tools if t["function"]["name"] in _REPORT_UNLOCK_TOOLS]
+    elif state.get("report_path"):
         tools = [t for t in tools if t["function"]["name"] in _REPORT_PATH_INITIAL_TOOLS]
     if state.get("howto_path") and not _has_count_sql_intent(state.get("question", "")):
         tools = [t for t in tools if t["function"]["name"] in _HOWTO_INITIAL_TOOLS]
@@ -976,6 +1110,8 @@ def _active_tools(state: dict) -> list | None:
         tools = [t for t in tools if t["function"]["name"] not in _VAULT_TOOLS]
     if state.get("docs_only"):
         tools = [t for t in tools if t["function"]["name"] not in _DOCS_ONLY_SCHEMA_TOOLS]
+    if state.get("had_business_rows"):
+        tools = [t for t in tools if t["function"]["name"] != "recall_turns"]
     return tools
 
 
@@ -1217,6 +1353,12 @@ def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, 
             # Record SQL for the done envelope only — does not spend MAX_QUERIES.
             state.setdefault("hot_sql", []).append(sql_text)
         return result
+    if name == "recall_turns":
+        state["recall_used"] = True
+        return {"hits": recall_turns(
+            state.get("transcript"),
+            args.get("query") or state.get("question") or "",
+        )}
     if name == "run_metric":
         result = metrics.run_metric(
             args.get("metric", ""),
@@ -1228,6 +1370,7 @@ def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, 
         if "error" not in result:
             sql_text = result.get("sql")
             state["queries"].append(sql_text)
+            state["had_business_rows"] = True
             rows = result.get("rows")
             if isinstance(rows, list) and (state["last_rows"] is None or len(rows) > len(state["last_rows"])):
                 state["last_rows"] = rows
@@ -1240,10 +1383,15 @@ def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, 
             client,
             params=args.get("params"),
             allowed_procs=allowed_proc_names,
+            question=state.get("question"),
         )
         state["report_name"] = report_name
+        if result.get("status") == "not_certified":
+            state["report_path"] = False
+            state["report_unlock"] = True
         if result.get("sql") and "error" not in result:
             state["queries"].append(result["sql"])
+            state["had_business_rows"] = True
             rows = result.get("rows")
             if isinstance(rows, list) and (state["last_rows"] is None or len(rows) > len(state["last_rows"])):
                 state["last_rows"] = rows
@@ -1266,6 +1414,7 @@ def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, 
         # become the thing cached/promoted instead of the actual answer.
         if "information_schema" not in sql_text.lower():
             state["queries"].append(sql_text)
+            state["had_business_rows"] = True
             # C8: candidate table/chart data for the answer envelope, never
             # re-asked of the model (it already has these numbers; making
             # it retype them into a table structure risks a transcription
@@ -1536,17 +1685,20 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             "content": f"Known bad patterns for this client and CompanyID — do not repeat:\n{bad}",
         })
     report_cards = reports.match_reports(question, client, limit=2)
+    certified = reports.templates_by_name()
+    report_cards = [c for c in report_cards if c.get("name") in certified]
     if report_cards:
         cards = "\n".join(
-            f"- {c['name']}: {c.get('purpose', '')[:200]} | tables: {', '.join(c.get('tables', []))}"
+            f"- {c['name']}: {certified[c['name']].get('purpose', '')[:200]} "
+            f"(equivalent grain on t.; params: {', '.join(certified[c['name']].get('params') or [])})"
             for c in report_cards
         )
         messages.append({
             "role": "system",
             "content": (
-                "Matching report metadata — use run_report with the catalog name. "
-                "Certified SELECT templates run on t. only; no EXEC in this release "
-                "(audited read-only Rpt_* EXEC requires a later signed allow-list + GRANT):\n"
+                "Matching certified report templates — use run_report with the template name. "
+                "SELECT templates are equivalent grain on t. only (not Olives print); no EXEC "
+                "until a signed allow-list + GRANT exists:\n"
                 f"{cards}"
             ),
         })
@@ -1614,12 +1766,24 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             ),
         })
     elif visit_future:
+        if _visit_plan_ask_salesman(question):
+            plan_rule = (
+                "Question says للمندوب but names nobody — ask_user once "
+                "(أي مندوب؟) before SalesPersonsRoutes. Do not dump all salesmen."
+            )
+        else:
+            plan_rule = (
+                "If the question names no salesman (no name/id), aggregate ALL "
+                "t.SalesPersons for the session company. Filter when they name one "
+                "or say كل المناديب."
+            )
         messages.append({
             "role": "system",
             "content": (
                 "Planned / upcoming visits — route calendar from t.SalesPersonsRoutes "
                 "(weekday → Week1–Week4 slot) + t.CustomersFinancialDetails.RouteID + VisitOrder "
-                "+ t.RoutesInformation. Not LogActionTransaction (history only)."
+                "+ t.RoutesInformation. Not LogActionTransaction (history only). "
+                + plan_rule
             ),
         })
     elif visit_q and not visit_future:
@@ -1627,7 +1791,10 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             "role": "system",
             "content": (
                 "Actual past visits — t.LogActionTransaction with ActionID = N'0' (CustEntry). "
-                "Never SalesmanVisitsSummary. ActionID 7 is SystemLogin, not a visit."
+                "Never SalesmanVisitsSummary. ActionID 7 is SystemLogin, not a visit. "
+                "If no salesman is named, count ALL salesmen — do not ask_user. "
+                "When a salesman is named, resolve first: SELECT ID, Name FROM t.SalesPersons "
+                "WHERE Name LIKE N'%…%'; 0 or many matches → ask_user with names; one match → use that ID."
             ),
         })
     conv_block = _conversation_block(history)
@@ -1636,6 +1803,15 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     index_block = _transcript_index_block(transcript)
     if index_block:
         messages.append({"role": "system", "content": index_block})
+    elif re.search(r"سؤالي (الأول|الثاني|الثالث)|ما كان سؤالي|first question", question or "", re.I):
+        messages.append({
+            "role": "system",
+            "content": (
+                "Transcript is empty (new session or after company switch). "
+                "Say explicitly: لا توجد أسئلة سابقة في هذه الجلسة. "
+                "Do not treat this recall question as the user's first question."
+            ),
+        })
     messages.append({
         "role": "system",
         "content": (
@@ -1644,6 +1820,11 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         ),
     })
     messages.append({"role": "user", "content": question})
+    if _needs_recall_nudge(question, history):
+        messages.append({
+            "role": "system",
+            "content": "استدع recall_turns ثم أعد الاستعلام. " + _RECALL_SQL_NUDGE,
+        })
 
     # C4: "queries" replaces the old single answer_sql/results_in_context
     # latch -- an ordered list of every real business query run this turn,
@@ -1664,9 +1845,13 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         "docs_only": False,
         "fast_count": fast_count,
         "report_path": report_path,
+        "report_unlock": False,
         "howto_path": howto_path,
         "report_name": None,
         "question": question,
+        "transcript": transcript or [],
+        "had_business_rows": False,
+        "recall_used": False,
         # A3: gear routing + escalation counters. Interactive turns never use
         # gear p (C5) — p is reserved for the empty-final rescue completion.
         "gear": _initial_gear(question, howto_path=howto_path, report_path=report_path,
@@ -1702,6 +1887,16 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
 
         if not tool_calls:
             final_text = _sanitize_final_text(msg.get("content"))
+            if (
+                state.get("recall_used")
+                and not state["queries"]
+                and not state.get("warned_recall_no_sql")
+                and not _is_blank(final_text)
+            ):
+                messages.append({"role": "system", "content": _RECALL_SQL_NUDGE})
+                state["warned_recall_no_sql"] = True
+                final_text = None
+                continue
             if not _is_blank(final_text):
                 break
             final_text = None
@@ -1762,6 +1957,21 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                 "tool_call_id": tc["id"],
                 "content": json.dumps(_cap_for_context(result), default=str),
             })
+            if (
+                name == "run_report"
+                and isinstance(result, dict)
+                and result.get("status") == "not_certified"
+                and not state.get("warned_not_certified")
+            ):
+                messages.append({
+                    "role": "system",
+                    "content": (
+                        "Report is not_certified. Do not end on refusal. "
+                        "Offer the nearest run_metric (مبيعات / dates from the user question) "
+                        "and run it this turn if dates are already given."
+                    ),
+                })
+                state["warned_not_certified"] = True
 
         # C4: once the budget is spent, tools=None on the NEXT llm.complete
         # call already makes a further tool call impossible (the same

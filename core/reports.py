@@ -96,6 +96,19 @@ def _exists_date_filters(params: dict, *, th_alias: str = "th") -> str:
     return _date_filters(params, th_alias=th_alias)
 
 
+def _lat_date_filters(params: dict, *, alias: str = "lat") -> str:
+    parts = []
+    from_date = _safe_date(params.get("from_date"))
+    to_date = _safe_date(params.get("to_date"))
+    if from_date:
+        parts.append(f"CAST({alias}.TimeStamp AS date) >= '{from_date}'")
+    if to_date:
+        parts.append(f"CAST({alias}.TimeStamp AS date) <= '{to_date}'")
+    if parts:
+        return " AND " + " AND ".join(parts)
+    return ""
+
+
 def build_report_sql(report_name: str, params: dict | None = None) -> str | None:
     """Materialize an in-repo SELECT template. Returns None if no template exists."""
     tmpl = templates_by_name().get(report_name)
@@ -129,6 +142,12 @@ def build_report_sql(report_name: str, params: dict | None = None) -> str | None
         "{item_filter}": (
             f" AND td.ItemCode = '{str(params['item_code']).replace(chr(39), chr(39) * 2)}'"
             if params.get("item_code")
+            else ""
+        ),
+        "{lat_date_filter}": _lat_date_filters(params),
+        "{route_salesperson_filter}": (
+            f" AND sp.ID = {_safe_int(params['sales_person_id'])}"
+            if _safe_int(params.get("sales_person_id")) is not None
             else ""
         ),
     }
@@ -172,15 +191,46 @@ def _catalog_card(client: str, report_name: str) -> dict | None:
     return None
 
 
+_ALL_SALESMEN_PHRASES = ("كل المناديب", "all salesmen", "all salespeople")
+
+
+def _report_needs_ask(report_name: str, params: dict | None, question: str | None) -> dict | None:
+    params = dict(params or {})
+    tmpl = templates_by_name().get(report_name)
+    if not tmpl:
+        return None
+    if report_name == "Rpt_ItemTransaction" and not params.get("item_code"):
+        return {
+            "status": "needs_ask",
+            "missing": "item_code",
+            "message": "Rpt_ItemTransaction requires item_code (كود الصنف).",
+        }
+    if report_name == "Rpt_RouteSummaryBySalesman":
+        q = (question or "").lower()
+        if _safe_int(params.get("sales_person_id")) is None and not any(
+            p.lower() in q for p in _ALL_SALESMEN_PHRASES
+        ):
+            return {
+                "status": "needs_ask",
+                "missing": "sales_person_id",
+                "message": "Route summary requires salesman number or كل المناديب.",
+            }
+    return None
+
+
 def run_report(
     report_name: str,
     company_id: int,
     client: str,
     params: dict | None = None,
     allowed_procs=None,
+    question: str | None = None,
 ) -> dict:
     """Path 1: certified SELECT template via run_select. Path 3: catalog purpose only."""
     allowed = allowed_procs if allowed_procs is not None else gate.DEFAULT_ALLOWED_PROCS
+    ask = _report_needs_ask(report_name, params, question)
+    if ask:
+        return {"report": report_name, **ask}
     if build_report_sql(report_name, params):
         return run_report_select(
             report_name, company_id, client, params=params, allowed_procs=allowed,
@@ -195,9 +245,17 @@ def run_report(
     }
 
 
+def _catalog_purpose(card: dict) -> str:
+    purpose = str(card.get("purpose") or "")
+    if "AUTO-GENERATED" in purpose.upper():
+        return ""
+    return purpose
+
+
 def _score_card(question_tokens: set, card: dict, aliases: list[str]) -> int:
     blob = " ".join(
-        str(card.get(k, "")) for k in ("name", "purpose", "tables", "params", "when_to_run")
+        [str(card.get("name", "")), _catalog_purpose(card),
+         str(card.get("tables", "")), str(card.get("params", "")), str(card.get("when_to_run", ""))]
     )
     blob += " " + " ".join(aliases)
     card_tokens = _tokens(blob)
@@ -240,6 +298,8 @@ def match_reports(question: str, client: str, limit: int = 3) -> list:
     for card in catalog:
         name = card.get("name", "")
         if visit_only and re.search(r"Sales", name) and not re.search(r"Visit", name, re.I):
+            continue
+        if visit_only and re.search(r"RouteSummary|Coverage", name, re.I):
             continue
         aliases = list(card.get("aliases") or templates.get(name, {}).get("aliases") or [])
         overlap = _score_card(q_tokens, card, aliases)

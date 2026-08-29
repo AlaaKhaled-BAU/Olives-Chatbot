@@ -127,8 +127,19 @@ def run_proc(proc_name: str, args: dict, company_id: int, client: str, allowed_p
     for key in args:
         gate.safe_identifier(key)
 
+    gate.safe_identifier(proc_name.split(".")[-1])
     placeholders = ", ".join(f"@{k}=%s" for k in args)
     exec_sql = f"EXEC {proc_name} {placeholders}" if args else f"EXEC {proc_name}"
+    try:
+        schema_cache = _schema_cache(client)
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        schema_cache = {}
+    gate.validate(
+        f"EXEC {proc_name}",
+        allowed_procs=allowed_procs,
+        company_id=company_id,
+        schema_cache=schema_cache or None,
+    )
     conn = get_conn(client)
     try:
         set_tenant(conn, company_id)

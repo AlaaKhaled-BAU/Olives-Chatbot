@@ -16,6 +16,8 @@ _STATIC_BO_NAMES = (
     "- Stock transfers: TransfersOrdersHeaders + TransfersOrdersDetails "
     "(OSFA OT_ConsOrderHF — consignment/van transfers, not sales)\n"
     "- Customers: Customers + CustomersFinancialDetails (OSFA OT_CustomerMF)\n"
+    "- Price lists: PriceLists (header) + PriceListDetails (item/unit prices); "
+    "customer list on CustomersFinancialDetails.PriceListID\n"
     "- Van stock: SalesPersonItemsBalance\n"
     "- Salespersons: SalesPersons (OSFA OT_SalesmanMF)"
 )

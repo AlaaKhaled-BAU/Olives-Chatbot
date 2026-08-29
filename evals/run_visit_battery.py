@@ -104,16 +104,21 @@ def run_one(client: str, session_state: dict, question: str, session_id: str) ->
     }
 
 
+_PLAN_STYLES = ("plan_explicit", "future_schedule", "chain_plan_followup", "chain_schedule")
+
+
 def visit_eval(case: dict, parsed: dict) -> dict:
     answer = (parsed.get("answer") or "").strip()
+    needs_ask = (parsed.get("needs_ask") or "").strip()
+    combined = answer or needs_ask
     sql = (parsed.get("answer_sql") or "").lower()
-    a = answer.lower()
+    a = combined.lower()
     style = case.get("style", "")
     notes: list[str] = []
     flags: list[str] = []
     score = 5
 
-    if not answer:
+    if not answer and not needs_ask:
         return {"verdict": "fail", "score": 1, "notes": ["empty"], "flags": ["empty"]}
 
     if "salesmanvisitssummary" in sql:
@@ -137,13 +142,26 @@ def visit_eval(case: dict, parsed: dict) -> dict:
         if action0:
             score += 1
             notes.append("filters ActionID 0")
-    if style in ("plan_explicit", "future_schedule", "chain_plan_followup", "chain_schedule"):
+    if style in _PLAN_STYLES:
+        if "routesummary" in sql or "rpt_routesummary" in sql:
+            score -= 3
+            flags.append("wrong_grain_route_summary_on_plan")
         if spr:
             score += 2
             notes.append("uses SalesPersonsRoutes for plan")
         elif lat and style != "chain_schedule":
             score -= 1
             flags.append("used_log_for_plan_question")
+        if needs_ask:
+            asks_salesman = any(
+                w in needs_ask.lower() for w in ("مندوب", "salesman", "مندوبين", "sales person")
+            )
+            if asks_salesman:
+                score += 2
+                notes.append("clarifying needs_ask for salesman")
+            elif score < 6:
+                score = 6
+                notes.append("clarifying needs_ask on plan question")
     if style in ("forecast_analyst", "chain_reframe_forecast"):
         if lat:
             score += 2
@@ -155,7 +173,7 @@ def visit_eval(case: dict, parsed: dict) -> dict:
             score += 1
             notes.append("labels forecast")
     if style == "bait_trap":
-        if "salesmanvisitssummary" not in sql and ("logactiontransaction" in sql or "redirect" in a or "لا" in answer[:120]):
+        if "salesmanvisitssummary" not in sql and ("logactiontransaction" in sql or "redirect" in a or "لا" in combined[:120]):
             score += 2
             notes.append("avoided trap table")
     if style == "chain_wrong_grain":
@@ -168,7 +186,7 @@ def visit_eval(case: dict, parsed: dict) -> dict:
             notes.append("compares both grains")
         elif lat or spr:
             score += 1
-    if style == "chain_context_check" and re.search(r"\d", answer):
+    if style == "chain_context_check" and re.search(r"\d", combined):
         score += 1
         notes.append("numeric follow-up answer")
 
