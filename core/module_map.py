@@ -35,6 +35,8 @@ _DOMAIN_KEYWORDS: dict[str, dict] = {
         "keywords": [
             "cfd", "عملاء المندوب", "زبائن المندوب", "territory", "assignment", "positions",
             "customersfinancialdetails", "financialdetails",
+            "pricelist", "price list", "pricelists", "pricelistdetails",
+            "قائمة أسعار", "اسعار", "سعر", "أسعار",
         ],
     },
     "van": {

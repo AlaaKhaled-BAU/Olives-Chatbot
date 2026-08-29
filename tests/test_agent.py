@@ -595,7 +595,7 @@ def test_run_proc_tool_not_offered():
     assert "run_proc" not in names
     assert names == {
         "introspect_schema", "run_select", "run_metric", "run_report", "ask_user", "analyze", "search_docs",
-        "search_schema_notes", "read_schema_note", "get_joins", "lookup_hot",
+        "search_schema_notes", "read_schema_note", "get_joins", "lookup_hot", "recall_turns",
     }
 
 
@@ -975,7 +975,8 @@ def test_report_path_first_tools_tight_for_sales_and_orders():
     assert "run_report" in names
     assert "run_select" not in names
     assert "search_docs" not in names
-    assert names <= {"run_report", "ask_user", "analyze"}
+    assert names <= {"run_report", "ask_user", "analyze", "lookup_hot", "recall_turns"}
+    assert "recall_turns" in names
 
 
 def test_report_path_bypasses_poisoned_plan_cache(monkeypatch, tmp_path):
@@ -1041,9 +1042,29 @@ def test_not_certified_clears_report_path_lock():
         "last_rows": None,
         "doc_source_pairs": [],
         "report_path": True,
+        "report_unlock": False,
+        "howto_path": False,
+        "fast_count": False,
+        "doc_searches": 0,
+        "vault_searches": 0,
+        "docs_only": False,
         "question": "تقرير Rpt_Foo",
     }
     with patch.object(agent.reports, "build_report_sql", return_value=None), \
          patch.object(agent.reports, "_catalog_card", return_value={"name": "Rpt_Foo", "purpose": "x"}):
         agent._run_tool("run_report", {"name": "Rpt_Foo"}, {}, {}, [], 2, "105", state)
     assert state.get("report_path") is False
+    assert state.get("report_unlock") is True
+    names = {t["function"]["name"] for t in agent._active_tools(state)}
+    assert "run_metric" in names
+    assert "run_select" not in names
+    assert "introspect_schema" not in names
+    assert names <= {"run_metric", "run_report", "ask_user", "analyze", "recall_turns"}
+
+
+def test_visit_plan_ask_salesman_singular():
+    assert agent._visit_plan_ask_salesman("الزيارات القادمة للمندوب")
+    assert agent._visit_plan_ask_salesman("خطة المسار للمندوب للأسبوع القادم")
+    assert not agent._visit_plan_ask_salesman("الزيارات القادمة للاسبوع الجاي")
+    assert not agent._visit_plan_ask_salesman("خطة المسار لكل المناديب")
+    assert not agent._visit_plan_ask_salesman("تقرير ملخص المسار للمندوب عثمان القدسي")

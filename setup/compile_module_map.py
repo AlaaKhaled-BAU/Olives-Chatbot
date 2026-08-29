@@ -52,11 +52,13 @@ DOMAIN_SEEDS: dict[str, dict] = {
         "tags": {"#customer"},
         "seeds": {
             "CustomersFinancialDetails", "Positions", "Customers", "SalesPersons",
-            "RoutesInformation", "PriceLists", "CustomersClasses",
+            "RoutesInformation", "PriceLists", "PriceListDetails", "CustomersClasses",
         },
         "hints": [
             "Territory: CustomersFinancialDetails.PositionsID → Positions.ID → SalesPersons.PositionID.",
             "Never join CFD.CustomerID to SalesPersons.ID for territory.",
+            "Customer price list header: CustomersFinancialDetails.PriceListID → PriceLists.ID (not on Customers).",
+            "Item prices: PriceListDetails on (CompanyID, PriceListID, ItemCode, UnitID) → PriceLists + Items + ItemsUnits.",
         ],
     },
     "van": {

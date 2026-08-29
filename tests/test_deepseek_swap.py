@@ -47,6 +47,13 @@ def test_stream_turn_omits_reasoning_key_when_none_produced():
     assert "reasoning_content" not in done["message"]
 
 
+def test_stream_turn_sets_empty_reasoning_for_thinking_gear_without_deltas():
+    with patch_stream(lambda *a, **kw: iter([_chunk(content="hi")])):
+        events = _collect(agent._stream_turn([{"role": "user", "content": "q"}], None, gear="t1"))
+    done = [e for e in events if e["type"] == "_turn_done"][0]
+    assert done["message"]["reasoning_content"] == ""
+
+
 def test_stream_turn_passes_gear_to_llm():
     seen = {}
 

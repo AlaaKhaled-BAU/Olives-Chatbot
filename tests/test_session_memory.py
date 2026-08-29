@@ -193,7 +193,7 @@ def test_transcript_index_block_25_keeps_first_and_last():
     assert block is not None
     lines = [ln for ln in block.split("\n") if ln and not ln.startswith("##")]
     assert lines[0] == "1. q0"
-    assert lines[-1] == "20. q24"
+    assert lines[-1] == "25. q24"
     assert len(lines) == 20
     assert "q1" not in [ln.split(". ", 1)[1] for ln in lines]
     assert "q4" not in [ln.split(". ", 1)[1] for ln in lines]
