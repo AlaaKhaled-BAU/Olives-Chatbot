@@ -74,6 +74,7 @@ def run_one(client: str, session_state: dict, question: str, session_id: str) ->
         conversation=conv,
         subject=_subject(session_id),
         history=history,
+        transcript=session_state.get("transcript") or [],
     ):
         et = event.get("type")
         if et == "step":
@@ -83,19 +84,18 @@ def run_one(client: str, session_state: dict, question: str, session_id: str) ->
         elif et == "done":
             result = event
     elapsed = round(time.perf_counter() - t0, 2)
-  # sync session history like api/server does
-    answer = result.get("answer") or "".join(answer_chunks)
-    if answer and result.get("answer"):
-        hist = session_state.setdefault("history", [])
-        hist.append({
-            "q": question,
-            "a": str(answer)[:400],
-            "sql": (result.get("answer_sql") or "")[:200],
-        })
-        del hist[:-agent.MAX_HISTORY_TURNS]
+    from core.sessions import record_session_turn
+    record_session_turn(
+        session_state,
+        question=question,
+        result=result,
+        client=client,
+        company_id=COMPANY_ID,
+        max_history=agent.MAX_HISTORY_TURNS,
+    )
     return {
         "elapsed_s": elapsed,
-        "answer": answer or result.get("needs_ask") or "",
+        "answer": result.get("answer") or "".join(answer_chunks),
         "answer_sql": result.get("answer_sql") or "",
         "confidence": result.get("confidence"),
         "sources": result.get("sources"),
@@ -214,6 +214,11 @@ def run_battery() -> list[dict]:
         "summary": _summarize(results),
     }
     OUT.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    # chain-a has 3 turns with non-empty answers when the battery completes
+    chain_a = sessions.get("chain-a") or {}
+    assert len(chain_a.get("transcript") or []) == 3, (
+        f"chain-a transcript length {len(chain_a.get('transcript') or [])} != 3"
+    )
     return results
 
 

@@ -191,7 +191,7 @@ def build_index(client: str, corpus_dir: Path = CORPUS_DIR) -> dict:
                 # TRACK C: index-time normalization must mirror query-time
                 # normalize_ar() or trigram units never line up.
                 "INSERT INTO docs (source_file, heading_path, text) VALUES (?, ?, ?)",
-                (source_file, heading_path, normalize_ar(text)),
+                (source_file, heading_path, _index_text_with_morphology(text)),
             )
             indexed += 1
         conn.commit()
@@ -203,6 +203,15 @@ def build_index(client: str, corpus_dir: Path = CORPUS_DIR) -> dict:
 _AL_PREFIX = "ال"
 _TOC_RE = re.compile(r"(?i)table of contents|^toc$")
 _PAGE_NUM_RE = re.compile(r"^\d{1,4}$")
+# Arabic noun forms only — appended to indexed text so trigram sees every variant.
+# Keep in sync with the Arabic members of _SYNONYM_GROUPS (invoice, order, visit, salesman).
+_MORPHOLOGY_ALIASES: tuple[tuple[str, ...], ...] = (
+    ("فاتورة", "فواتير", "الفاتورة", "الفواتير", "فاتورتي"),
+    ("طلب", "طلبات", "الطلب", "الطلبات"),
+    ("زيارة", "زيارات", "الزيارة", "الزيارات"),
+    ("مندوب", "مناديب", "مندوبين", "المندوب"),
+)
+
 _SYNONYM_GROUPS = (
     ("فاتورة", "فواتير", "فاتورتي"),
     ("طلب", "طلبات"),
@@ -262,6 +271,24 @@ def _unify_alef(text: str) -> str:
     if not os.environ.get("DOCS_AR_NORM"):
         return text
     return text.translate(_ALEF_VARIANTS)
+
+
+def _index_text_with_morphology(body: str) -> str:
+    """Append alias tokens for any morphology group hit in the chunk."""
+    norm = normalize_ar(body)
+    extras: list[str] = []
+    for group in _MORPHOLOGY_ALIASES:
+        if not any(g in norm for g in group):
+            continue
+        for alias in group:
+            if alias not in extras and alias not in norm:
+                extras.append(alias)
+        if len(extras) >= 20:
+            extras = extras[:20]
+            break
+    if not extras:
+        return norm
+    return norm + "\n" + " ".join(extras)
 
 
 def normalize_ar(text: str) -> str:

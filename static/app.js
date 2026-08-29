@@ -103,6 +103,10 @@ async function loadContext() {
         });
       }
     }
+    const msgs = document.getElementById("messages");
+    if (!msgs.querySelector(".msg")) {
+      replayTranscript(ctx.transcript || []);
+    }
   } catch (e) {
     companyLabel.textContent = "";
   }
@@ -114,8 +118,21 @@ companySelect.addEventListener("change", async () => {
     headers: apiHeaders(),
     body: JSON.stringify({ session_id: sessionId(), company_id: Number(companySelect.value) }),
   });
+  document.getElementById("messages").innerHTML = "";
   await loadContext();
 });
+
+function replayTranscript(transcript) {
+  if (!transcript || !transcript.length) return;
+  const empty = document.getElementById("empty-state");
+  if (empty && !empty.classList.contains("hidden")) empty.classList.add("hidden");
+  for (const row of transcript) {
+    addMessage(row.q, "user");
+    const bot = addMessage(row.a, "bot");
+    if (row.sql) addSqlPanel(bot, row.sql, null);
+    addFeedbackRow(bot, row.id);
+  }
+}
 
 function addMessage(text, role) {
   const empty = document.getElementById("empty-state");
@@ -274,7 +291,7 @@ async function ask(question) {
           contextAsOf = asOf;
           updateAsOfLabel(asOf.calendar_today, asOf.max_invoice_date);
         }
-        addFeedbackRow(bot);
+        addFeedbackRow(bot, data.turn_id);
         if (data.table) addResultTable(bot, data.table);
         if (data.chart) addResultChart(bot, data.chart, data.table);
         if (data.sources && data.sources.length) addSources(bot, data.sources);
@@ -342,7 +359,7 @@ function addReportPanel(bot, reportName) {
   bot.appendChild(div);
 }
 
-function addFeedbackRow(bot) {
+function addFeedbackRow(bot, turnId) {
   const row = document.createElement("div");
   row.className = "feedback-row";
   row.innerHTML = `<button class="fb-btn" data-helpful="1" title="إجابة صحيحة">👍</button>
@@ -355,7 +372,7 @@ function addFeedbackRow(bot) {
       await fetch("/feedback", {
         method: "POST",
         headers: apiHeaders(),
-        body: JSON.stringify({ session_id: sessionId(), helpful }),
+        body: JSON.stringify({ session_id: sessionId(), helpful, turn_id: turnId || undefined }),
       });
       row.textContent = helpful ? "✓ شكراً" : "✓ تم التسجيل";
     } catch (e) {

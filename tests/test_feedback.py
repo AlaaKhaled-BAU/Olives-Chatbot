@@ -40,21 +40,21 @@ def test_thumbs_up_promotes_the_query(monkeypatch, tmp_path):
     resp = client.post("/feedback", json={"session_id": "up1", "helpful": True},
                         headers={"X-Session-Id": "up1"})
     assert resp.status_code == 200
-    stored = memory.get_verified_query("morec", 1, "how many companies?")
+    stored = memory.get_verified_query(server.PINNED_CLIENT, 1, "how many companies?")
     assert stored["proc_or_sql"] == "SELECT COUNT(*) FROM t.Companies"
-    assert len(memory.few_shots("morec", 1)) == 1
+    assert len(memory.few_shots(server.PINNED_CLIENT, 1)) == 1
 
 
 def test_thumbs_down_clears_plan_and_stores_negative(monkeypatch, tmp_path):
     monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
-    memory.set_plan("key-for-down1", "morec", {"sql": "SELECT COUNT(*) FROM t.Companies"})
+    memory.set_plan("key-for-down1", server.PINNED_CLIENT, {"sql": "SELECT COUNT(*) FROM t.Companies"})
     _ask(session_id="down1")
     resp = client.post("/feedback", json={"session_id": "down1", "helpful": False, "reason": "wrong"},
                         headers={"X-Session-Id": "down1"})
     assert resp.status_code == 200
     assert memory.get_plan("key-for-down1") is None
-    assert memory.get_verified_query("morec", 1, "how many companies?") is None
-    negs = memory.negative_shots("morec", 1)
+    assert memory.get_verified_query(server.PINNED_CLIENT, 1, "how many companies?") is None
+    negs = memory.negative_shots(server.PINNED_CLIENT, 1)
     assert len(negs) == 1
     assert negs[0]["reason"] == "wrong"
 
@@ -62,3 +62,18 @@ def test_thumbs_down_clears_plan_and_stores_negative(monkeypatch, tmp_path):
 def test_feedback_requires_prior_ask_on_session():
     resp = client.post("/feedback", json={"session_id": "ghost", "helpful": True})
     assert resp.status_code == 404
+
+
+def test_feedback_turn_id_not_last(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    sid = "turn-id-not-last"
+    _ask(session_id=sid, question="first question", sql="SELECT 1")
+    _ask(session_id=sid, question="second question", sql="SELECT 2")
+    ctx = client.get(f"/context?session_id={sid}").json()
+    tid = ctx["transcript"][0]["id"]
+    resp = client.post("/feedback", json={"session_id": sid, "helpful": True, "turn_id": tid},
+                       headers={"X-Session-Id": sid})
+    assert resp.status_code == 200
+    stored = memory.get_verified_query(server.PINNED_CLIENT, 1, "first question")
+    assert stored["proc_or_sql"] == "SELECT 1"
+    assert memory.get_verified_query(server.PINNED_CLIENT, 1, "second question") is None

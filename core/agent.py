@@ -66,6 +66,13 @@ _VISIT_PLAN_ROUTE_RE = re.compile(
 MAX_HISTORY_TURNS = 4
 _HISTORY_TURN_CHARS = 220
 _HISTORY_BLOCK_CHARS = 1200
+_TRANSCRIPT_INDEX_MAX_Q = 20
+_TRANSCRIPT_INDEX_Q_CHARS = 80
+_TRANSCRIPT_INDEX_BLOCK_CHARS = 800
+_TRANSCRIPT_INDEX_HEADER = (
+    "## أسئلة هذه الجلسة (فهرس — للإشارة لما سبق، "
+    "الأرقام من الدليل/SQL تأتي من الأدوات لا من هنا)"
+)
 # C4: replaces the old binary "results_in_context" latch. That made period-
 # over-period comparison, drill-down, and verification-against-a-second-
 # query structurally impossible -- exactly what a "data master" (vs a
@@ -165,6 +172,31 @@ def _conversation_block(history: list[dict] | None) -> str | None:
     block = "\n".join(lines)
     if len(block) > _HISTORY_BLOCK_CHARS:
         block = block[:_HISTORY_BLOCK_CHARS].rsplit("\n", 1)[0]
+    return block
+
+
+def _transcript_index_block(transcript: list | None) -> str | None:
+    """Numbered index of prior questions (q only) so follow-ups like
+    «ما كان سؤالي الأول؟» resolve after history[-4] rolls off.
+    None when empty — fresh sessions keep byte-identical prompts."""
+    if not transcript:
+        return None
+    questions: list[str] = []
+    for entry in transcript:
+        q = (entry.get("q") if isinstance(entry, dict) else None) or ""
+        q = str(q).strip()
+        if q:
+            questions.append(q)
+    if not questions:
+        return None
+    if len(questions) > _TRANSCRIPT_INDEX_MAX_Q:
+        questions = [questions[0]] + questions[-(_TRANSCRIPT_INDEX_MAX_Q - 1):]
+    lines = [_TRANSCRIPT_INDEX_HEADER]
+    for i, q in enumerate(questions, 1):
+        lines.append(f"{i}. {_compress_for_history(q, _TRANSCRIPT_INDEX_Q_CHARS)}")
+    block = "\n".join(lines)
+    if len(block) > _TRANSCRIPT_INDEX_BLOCK_CHARS:
+        block = block[:_TRANSCRIPT_INDEX_BLOCK_CHARS].rsplit("\n", 1)[0]
     return block
 
 
@@ -1369,6 +1401,7 @@ def _build_envelope(question: str, final_text: str, state: dict) -> dict:
 
 def ask_stream(client: str, question: str, conversation: dict = None, role: str = "manager",
                subject: str | None = None, history: list[dict] | None = None,
+               transcript: list | None = None,
                cancel: threading.Event | None = None):
     """Generator form of ask() (C7). Yields progress/content events as they
     happen:
@@ -1600,6 +1633,9 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     conv_block = _conversation_block(history)
     if conv_block:
         messages.append({"role": "system", "content": conv_block})
+    index_block = _transcript_index_block(transcript)
+    if index_block:
+        messages.append({"role": "system", "content": index_block})
     messages.append({
         "role": "system",
         "content": (
@@ -1638,6 +1674,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                               analysis_intent=bool(_ANALYSIS_HINT_RE.search(question))),
         "gate_errors": 0,
         "_user_id": _user_id(client, company_id, subject),
+        "tools_ms": {},
         "_path_flags": (
             f"fc{int(fast_count)},ht{int(howto_path)},rp{int(report_path)},"
             f"an{int(bool(_ANALYSIS_HINT_RE.search(question)))}"
@@ -1700,6 +1737,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             if step:
                 yield {"type": "step", "step": step}
 
+            t0 = time.monotonic()
             try:
                 result = _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, client, state)
             except gate.GateError as e:
@@ -1707,6 +1745,9 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                 result = {"error": str(e)}
             except Exception as e:  # noqa: BLE001 - a tool error goes back to the model, not a crash
                 result = {"error": str(e)}
+            finally:
+                ms = int((time.monotonic() - t0) * 1000)
+                state["tools_ms"][name] = state["tools_ms"].get(name, 0) + ms
 
             if isinstance(result, dict) and result.get("error"):
                 # A3: a failed tool attempt means the current gear is not
@@ -1753,18 +1794,26 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
 
     if _has_evidence(state):
         final_text = _resolve_final_text(final_text, messages, state)
-        trace.log_event(client, question, event="answer", subject=subject, company_id=company_id)
+        _kw = {"company_id": company_id}
+        if state.get("tools_ms"):
+            _kw["tools_ms"] = state["tools_ms"]
+        trace.log_event(client, question, event="answer", subject=subject, **_kw)
         if state["queries"] and not state.get("report_path"):
             memory.set_plan(key, client, {"queries": state["queries"]})
         envelope = _build_envelope(question, final_text, state)
     elif _is_blank(final_text):
         final_text = "I can't answer that confidently from the available data."
-        trace.log_event(client, question, event="refused", subject=subject)
+        _kw = {}
+        if state.get("tools_ms"):
+            _kw["tools_ms"] = state["tools_ms"]
+        trace.log_event(client, question, event="refused", subject=subject, **_kw)
         envelope = {"table": None, "chart": None, "sources": [], "followups": [], "doc_search_count": state.get("doc_searches", 0)}
     else:
         final_text = final_text.strip()
-        trace.log_event(client, question, event="answer", subject=subject,
-                        company_id=company_id, path=state.get("_path_flags"))
+        _kw = {"company_id": company_id, "path": state.get("_path_flags")}
+        if state.get("tools_ms"):
+            _kw["tools_ms"] = state["tools_ms"]
+        trace.log_event(client, question, event="answer", subject=subject, **_kw)
         if state["queries"] and not state.get("report_path"):
             memory.set_plan(key, client, {"queries": state["queries"]})
         envelope = _build_envelope(question, final_text, state)
@@ -1781,7 +1830,8 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     # them joined (plan_cache keeps the real separable list instead, above).
     yield {"type": "done", "answer": final_text, "needs_ask": None,
            "answer_sql": _answer_sql(state), "cache_key": key,
-           "doc_search_count": state.get("doc_searches", 0), **envelope}
+           "doc_search_count": state.get("doc_searches", 0),
+           "tools_ms": dict(state.get("tools_ms") or {}), **envelope}
 
 
 def ask(client: str, question: str, conversation: dict = None, role: str = "manager", subject: str | None = None) -> dict:

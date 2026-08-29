@@ -20,6 +20,8 @@ from fastapi.testclient import TestClient
 
 from api import server
 from api.server import app, SESSIONS
+from core.sessions import record_session_turn
+from core import agent
 
 client = TestClient(app)
 
@@ -155,3 +157,77 @@ def test_no_session_id_is_fully_stateless():
         # pending_ask against).
         assert mock_ask.call_args.kwargs["conversation"].get("CompanyID") == 3
     assert None not in SESSIONS
+
+
+def test_record_session_turn_whitespace_question_returns_none():
+    session: dict = {"transcript": [], "history": []}
+    turn_id = record_session_turn(
+        session,
+        question="   ",
+        result={"answer": "hi", "answer_sql": "", "cache_key": "k"},
+        client="morec",
+        company_id=1,
+        max_history=agent.MAX_HISTORY_TURNS,
+    )
+    assert turn_id is None
+    assert session["transcript"] == []
+    assert session["history"] == []
+
+
+def test_transcript_index_block_empty_returns_none():
+    assert agent._transcript_index_block(None) is None
+    assert agent._transcript_index_block([]) is None
+
+
+def test_transcript_index_block_six_questions():
+    transcript = [{"q": f"question {i}"} for i in range(6)]
+    block = agent._transcript_index_block(transcript)
+    assert block is not None
+    assert "question 0" in block.split("\n")[1]
+    assert len(block) <= 800
+
+
+def test_transcript_index_block_25_keeps_first_and_last():
+    transcript = [{"q": f"q{i}"} for i in range(25)]
+    block = agent._transcript_index_block(transcript)
+    assert block is not None
+    lines = [ln for ln in block.split("\n") if ln and not ln.startswith("##")]
+    assert lines[0] == "1. q0"
+    assert lines[-1] == "20. q24"
+    assert len(lines) == 20
+    assert "q1" not in [ln.split(". ", 1)[1] for ln in lines]
+    assert "q4" not in [ln.split(". ", 1)[1] for ln in lines]
+
+
+def test_record_session_turn_six_turns_caps_history_not_transcript():
+    session: dict = {}
+    full_answer = "A" * 500
+    for i in range(6):
+        record_session_turn(
+            session,
+            question=f"q{i}",
+            result={
+                "answer": full_answer if i == 0 else f"ans{i}",
+                "answer_sql": f"SELECT {i}",
+                "cache_key": f"k{i}",
+            },
+            client="morec",
+            company_id=1,
+            max_history=agent.MAX_HISTORY_TURNS,
+        )
+    assert len(session["history"]) == 4
+    assert len(session["transcript"]) == 6
+    assert session["transcript"][0]["a"] == full_answer
+    assert len(session["transcript"][0]["a"]) == 500
+    assert session["history"][0]["a"] == "ans2"
+    assert len(session["history"][-1]["a"]) <= 400
+    assert session["transcript"][0]["sql"] == "SELECT 0"
+    assert session["transcript"][0]["company_id"] == 1
+    assert session["transcript"][0]["client"] == "morec"
+
+
+def test_company_switch_clears_transcript():
+    session = {"conversation": {"CompanyID": 1}, "history": [{"q": "x"}], "transcript": [{"id": "t1"}]}
+    server._set_session_company(session, session["conversation"], 2)
+    assert session["transcript"] == []
+    assert session["history"] == []

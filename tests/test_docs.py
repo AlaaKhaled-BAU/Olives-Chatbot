@@ -441,3 +441,41 @@ def test_client_105_assign_customers_in_top3():
         "4.8" in h["heading"] or "Assign Customers" in h["excerpt"]
         for h in hits[:3]
     )
+
+
+def test_index_morphology_appends_invoice_aliases(tmp_path, monkeypatch):
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "inv.md").write_text("شرح إنشاء فاتورة جديدة\n")
+    monkeypatch.setattr(config, "work_dir", lambda client: tmp_path / "work" / client)
+    (tmp_path / "work" / "morec").mkdir(parents=True)
+    docs.build_index("morec", corpus_dir=corpus)
+    hits = docs.search("morec", "الفواتير", locale="ar")
+    assert hits
+    assert any("فاتورة" in h["excerpt"] for h in hits)
+
+
+def test_index_morphology_no_alias_when_no_group_hit(tmp_path, monkeypatch):
+    body = "GPS tracking for field sales"
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "gps.md").write_text(body)
+    monkeypatch.setattr(config, "work_dir", lambda client: tmp_path / "work" / client)
+    (tmp_path / "work" / "morec").mkdir(parents=True)
+    docs.build_index("morec", corpus_dir=corpus)
+    conn = __import__("sqlite3").connect(docs.db_path("morec"))
+    row = conn.execute("SELECT text FROM docs LIMIT 1").fetchone()
+    conn.close()
+    assert row[0] == docs.normalize_ar(body)
+
+
+def test_morphology_roundtrip_fawateer_finds_fatura_chunk(tmp_path, monkeypatch):
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "steps.md").write_text("خطوات فاتورة\n")
+    monkeypatch.setattr(config, "work_dir", lambda client: tmp_path / "work" / client)
+    (tmp_path / "work" / "morec").mkdir(parents=True)
+    docs.build_index("morec", corpus_dir=corpus)
+    hits = docs.search("morec", "ما هي الفواتير", locale="ar")
+    assert len(hits) >= 1
+

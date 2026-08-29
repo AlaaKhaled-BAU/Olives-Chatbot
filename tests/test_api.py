@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from api.server import app
 from core import llm
+from api.server import SESSIONS
 
 client = TestClient(app)
 
@@ -50,6 +51,13 @@ def test_context_endpoint_returns_shape():
     data = resp.json()
     assert data["company_id"] == 1
     assert data["clients_active"][0]["ClientID"] == 1
+    assert data["transcript"] == []
+
+
+def test_context_without_session_id_has_empty_transcript():
+    resp = client.get("/context")
+    assert resp.status_code == 200
+    assert resp.json()["transcript"] == []
 
 
 def test_context_loads_companies_from_db():
@@ -77,6 +85,33 @@ def test_context_loads_companies_from_db():
                   "morec", {}
               )
   assert companies == [{"id": 2, "name": "Live Co"}]
+
+
+def test_ask_done_sse_includes_tools_ms():
+    events = [
+        {"type": "done", "answer": "ok", "needs_ask": None,
+         "answer_sql": "SELECT 1", "cache_key": "k1",
+         "tools_ms": {"search_docs": 42}},
+    ]
+    with patch("api.server.agent.ask_stream", return_value=events):
+        resp = client.post("/ask", json={"question": "test", "session_id": "tools-ms-test"})
+    assert resp.status_code == 200
+    lines = [line for line in resp.text.split("\n\n") if line.startswith("data: ") and line != "data: [DONE]"]
+    frames = [json.loads(line[len("data: "):]) for line in lines]
+    assert "tools_ms" in frames[-1]
+    assert frames[-1]["tools_ms"] == {"search_docs": 42}
+
+
+def test_ask_done_sse_tools_ms_defaults_to_empty_dict():
+    events = [
+        {"type": "done", "answer": "ok", "needs_ask": None,
+         "answer_sql": "SELECT 1", "cache_key": "k1"},
+    ]
+    with patch("api.server.agent.ask_stream", return_value=events):
+        resp = client.post("/ask", json={"question": "test", "session_id": "tools-ms-empty"})
+    lines = [line for line in resp.text.split("\n\n") if line.startswith("data: ") and line != "data: [DONE]"]
+    frames = [json.loads(line[len("data: "):]) for line in lines]
+    assert frames[-1].get("tools_ms") == {}
 
 
 def test_ask_streams_step_and_answer_chunk_frames_before_the_final_answer():
@@ -147,3 +182,29 @@ def test_static_index_served_at_root():
     assert resp.status_code == 200
     assert "مساعد بيانات" in resp.text
     assert "رمز الدخول" not in resp.text
+
+
+def test_six_asks_transcript_keeps_six_history_keeps_four():
+    sid = "test-six-asks-transcript"
+    SESSIONS.pop(sid, None)
+    captured: list = []
+
+    def fake_stream(*args, **kwargs):
+        captured.append(kwargs.get("history"))
+        i = len(captured) - 1
+        answer = "A" * 500 if i == 0 else f"ans{i}"
+        return [{"type": "done", "answer": answer, "needs_ask": None,
+                 "answer_sql": f"SELECT {i}", "cache_key": f"k{i}"}]
+
+    with patch("api.server.agent.ask_stream", side_effect=fake_stream):
+        for i in range(6):
+            resp = client.post("/ask", json={"question": f"q{i}", "session_id": sid},
+                               headers={"X-Session-Id": sid})
+            resp.read()
+
+    ctx = client.get(f"/context?session_id={sid}").json()
+    assert len(ctx["transcript"]) == 6
+    assert ctx["transcript"][0]["a"] == "A" * 500
+    assert ctx["transcript"][0]["sql"] == "SELECT 0"
+    assert len(captured[5]) == 4
+    SESSIONS.pop(sid, None)

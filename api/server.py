@@ -25,6 +25,7 @@ from slowapi.errors import RateLimitExceeded  # noqa: E402
 from slowapi.util import get_remote_address  # noqa: E402
 
 from core import agent, config, dblink, gate, llm, memory, params, sessions, sql, trace  # noqa: E402
+from core.sessions import record_session_turn  # noqa: E402
 
 app = FastAPI()
 
@@ -72,6 +73,7 @@ class FeedbackRequest(BaseModel):
     session_id: str
     helpful: bool
     reason: str | None = None
+    turn_id: str | None = None
 
 
 class ContextSetRequest(BaseModel):
@@ -153,6 +155,7 @@ def _touch_session(session_id: str, default_factory) -> dict:
         state.setdefault("conversation", {})
         state.setdefault("pending_ask", None)
         state.setdefault("history", [])
+        state.setdefault("transcript", [])
         SESSIONS[session_id] = state
         while len(SESSIONS) > SESSION_MAX:
             old_sid, _ = SESSIONS.popitem(last=False)
@@ -187,6 +190,7 @@ def _set_session_company(session: dict, conv: dict, cid: int) -> None:
     # number when the same question is asked again after the dropdown change.
     if prev is not None and int(prev) != int(cid):
         session["history"] = []
+        session["transcript"] = []
         session.pop("last_turn", None)
 
 
@@ -282,13 +286,17 @@ def _context_payload(client: str, conversation: dict) -> dict:
 @app.get("/context")
 def get_context(session_id: str | None = None):
     client = pinned_client()
+    transcript = []
     if session_id:
         session = _touch_session(session_id, lambda: {"conversation": {}, "pending_ask": None})
         _ensure_session_company(session, client)
         conversation = session["conversation"]
+        transcript = list(session.get("transcript") or [])
     else:
         conversation = {}
-    return _context_payload(client, conversation)
+    payload = _context_payload(client, conversation)
+    payload["transcript"] = transcript
+    return payload
 
 
 @app.post("/db/test")
@@ -376,6 +384,16 @@ async def ask(request: Request, req: AskRequest):
     _apply_pending_answer(session, req.question, client)
     _ensure_session_company(session, client, req.company_id)
 
+    if not req.question.strip():
+        async def blank_stream():
+            yield f"data: {json.dumps({'error': 'يرجى إدخال سؤال.'})}\n\n"
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(
+            blank_stream(),
+            media_type="text/event-stream",
+            headers={"X-Accel-Buffering": "no", "Cache-Control": "no-transform"},
+        )
+
     cancel = threading.Event()  # TRACK D: set on client disconnect
 
     def stream():
@@ -385,6 +403,7 @@ async def ask(request: Request, req: AskRequest):
                                           conversation=session["conversation"],
                                           subject=subject,
                                           history=session.get("history") or [],
+                                          transcript=session.get("transcript") or [],
                                           cancel=cancel):
                 if event["type"] == "step":
                     yield f"data: {json.dumps({'step': event['step']})}\n\n"
@@ -404,6 +423,7 @@ async def ask(request: Request, req: AskRequest):
             return
 
         session["pending_ask"] = "CompanyID" if result["needs_ask"] else None
+        turn_id = None
         if result["needs_ask"]:
             yield f"data: {json.dumps({'needs_ask': result['needs_ask']})}\n\n"
         else:
@@ -411,22 +431,23 @@ async def ask(request: Request, req: AskRequest):
             if answer is not None and not str(answer).strip():
                 answer = None
             if req.session_id:
+                cid = session["conversation"].get("CompanyID")
+                turn_id = record_session_turn(
+                    session,
+                    question=req.question,
+                    result=result,
+                    client=client,
+                    company_id=cid,
+                    max_history=agent.MAX_HISTORY_TURNS,
+                )
                 session["last_turn"] = {
                     "client": client,
-                    "company_id": session["conversation"].get("CompanyID"),
+                    "company_id": cid,
                     "question": req.question,
                     "answer_sql": result.get("answer_sql"),
                     "cache_key": result.get("cache_key"),
+                    "turn_id": turn_id,
                 }
-                # TRACK F1: rolling conversation memory for follow-ups.
-                if answer:
-                    hist = session.setdefault("history", [])
-                    hist.append({
-                        "q": req.question,
-                        "a": str(answer)[:400],
-                        "sql": (result.get("answer_sql") or "")[:200],
-                    })
-                    del hist[:-agent.MAX_HISTORY_TURNS]
             yield f"data: {json.dumps({
                 'answer': answer,
                 'answer_sql': result.get('answer_sql'),
@@ -434,6 +455,8 @@ async def ask(request: Request, req: AskRequest):
                 'table': result.get('table'), 'chart': result.get('chart'),
                 'followups': result.get('followups') or [], 'sources': result.get('sources') or [],
                 'confidence': result.get('confidence'),
+                'turn_id': turn_id,
+                'tools_ms': result.get('tools_ms') or {},
             }, default=str)}\n\n"
         yield "data: [DONE]\n\n"
         _persist_session(req.session_id, session)
@@ -507,7 +530,25 @@ def feedback(req: FeedbackRequest):
     subject = hashlib.sha256(req.session_id.encode()).hexdigest()[:12]
 
     session = SESSIONS.get(req.session_id)
-    turn = session.get("last_turn") if session else None
+    if not session:
+        raise HTTPException(status_code=404, detail="no recent answer on this session to give feedback on")
+
+    turn = None
+    if req.turn_id:
+        for row in session.get("transcript") or []:
+            if row.get("id") == req.turn_id:
+                turn = {
+                    "client": row.get("client") or client,
+                    "company_id": row.get("company_id"),
+                    "question": row["q"],
+                    "answer_sql": row.get("sql"),
+                    "cache_key": row.get("cache_key"),
+                }
+                break
+        if turn is None:
+            raise HTTPException(status_code=404, detail="unknown turn_id")
+    else:
+        turn = session.get("last_turn")
     if not turn or turn["client"] != client:
         raise HTTPException(status_code=404, detail="no recent answer on this session to give feedback on")
 

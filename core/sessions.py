@@ -9,7 +9,10 @@ import json
 import sqlite3
 import threading
 import time
+import uuid
 from pathlib import Path
+
+TRANSCRIPT_CAP = 100
 
 DB_PATH = Path(__file__).resolve().parent.parent / "work" / "sessions.sqlite"
 IDLE_SECONDS = 3600
@@ -32,6 +35,49 @@ def _conn() -> sqlite3.Connection:
     conn.execute("PRAGMA busy_timeout=5000")
     conn.execute(_SCHEMA)
     return conn
+
+
+def record_session_turn(
+    session: dict,
+    *,
+    question: str,
+    result: dict,
+    client: str,
+    company_id,
+    max_history: int,
+) -> str | None:
+    """Append UI transcript (full text) and model history (compressed).
+    Returns turn_id or None if there is no answer to record.
+    result is the ask_stream `done` event dict.
+    max_history must equal agent.MAX_HISTORY_TURNS.
+    """
+    if not str(question or "").strip():
+        return None
+    answer = result.get("answer")
+    if answer is None or not str(answer).strip():
+        return None
+    turn_id = uuid.uuid4().hex
+    sql_full = result.get("answer_sql") or ""
+    session.setdefault("transcript", [])
+    session["transcript"].append({
+        "id": turn_id,
+        "q": question,
+        "a": str(answer),
+        "sql": sql_full,
+        "ts": time.time(),
+        "cache_key": result.get("cache_key"),
+        "client": client,
+        "company_id": company_id,
+    })
+    del session["transcript"][:-TRANSCRIPT_CAP]
+    hist = session.setdefault("history", [])
+    hist.append({
+        "q": question,
+        "a": str(answer)[:400],
+        "sql": sql_full[:200],
+    })
+    del hist[:-max_history]
+    return turn_id
 
 
 def load(sid: str) -> dict | None:
