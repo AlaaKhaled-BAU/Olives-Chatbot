@@ -26,7 +26,7 @@ _STATIC_BO_NAMES = (
 def _static_from_summary() -> str:
     if not _SUMMARY_PATH.exists():
         return _STATIC_BO_NAMES
-    text = _SUMMARY_PATH.read_text()
+    text = _SUMMARY_PATH.read_text(encoding="utf-8")
     mappings = []
     for line in text.splitlines():
         if "| BO | `" in line and "↔" not in line:
@@ -47,6 +47,11 @@ def _live_facts(company_id: int, client: str) -> dict:
             "max_dates",
             "SELECT (SELECT MAX(TransactionDate) FROM t.TransactionsHeaders) AS max_invoice_date, "
             "(SELECT MAX(OrderDate) FROM t.OrdersHeaders) AS max_order_date",
+        ),
+        (
+            "operational_balance",
+            "SELECT (SELECT COUNT(*) FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid,0) = 0) AS invoice_count, "
+            "(SELECT COUNT(*) FROM t.OrdersHeaders WHERE ISNULL(IsVoid,0) = 0) AS order_count",
         ),
         (
             "transaction_types",
@@ -88,6 +93,18 @@ def build(client: str, company_id: int, question: str | None = None) -> str:
                 lines.append(f"max_invoice_date: {row[0].get('max_invoice_date')}")
             if row[0].get("max_order_date") is not None:
                 lines.append(f"max_order_date: {row[0].get('max_order_date')}")
+    if facts.get("operational_balance"):
+        row = facts["operational_balance"]
+        if isinstance(row, list) and row:
+            inv = row[0].get("invoice_count") or 0
+            ord_cnt = row[0].get("order_count") or 0
+            if ord_cnt > 3 * max(inv, 1):
+                mode = "Pre-Sales Dominant (حجز طلبيات هو النمط الغالب — انتبه لاستعلام OrdersHeaders عند السؤال عن المبيعات)"
+            elif inv > 3 * max(ord_cnt, 1):
+                mode = "Cash Van Dominant (فانات البيع المباشر هي النمط الغالب — TransactionsHeaders Type 1)"
+            else:
+                mode = "Hybrid (نمط مزدوج: فانات بيع مباشر + طلبيات توصيل مسبقة)"
+            lines.append(f"operational_profile: {mode} [Total Invoices: {inv:,} | Total Orders: {ord_cnt:,}]")
     if facts.get("transaction_types"):
         types = facts["transaction_types"]
         if isinstance(types, list) and types:

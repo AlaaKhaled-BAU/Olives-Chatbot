@@ -5,6 +5,11 @@ __pycache__/
 .pytest_cache/
 docs_corpus/
 *.bak
+data/
+build/
+dist/
+evals/*_run.log
+evals/*_run_*.log
 .~lock.*
 **/.~lock.*
 
@@ -15,4 +20,5 @@ docs_corpus/
 # needing setup.
 clients/*.yaml
 !clients/_example.yaml
+docker/out/
 .gstack/

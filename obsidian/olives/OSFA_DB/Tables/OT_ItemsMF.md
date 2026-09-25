@@ -18,8 +18,11 @@ last_verified: 2026-07-05
 
 ## Business Purpose
 
-
-Item master data on tablet — synced subset of BO Items table for offline use.
+Item master data catalog in OSFA_DB on the mobile tablet — synced subset of BO `Items` table via procedure `dbo.OT_SendItemsInfo`.
+- **`QtyOH` (Quantity On Hand) Semantics:**
+  - For **Cash Van** reps: `QtyOH` is populated from `dbo.SalesPersonItemsBalance.ItemQuantity` (or assigned vehicle store via `dbo.GetItemStoreBalance`), showing the salesman their current van stock.
+  - For **Order Taking (Pre-Sales)** reps: `QtyOH` defaults to 0 or total company stock (`Items.QtyInAllStores`), as pre-sales reps do not hold van custody stock.
+- Contains pricing (`SellPrice`), unit conversions (`Conv1..Conv3`), tax percentages (`TaxPerc`), and barcode metadata for field offline selling.
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

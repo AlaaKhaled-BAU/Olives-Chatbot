@@ -15,9 +15,12 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
 
-Tablet-side data table in OSFA_DB, synced to/from Back Office.
+Central warehouse stock table in OSFA_DB for **Order Taking (مندوبو حجز الطلبات / Pre-Sales)** salespersons.
+- Keyed by `(CompNo, SalesmanNo, StoreNo, ItemNo)`.
+- Populated and synchronized by `dbo.OT_SendSalesmanData` by aggregating balances from Back-Office `dbo.StoresBalances` (or ERP integration views).
+- In standard Olives Pre-Sales implementations, warehouse quantities are tagged with virtual StoreNo **`999999`** (representing the company's general central warehouse) or specific central ERP stores.
+- Enables Pre-Sales representatives in the field to check real-time warehouse availability across items before booking sales orders in `OrdersHeaders`.
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

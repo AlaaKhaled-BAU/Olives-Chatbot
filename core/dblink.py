@@ -16,6 +16,16 @@ import pymssql
 
 _OVERRIDE_PATH = Path(__file__).resolve().parent.parent / "work" / "runtime_db.json"
 
+
+def _override_path() -> Path:
+    if _OVERRIDE_PATH != Path(__file__).resolve().parent.parent / "work" / "runtime_db.json":
+        return _OVERRIDE_PATH
+    env_work = os.environ.get("CHATBOT_WORK_DIR")
+    if env_work:
+        return Path(env_work) / "runtime_db.json"
+    return _OVERRIDE_PATH
+
+
 _LOCAL_ALIASES = {".", "(.)", "(local)", "local", "localhost"}
 _DEFAULT_PORT = 1433
 
@@ -117,10 +127,11 @@ def save_override(server: str, user: str, password: str, database: str,
         "database": database, "trusted": bool(trusted),
         "saved_at_epoch": __import__("time").time(),
     }
-    _OVERRIDE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _OVERRIDE_PATH.write_text(json.dumps(payload))
+    p = _override_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(payload))
     try:
-        os.chmod(_OVERRIDE_PATH, stat.S_IRUSR | stat.S_IWUSR)  # 0600
+        os.chmod(p, stat.S_IRUSR | stat.S_IWUSR)  # 0600
     except OSError:
         pass
     return active_override()
@@ -128,7 +139,7 @@ def save_override(server: str, user: str, password: str, database: str,
 
 def active_override() -> dict | None:
     try:
-        data = json.loads(_OVERRIDE_PATH.read_text())
+        data = json.loads(_override_path().read_text())
     except (FileNotFoundError, json.JSONDecodeError):
         return None
     safe = dict(data)
@@ -139,13 +150,52 @@ def active_override() -> dict | None:
 
 def raw_override() -> dict | None:
     try:
-        return json.loads(_OVERRIDE_PATH.read_text())
+        return json.loads(_override_path().read_text())
     except (FileNotFoundError, json.JSONDecodeError):
         return None
 
 
 def clear_override() -> None:
     try:
-        _OVERRIDE_PATH.unlink()
+        _override_path().unlink()
     except FileNotFoundError:
         pass
+
+
+def snapshot_defaults(client: str) -> dict:
+    from . import config
+    return {
+        "host": os.environ.get("DB_HOST", "127.0.0.1"),
+        "port": int(os.environ.get("DB_PORT", "1433")),
+        "user": "chatbot_ro",
+        "password": "••••••",
+        "database": config.load_client(client)["db_name"],
+        "bak_mount": os.environ.get("SQL_SNAPSHOT_MOUNT", "/snapshots"),
+    }
+
+
+def probe_runtime(client: str) -> dict:
+    """Live ping of whatever get_conn() currently targets."""
+    from . import sql
+    try:
+        conn = sql.get_conn(client)
+    except FileNotFoundError:
+        return {"ok": False, "error": "لا توجد كلمة مرور محلية (work/ro_password.txt)"}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": _friendly_login_error(str(e))}
+    try:
+        cur = conn.cursor(as_dict=True)
+        cur.execute("SELECT @@SERVERNAME AS server_name, DB_NAME() AS database_name")
+        row = cur.fetchone() or {}
+        return {
+            "ok": True,
+            "server_name": row.get("server_name"),
+            "database": row.get("database_name"),
+        }
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": _friendly_login_error(str(e))}
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass

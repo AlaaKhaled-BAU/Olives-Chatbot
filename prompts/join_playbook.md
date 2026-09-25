@@ -53,10 +53,42 @@ Not in `LogActionTransaction` (history only). Pushed to tablet by `OT_SendSalesm
 
 Historical weekly counts from `LogActionTransaction` where `ActionID = N'0'`, GROUP BY week, then `analyze` trend. Label projection تقديري. Compare to plan only when user explicitly asks.
 
+## Deducing Salesperson Operational Mode (Cash Van vs. Order Taking) — Dynamic Inference (NO Hardcoding)
+Never hardcode or memorize which salesperson is Cash Van or Order Taking. Deduce dynamically:
+- **Call `lookup_hot('SalesPersons')`**: inspect `PositionID`, `CarID`, and `VehicleId`.
+- **Call `lookup_hot('SalesPersonsDevicePermissions')`**: match `PositionsID = sp.PositionID`.
+  - **Cash Van (بيع مباشر من السيارة)**: `MakeSalesInvoice = 1` AND (`CarID > 0` OR `VehicleId IS NOT NULL` OR salesperson has active rows in `t.SalesPersonItemsBalance`).
+    - Sales live in `t.TransactionsHeaders` (`TransactionTypeID = 1`, `ISNULL(IsVoid,0) = 0`).
+    - Vehicle inventory lives in `t.SalesPersonItemsBalance`.
+    - Restocking/unloading lives in `t.TransfersOrdersHeaders` (`VouType = 1` Load, `VouType = 2` Unload).
+  - **Order Taking / Pre-Sales (حجز طلبيات لتوصيل المستودع)**: `MakeOrderTaking = 1` AND `ISNULL(MakeSalesInvoice, 0) = 0` (or salesperson has NO delivery car and 0 van balance).
+    - Sales live in `t.OrdersHeaders` + `t.OrdersDetails` (check `WFApproved = 1` and `Approved = 1`).
+    - Available stock lives in `t.StoresBalances` (Central Warehouse) — they do NOT carry van custody stock.
+  - **Hybrid (مندوب مزدوج)**: `MakeSalesInvoice = 1` AND `MakeOrderTaking = 1`.
+    - When asked for "sales", report BOTH: direct field invoices (`TransactionsHeaders`) AND booked sales orders (`OrdersHeaders`).
+
+## Transfers Orders Lifecycle & TransactionsHeaders Types Warning
+`TransfersOrdersHeaders` records movements between warehouse stores and mobile vans (synced from mobile `OT_ConsOrderHF/DF` via `OT_ImportUploadOrders`):
+- **`VouType = 1` (أمر تحميل Load Order)**: Warehouse (`StoreNo`) → Salesperson's Van.
+  - Converted upon approval via `Pro_ConvertLoadOrderToTransaction` to **`TransactionsHeaders` with `TransactionTypeID = 6`**.
+  - Increments (+) `t.SalesPersonItemsBalance` via `Pro_CalcSalespersonItemBalance`.
+- **`VouType = 2` (أمر تفريغ/تنزيل Unload Order)**: Salesperson's Van → Warehouse (`StoreNo`).
+  - Converted upon approval via `Pro_ConvertUnloadOrderToTransaction` to **`TransactionsHeaders` with `TransactionTypeID = 7`**.
+  - Decrements (-) `t.SalesPersonItemsBalance` via `Pro_CalcSalespersonItemBalance`.
+- **CRITICAL QUERY RULE**: Because approved load/unload orders enter `TransactionsHeaders` as types 6 and 7, **NEVER query `TransactionsHeaders` for sales without filtering `TransactionTypeID = 1`**!
+
+## Inventory & Stock Tables Matrix
+- **`t.SalesPersonItemsBalance`**: The authoritative single source of truth for **Cash Van stock**. Primary key: `(CompanyID, SalesPersonID, ItemCode)`.
+- **`t.StoresBalances`**: Central warehouse stock for **Order Taking fulfillment**. Primary key: `(CompanyID, StoreNo, ItemCode)`.
+- **`OT_StoreItemsQty`** (OSFA mobile mirror): Van inventory on tablet where `StoreNo = SalesmanNo`.
+- **`OT_StoreItemsQty_Main`** (OSFA mobile mirror): Central warehouse stock available for pre-sales reps (Store `999999`).
+- **`OT_ItemsMF.QtyOH`** (OSFA mobile mirror): Master file on-hand quantity displayed on tablet. Mirrors van stock for Cash Vans; 0 or company stock for Pre-Sales.
+- **`t.SalesPersonStockTacking`**: Physical stock-taking counts submitted by reps to reconcile van shrinkage.
+
 ## Van stock (SalesPersonItemsBalance)
 - Van quantity by salesperson + item: `SalesPersonItemsBalance` (live FKs to `SalesPersons`, `Items`, `Companies`).
 - Join pattern: `SalesPersonItemsBalance.SalesPersonID` → `SalesPersons.ID` and `SalesPersonItemsBalance.ItemCode` → `Items.ItemCode` (always include `CompanyID` on composite keys).
-- Not the same as invoice detail stock or `TransfersOrdersHeaders` — use the table that matches the question (رصيد السيارة vs transfer document).
+- If querying stock for a Pre-Sales rep, explain that they do not hold van custody stock and check warehouse availability in `t.StoresBalances`.
 
 ## ClientsActive
 - `(CompanyID, ClientID)` identifies which Olives product fork is active — not a shop or customer row.

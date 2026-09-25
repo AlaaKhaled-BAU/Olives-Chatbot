@@ -1,0 +1,26 @@
+# Option B — chatbot only (connect to external SQL via Settings UI).
+# Usage: copy docker/.env.example → .env, set DEEPSEEK_API_KEY, then:
+#   docker compose up
+services:
+  chatbot:
+    image: olives-chatbot:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8100:8100"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      CHATBOT_CLIENT: ${CHATBOT_CLIENT:-105}
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-1433}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - chatbot-work:/app/work
+    restart: unless-stopped
+
+volumes:
+  chatbot-work:

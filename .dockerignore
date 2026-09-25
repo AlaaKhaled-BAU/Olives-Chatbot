@@ -1,0 +1,33 @@
+.git
+.gitignore
+.env
+.env.*
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.cursor
+.vscode
+*.log
+
+# Runtime state — recreated in container volume
+work/cache.sqlite
+work/sessions.sqlite
+work/trace.jsonl
+work/runtime_db.json
+work/**/relations-graph
+work/vault_fill
+
+# Not needed in runtime image
+tests/
+evals/
+sqlmcp/
+
+# Large .bak — mounted at mssql image build time only
+data/db-snapshots
+
+# Docker outputs
+docker/out
+docker/*.tar

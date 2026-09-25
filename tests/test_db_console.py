@@ -98,8 +98,12 @@ client = TestClient(app)
 
 def test_status_snapshot_has_no_secret_leak(monkeypatch, tmp_path):
     monkeypatch.setattr(dblink, "_OVERRIDE_PATH", tmp_path / "runtime_db.json")
-    body = client.get("/db/status").json()
+    with patch.object(dblink, "probe_runtime", return_value={"ok": True, "server_name": "X", "database": "Olives_BO"}):
+        body = client.get("/db/status").json()
     assert body["source"] == "snapshot"
+    assert body["local"] is True
+    assert body["connected"] is True
+    assert "bak_mount" in body["defaults"]
     blob = json.dumps(body)
     assert "ro_password" not in blob
     assert body["active"]["password"] == "••••••"
@@ -117,8 +121,10 @@ def test_connect_persists_and_never_echoes_password(tmp_path, monkeypatch):
     assert body["ok"] is True
     assert "topsecret" not in resp.text
     assert body["active"]["password"] == "••••••"
-    status = client.get("/db/status").json()
+    with patch.object(dblink, "probe_runtime", return_value={"ok": True, "server_name": "LOCAL"}):
+        status = client.get("/db/status").json()
     assert status["source"] == "live"
+    assert status["local"] is False
 
 
 def test_connect_rejects_when_probe_fails_or_db_missing(tmp_path, monkeypatch):

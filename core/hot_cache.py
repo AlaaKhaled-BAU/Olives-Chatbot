@@ -11,8 +11,14 @@ TTL_SECONDS = 600  # 10 minutes
 # Customers may gain Code when schema_cache shows that column (see l1_sql).
 L1_QUERIES = {
     "SalesPersons": (
-        "SELECT ID, Name, ForeignName, PositionID, IsSuspended, GroupID FROM t.SalesPersons"
+        "SELECT ID, Name, ForeignName, PositionID, IsSuspended, GroupID, CarID, VehicleId FROM t.SalesPersons"
     ),
+    "SalesPersonsDevicePermissions": (
+        "SELECT PositionsID, MakeSalesInvoice, MakeOrderTaking, "
+        "AllowVanTransfer, AllowUnloadOrder, MakeReturnSales, AllowReturnOrder "
+        "FROM t.SalesPersonsDevicePermissions"
+    ),
+    "DeliveryCars": "SELECT ID, Name, CarType, Barcode FROM t.DeliveryCars",
     "Positions": "SELECT ID, Name FROM t.Positions",
     "Customers": "SELECT ID, Name, ForeignName, IsSuspended FROM t.Customers",
     "Items": "SELECT ItemCode, Name, ForeignName FROM t.Items",
@@ -29,7 +35,11 @@ L1_QUERIES = {
 
 # Fact log is too large to snapshot. lookup_hot("LogActionTransaction") serves
 # the ActionID codebook (same rows as LogActions) plus a grain note.
-L1_ALIASES = {"LogActionTransaction": "LogActions"}
+L1_ALIASES = {
+    "LogActionTransaction": "LogActions",
+    "Permissions": "SalesPersonsDevicePermissions",
+    "DevicePermissions": "SalesPersonsDevicePermissions",
+}
 
 L1_TABLES = frozenset(L1_QUERIES.keys()) | frozenset(L1_ALIASES)
 

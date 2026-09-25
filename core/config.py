@@ -6,9 +6,13 @@ shared file since its tables already key every row by client (Phase 5)."""
 from pathlib import Path
 
 import yaml
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CLIENTS_DIR = BASE_DIR / "clients"
+
+# Automatically load .env if present
+load_dotenv(BASE_DIR / ".env")
 
 
 def load_client(name: str) -> dict:
@@ -19,6 +23,11 @@ def load_client(name: str) -> dict:
 
 
 def work_dir(client: str) -> Path:
-    d = BASE_DIR / "work" / client
+    import os
+    env_work = os.environ.get("CHATBOT_WORK_DIR")
+    if env_work:
+        d = Path(env_work) / client
+    else:
+        d = BASE_DIR / "work" / client
     d.mkdir(parents=True, exist_ok=True)
     return d

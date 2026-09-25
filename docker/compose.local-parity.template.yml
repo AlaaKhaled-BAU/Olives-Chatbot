@@ -1,0 +1,40 @@
+# Dev parity — same mssql bind mounts as your local `mssql` container + chatbot image.
+# Generate: bash docker/gen-local-parity-compose.sh
+# Then: docker compose -f docker-compose.local-parity.yml up
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${DB_SA_PASSWORD:-Olives@105!pass}
+      MSSQL_PID: Developer
+    volumes:
+      - ${MSSQL_DATA}:/var/opt/mssql
+      - ${SNAPSHOTS}:/snapshots:ro
+    ports:
+      - "1433:1433"
+    restart: unless-stopped
+
+  chatbot:
+    image: olives-chatbot:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8100:8100"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      CHATBOT_CLIENT: ${CHATBOT_CLIENT:-105}
+      DB_HOST: mssql
+      DB_PORT: ${DB_PORT:-1433}
+      SQL_SNAPSHOT_MOUNT: /snapshots
+    depends_on:
+      - mssql
+    volumes:
+      - chatbot-work:/app/work
+    restart: unless-stopped
+
+volumes:
+  chatbot-work:

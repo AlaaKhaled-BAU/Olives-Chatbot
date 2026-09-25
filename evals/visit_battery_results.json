@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-08-28T23:03:43.777648+00:00",
+  "run_at": "2026-08-29T15:20:16.212288+00:00",
   "mode": "direct_agent",
   "client": "105",
   "company_id": 1,
@@ -9,11 +9,11 @@
       "style": "past_ar",
       "session": "solo-past-ar",
       "question": "اعطيني زيارات المندوب اخر اسبوع",
-      "session_id": "visit-18c5c2c6ae",
+      "session_id": "visit-2270a6a482",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 11.51,
-      "answer": "أفترض أنك تقصد عدد زيارات المندوبين (تسجيل دخول للعميل، `ActionID = N'0'`) خلال آخر أسبوع من آخر تاريخ تسجيل متاح في البيانات.\n\nآخر تاريخ نشاط مسجل هو **2025-01-29**، وخلال الأسبوع الذي يسبقه (من 2025-01-23 حتى 2025-01-29) سُجّلت **73,704** زيارة.\n\nمثال على بيانات مندوب واحد في ذلك الأسبوع:\n- **عثمان القدسي** (المندوب 3003): 18 زيارة لعميلين مختلفين.\n\n```sql\n-- إجمالي الزيارات (تسجيل دخول للعميل ActionID = N'0') خلال آخر أسبوع\nSELECT COUNT(*) AS TotalVisits\nFROM t.LogActionTransaction\nWHERE ActionID = N'0'\n  AND TimeStamp >= DATEADD(DAY, -7, (SELECT MAX(TimeStamp) FROM t.LogActionTransaction));\n\n-- مثال: زيارة كل مندوب\nSELECT TRY_CAST(lat.SalesmanID AS int) AS SalesPersonID,\n       sp.Name AS SalesPerson,\n       COUNT(*) AS VisitCount,\n       COUNT(DISTINCT TRY_CAST(lat.Data1 AS bigint)) AS CustomersVisited\nFROM t.LogActionTransaction lat\nLEFT JOIN t.SalesPersons sp ON sp.ID = TRY_CAST(lat.SalesmanID AS int)\nWHERE lat.ActionID = N'0'\n  AND lat.TimeStamp >= DATEADD(DAY, -7, (SELECT MAX(TimeStamp) FROM t.LogActionTransaction))\nGROUP BY TRY_CAST(lat.SalesmanID AS int), sp.Name;\n```\n\nملاحظة: \"زيارة\" هنا تعني تسجيل دخول المندوب لدى العميل (`CustEntry`). إذا كنت تقصد شيئًا آخر (مثل خطة مسار مجدولة)، وضّح ذلك.",
+      "elapsed_s": 8.65,
+      "answer": "أفترض أنك تقصد عدد زيارات المندوب **عثمان القدسي** خلال آخر أسبوع متاح في البيانات (حتى 2025-01-29).\n\n**النتيجة:**\n- **18 زيارة** خلال آخر أسبوع، موزعة على **زبونَين** فقط.\n\n```sql\nSELECT\n    sp.ID AS SalesPersonID,\n    sp.Name AS SalesPerson,\n    COUNT(*) AS VisitCount,\n    COUNT(DISTINCT TRY_CAST(lat.Data1 AS bigint)) AS CustomersVisited\nFROM t.LogActionTransaction lat\nJOIN t.SalesPersons sp\n    ON TRY_CAST(lat.SalesmanID AS int) = sp.ID\nWHERE lat.ActionID = N'0'\n  AND lat.TimeStamp >= DATEADD(DAY, -7, (SELECT MAX(TimeStamp) FROM t.LogActionTransaction))\n  AND sp.Name LIKE N'%عثمان القدسي%'\nGROUP BY sp.ID, sp.Name;\n```\n\nإذا كنت تقصد **مندوبًا آخر** أو تريد تفصيل الزيارات **بالأيام** بدلًا من الإجمالي، قلّ لي الاسم أو الفترة المطلوبة.",
       "answer_sql": "SELECT CAST(MAX(TimeStamp) AS date) AS max_act_date, COUNT(*) AS n FROM t.LogActionTransaction; SELECT sp.ID AS SalesPersonID, sp.Name AS SalesPerson,\n       COUNT(*) AS VisitCount,\n       COUNT(DISTINCT TRY_CAST(lat.Data1 AS bigint)) AS CustomersVisited\nFROM t.LogActionTransaction lat\nLEFT JOIN t.SalesPersons sp ON TRY_CAST(lat.SalesmanID AS int) = sp.ID\nWHERE lat.ActionID = N'0'\n  AND lat.TimeStamp >= DATEADD(day, -7, CAST('2025-01-29' AS datetime))\n  AND lat.TimeStamp < DATEADD(day, 1, CAST('2025-01-29' AS datetime))\nGROUP BY sp.ID, sp.Name\nORDER BY VisitCount DESC",
       "confidence": "high",
       "sources": [
@@ -37,11 +37,11 @@
       "style": "past_en",
       "session": "solo-past-en",
       "question": "Show salesman visits for the last week",
-      "session_id": "visit-5a16e2a812",
+      "session_id": "visit-9f392945f7",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 8.88,
-      "answer": "﴾بناءً على النتائج، عدد زيارات المندوب **عثمان القدسي** خلال آخر أسبوع (حتى 2025-01-29) هو **10 زيارات** — محسوبة من سجل الدخول إلى العملاء (`ActionID = N'0'`).\n\n- المندوب: عثمان القدسي (رقم 3003)\n- عدد الزيارات: 10\n\nSQL المستخدم:\n```sql\nSELECT th.SalesPersonID,\n       sp.Name AS SalesPersonName,\n       COUNT(*) AS VisitCount\nFROM t.LogActionTransaction lat\nJOIN t.SalesPersons sp ON TRY_CAST(lat.SalesmanID AS int) = sp.ID\nJOIN t.TransactionsHeaders th ON th.SalesPersonID = sp.ID\nWHERE lat.ActionID = N'0'\n  AND lat.TimeStamp >= DATEADD(day, -7, '2025-01-29')\nGROUP BY th.SalesPersonID, sp.Name\n```",
+      "elapsed_s": 7.81,
+      "answer": "أفترض أنك تقصد **زيارات المندوب الفعلية (تسجيل الدخول لدى الزبون)** خلال آخر أسبوع.\n\nالنتيجة من السجل (آخر أسبوع حسب `calendar_today` = 2025-01-29):\n\n- **المندوب: عثمان القدسي** — عدد الزيارات: **10**\n\n```sql\nSELECT\n    TRY_CAST(lat.SalesmanID AS int) AS SalesPersonID,\n    sp.Name AS SalesPersonName,\n    COUNT(*) AS VisitCount\nFROM t.LogActionTransaction lat\nJOIN t.SalesPersons sp\n    ON TRY_CAST(lat.SalesmanID AS int) = sp.ID\nWHERE lat.ActionID = N'0'          -- CustEntry (زيارة فعلية)\n  AND lat.TimeStamp >= DATEADD(day, -7, '2025-01-29')\nGROUP BY TRY_CAST(lat.SalesmanID AS int), sp.Name\nORDER BY VisitCount DESC;\n```\n\nإذا كنت تقصد **زيارات مندوب آخر** أو **فترة مختلفة** (مثل آخر شهر)، قل لي.",
       "answer_sql": "SELECT TOP 1 MAX(TimeStamp) AS last_ts FROM t.LogActionTransaction; SELECT sp.ID AS SalesPersonID, sp.Name AS SalesPersonName,\n       COUNT(*) AS VisitCount\nFROM t.LogActionTransaction lat\nLEFT JOIN t.SalesPersons sp ON TRY_CAST(lat.SalesmanID AS int) = sp.ID\nWHERE lat.ActionID = N'0'\n  AND lat.TimeStamp >= DATEADD(day, -6, CAST('2025-01-29' AS datetime))\n  AND lat.TimeStamp <  DATEADD(day, 1, '2025-01-29')\nGROUP BY sp.ID, sp.Name\nORDER BY VisitCount DESC",
       "confidence": "high",
       "sources": [
@@ -65,29 +65,27 @@
       "style": "plan_explicit",
       "session": "solo-plan",
       "question": "اعطيني خطة المسار للمندوب للأسبوع القادم — الزيارات المجدولة",
-      "session_id": "visit-ee1c133b1d",
+      "session_id": "visit-2ef19831d2",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 18.68,
-      "answer": "",
-      "answer_sql": "",
-      "confidence": null,
-      "sources": null,
-      "steps": [
-        "loading master data",
-        "running query 1 of 4",
-        "running query 2 of 4"
+      "elapsed_s": 7.66,
+      "answer": "أفهم أنك تريد خطة المسار للأسبوع القادم. سؤال: أي مندوب تقصد بالضبط؟ تظهر البيانات عدة مندوبين:\n- محمد العواودة (ID 2)\n- رامي الخرشة (ID 8)\n- حمزة اسطى (ID 9)\n- مبيعات مؤسسات مدينة (ID 22)\n- عيسى الكشك (ID 52)\n- مبيعات القضايا (ID 55)\n- ليث ابو علي (ID 404)\n- محمد خير الشريعة (ID 2002)\n- عماد مصباح (ID 2003)\n- عثمان القدسي (ID 3003)\n\nمع العلم أن **اليوم هو 2026-08-29 (السبت)**، والأسبوع القادم يبدأ من **2026-08-30 (الأحد)**.\n\nحدد المندوب المطلوب وسأعطيك خطته الكاملة للزيارات المجدولة.",
+      "answer_sql": "SELECT CAST(GETDATE() AS date) AS today, DATEPART(WEEKDAY, GETDATE()) AS weekday_no, DATEPART(DAY, GETDATE()) AS day_of_month; SELECT sp.ID AS SalesPersonID, sp.Name AS SalesPersonName, sp.PositionID,\n       spr.WeekDay, spr.Week1, spr.Week2, spr.Week3, spr.Week4,\n       r1.Name AS Route1Name, r2.Name AS Route2Name, r3.Name AS Route3Name, r4.Name AS Route4Name\nFROM t.SalesPersons sp\nJOIN t.SalesPersonsRoutes spr ON spr.PositionsID = sp.PositionID\nLEFT JOIN t.RoutesInformation r1 ON r1.ID = spr.Week1\nLEFT JOIN t.RoutesInformation r2 ON r2.ID = spr.Week2\nLEFT JOIN t.RoutesInformation r3 ON r3.ID = spr.Week3\nLEFT JOIN t.RoutesInformation r4 ON r4.ID = spr.Week4\nORDER BY sp.ID, spr.WeekDay",
+      "confidence": "high",
+      "sources": [
+        "RoutesInformation",
+        "SalesPersons",
+        "SalesPersonsRoutes"
       ],
-      "needs_ask": "أي مندوب تقصد؟ يوجد أكثر من مندوب نشط في النظام (مثل: يوسف عوض، محمد العواودة، أحمد الدميسي، فيصل البيتاوي، حسن مسعف، محمد الخطيب، سامي التعمري، رامي الخرشة...). اذكر اسم المندوب وسأعطيك خطة مساره للزيارات المجدولة الأسبوع القادم.",
+      "steps": [],
+      "needs_ask": null,
       "evaluation": {
-        "verdict": "fail",
-        "score": 1,
+        "verdict": "ok",
+        "score": 7,
         "notes": [
-          "empty"
+          "uses SalesPersonsRoutes for plan"
         ],
-        "flags": [
-          "empty"
-        ]
+        "flags": []
       }
     },
     {
@@ -95,11 +93,11 @@
       "style": "future_schedule",
       "session": "solo-future",
       "question": "والزيارات القادمة للاسبوع الجاي",
-      "session_id": "visit-e1b9b40a90",
+      "session_id": "visit-4c27d61c10",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 14.02,
-      "answer": "أفهم أنك تسأل عن **الزيارات القادمة للأسبوع القادم**. بناءً على البيانات المسترجعة من جدول `SalesPersonsRoutes` (خطة المسار الأسبوعية)، هذه هي الزيارات المجدولة. لكن هناك **ملاحظة هامة**:\n\nالجدول `SalesPersonsRoutes` يحتوي على **خطة المسار لكل مندوب في أيام الأسبوع** (السبت → الجمعة) بدون تحديد أرقام الأسابيع بشكل دقيق. القيم في أعمدة `Week1` حتى `Week4` تمثل **رقم المسار (RouteID)** وليس \"أسبوع\" محدد. بعض الصفوف تحتوي القيم نفسها لكل الأسابيع (مثل المندوب 2)، مما يعني أن المسار ثابت أسبوعيًا.\n\n**المندوبون الذين لديهم زيارات مجدولة (حسب الخطة):**\n\n| المندوب | عدد الأيام المخطط لها | عدد العملاء المتوقع |\n|---------|------------------------|---------------------|\n| محمد خير الشريعة (2002) | 7 أيام | 63 عميل |\n| سامي التعمري (7) | يومان (الاثنين، الثلاثاء) | 4 عملاء |\n| محمود قاسم محمد الرفاعي (4038) | يومان (الاثنين، الثلاثاء) | 4 عملاء |\n| وائل ناهض علي السفرية (4036) | يوم واحد (السبت) | 1 عميل |\n| Test_Moath (6005) | يوم واحد (السبت) | 1 عميل |\n| xx (6006) | يوم واحد (السبت) | 1 عميل |\n| OMAR (6007) | يوم واحد (السبت) | 1 عميل |\n| amjad (6009, 6010) | يوم واحد (السبت) | 1 عميل لكل منهما |\n| qweas (6011) | يوم واحد (السبت) | 1 عميل |\n| Mahmoud Zakal (6012) | يوم واحد (السبت) | 1 عميل |\n| ibrahim alkhateeb (6013) | يوم واحد (السبت) | 1 عميل |\n| New Test SalesPaerson (10001) | يومان (السبت، الأحد) | 4 عملاء |\n\n**ملاحظة:** المندوبون الآخرون (يوسف عوض، محمد العواودة، رامي الخرشة، حمزة اسطى، Mahmoud) لديهم صفوف في الجدول لكن بدون قيم مسارات فعلية في معظمها، أو أن بياناتهم تعتمد على مسار آخر (مثل محمد العواودة لديه مسار ثابت لكن يبدو أنه نفس مسار رامي الخرشة).\n\n**هل تريد تفاصيل أكثر عن مندوب معين أو المسارات المحددة ليوم معين؟**",
+      "elapsed_s": 12.18,
+      "answer": "أفترض أنك تقصد **الزيارات المخطط لها (خطة المسار) للأسبوع القادم** استنادًا إلى بيانات الجدول `SalesPersonsRoutes`، وليس الزيارات المنفذة الفعلية.\n\nملخص الزيارات القادمة المخطط لها (عدد الزبائن المخطط لهم لكل مندوب):\n\n| المندوب | أيام الزيارة | عدد الزبائن المخطط |\n|---|---|---|\n| محمد خير الشريعة | 7 أيام | 63 |\n| سامي التعمري | يومان (الاثنين، الثلاثاء) | 4 |\n| محمود قاسم محمد الرفاعي | يومان (الاثنين، الثلاثاء) | 4 |\n| وائل ناهض علي السفرية | يوم واحد (السبت) | 1 |\n| Test_Moath | يوم واحد (السبت) | 1 |\n| xx | يوم واحد (السبت) | 1 |\n| OMAR | يوم واحد (السبت) | 1 |\n| amjad | يوم واحد (السبت) | 1 |\n| qweas | يوم واحد (السبت) | 1 |\n| Mahmoud Zakal | يوم واحد (السبت) | 1 |\n| ibrahim alkhateeb | يوم واحد (السبت) | 1 |\n| New Test SalesPaerson | يومان (السبت، الأحد) | 4 |\n\n**ملاحظات مهمة:**\n- بعض المندوبين (مثل يوسف عوض، Mahmoud، xx بمعرّف 27) **لا توجد لهم خطوط مسار مسجلة** لمعظم الأيام.\n- بعض بيانات `Week1` تحتوي قيمًا غريبة (مثل `4` أو `3` وهي قد تشير إلى أرقام خطوط، بينما `80042594` هي معرّفات مسارات فعلية).\n- المندوب \"سامي التعمري\" لديه خط مسار في **الأسبوعين 3 و4** فقط (الأحد والاثنين والثلاثاء والأربعاء والخميس)، بينما سامي (بمعرّف 7) لديه خط مسار في الأسبوع 3+4 أيضًا.\n- لا يمكن تحديد أي \"أسبوع قادم\" بدقة من هذه البيانات لأن جداول المسارات تستخدم `Week1`–`Week4` بدون تاريخ محدد — يجب تحديد تاريخ البداية.\n\n**ملاحظة:** أقصى تاريخ نشاط في البيانات هو **2025-01-29** — إذا كنت تقصد الأسبوع الحالي/القادم بعده، يرجى تأكيد التاريخ المطلوب.",
       "answer_sql": "SELECT sp.ID AS SalesPersonID, sp.Name AS SalesPersonName, spr.PositionsID,\n       spr.WeekDay, spr.Day, spr.Week1, spr.Week2, spr.Week3, spr.Week4\nFROM t.SalesPersonsRoutes spr\nJOIN t.SalesPersons sp ON sp.CompanyID = spr.CompanyID AND sp.PositionID = spr.PositionsID\nORDER BY sp.ID, spr.WeekDay; SELECT CAST(MAX(TimeStamp) AS date) AS max_activity_date FROM t.LogActionTransaction; SELECT sp.ID AS SalesPersonID, sp.Name AS SalesPersonName,\n       spr.WeekDay, spr.Day,\n       COALESCE(spr.Week1, spr.Week2, spr.Week3, spr.Week4) AS RouteID,\n       r.Name AS RouteName,\n       COUNT(c.ID) AS PlannedCustomers\nFROM t.SalesPersonsRoutes spr\nJOIN t.SalesPersons sp ON sp.CompanyID = spr.CompanyID AND sp.PositionID = spr.PositionsID\nLEFT JOIN t.CustomersFinancialDetails cfd ON cfd.CompanyID = spr.CompanyID\n  AND cfd.PositionsID = spr.PositionsID\n  AND cfd.RouteID = COALESCE(spr.Week1, spr.Week2, spr.Week3, spr.Week4)\nLEFT JOIN t.Customers c ON c.CompanyID = cfd.CompanyID AND c.ID = cfd.CustomerID\nLEFT JOIN t.RoutesInformation r ON r.CompanyID = spr.CompanyID\n  AND r.ID = COALESCE(spr.Week1, spr.Week2, spr.Week3, spr.Week4)\nWHERE COALESCE(spr.Week1, spr.Week2, spr.Week3, spr.Week4) IS NOT NULL\nGROUP BY sp.ID, sp.Name, spr.WeekDay, spr.Day,\n         COALESCE(spr.Week1, spr.Week2, spr.Week3, spr.Week4), r.Name\nORDER BY sp.ID, spr.WeekDay; SELECT sp.ID AS SalesPersonID, sp.Name AS SalesPersonName,\n       COUNT(DISTINCT spr.WeekDay) AS PlannedDays,\n       COUNT(DISTINCT CAST(spr.WeekDay AS varchar(2)) + '|' + CAST(cfd.CustomerID AS varchar(20))) AS PlannedCustomers\nFROM t.SalesPersonsRoutes spr\nJOIN t.SalesPersons sp ON sp.CompanyID = spr.CompanyID AND sp.PositionID = spr.PositionsID\nLEFT JOIN t.CustomersFinancialDetails cfd\n  ON cfd.CompanyID = spr.CompanyID\n AND cfd.PositionsID = spr.PositionsID\n AND cfd.RouteID = COALESCE(spr.Week1, spr.Week2, spr.Week3, spr.Week4)\nWHERE COALESCE(spr.Week1, spr.Week2, spr.Week3, spr.Week4) IS NOT NULL\nGROUP BY sp.ID, sp.Name\nORDER BY sp.ID",
       "confidence": "medium",
       "sources": [
@@ -126,11 +124,11 @@
       "style": "forecast_analyst",
       "session": "solo-forecast",
       "question": "كمحلل بيانات، توقع زيارات المندوب للأسبوع القادم بناء على الاتجاه — ليس خطة المسارات",
-      "session_id": "visit-d8f7795494",
+      "session_id": "visit-53181d649a",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 13.64,
-      "answer": "تحليل الاتجاه للزيارات الفعلية (وليس خطة المسارات):\n\n**الفرضية:** أعتبر أن «الأسبوع القادم» يُحسب من آخر تاريخ زيارة مسجل (2025-01-29)، والتوقع مبني على السلوك التاريخي الفعلي من `LogActionTransaction`.\n\n**النطاق الزمني للبيانات:** آخر 9 أسابيع متاحة (من 2024-11-30 حتى 2025-01-25)، وآخر تسجيل بتاريخ 2025-01-29.\n\n**الاتجاه الملحوظ:**\n- ارتفعت الزيارات من 5 (أواخر نوفمبر) إلى ذروة 20 (منتصف يناير)، ثم انخفضت إلى 9 (25 يناير).\n- المتوسط الأسبوعي = (5+5+6+7+8+6+13+20+9) / 9 ≈ **8.8 زيارة/أسبوع**.\n- لكن الاتجاه الأقرب (آخر 3 أسابيع): 13 ← 20 ← 9، بمتوسط ≈ **14 زيارة/أسبوع**.\n\n**التوقع للأسبوع القادم (تقديري وليس خطة):**\nبناءً على المتوسط المرجح للأسابيع الثلاثة الأخيرة، أتوقع **حوالي 12–14 زيارة** للأسبوع القادم، مع احتمال انخفاض إذا استمر اتجاه الهبوط الحاد من 20 إلى 9.\n\n**ملاحظة:** التوقع يعتمد على التسجيلات الفعلية فقط، وليس على `SalesPersonsRoutes` (خطة المسار).\n\n```sql\n-- الاستعلام المستخدم لحساب الاتجاه\nSELECT \n    DATEADD(WEEK, DATEDIFF(WEEK, 0, lat.TimeStamp), 0) AS WeekStart,\n    COUNT(*) AS VisitCount\nFROM t.LogActionTransaction lat\nWHERE lat.ActionID = N'0'  -- CustEntry فقط (زيارة فعلية)\n  AND TRY_CAST(lat.SalesmanID AS int) IS NOT NULL\n  AND lat.TimeStamp >= '2024-11-25'\nGROUP BY DATEADD(WEEK, DATEDIFF(WEEK, 0, lat.TimeStamp), 0)\nORDER BY WeekStart;\n```\n\n**الخلاصة:** التوقع التقريبي **13 ± 2 زيارة** للأسبوع القادم، لكن يُنصح بمتابعة البيانات بعد اكتمال الأسبوع الحالي لتحسين الدقة.",
+      "elapsed_s": 9.29,
+      "answer": "بناءً على الاتجاه التاريخي لزيارات المندوب الفعلية (وليست خطة المسارات)، التوقع للأسبوع القادم تقديري فقط:\n\n- الأسابيع التسعة الأخيرة (30 نوفمبر 2024 → 29 يناير 2025) أظهرت تذبذباً واضحاً: بدأت عند 5 زيارات، ثم قفزت إلى 13 ثم 20 في منتصف يناير، ثم هبطت إلى 9 في أسبوع 25 يناير.\n- متوسط الزيارات الأسبوعية ≈ **9.9** زيارات/أسبوع تقريباً (مجموع 79 ÷ 9 أسابيع).\n- الاتجاه العام صاعد لكن غير مستقر، والانخفاض الأخير إلى 9 يدل على تقلب وليس خطاً ثابتاً.\n\n**التوقع للأسبوع القادم (تقديري):** بين **9 و12 زيارة**، مرجح نحو **10–11** بافتراض استمرار نمط التذبذب دون قفزة جديدة.\n\nملاحظة: هذا توقع إحصائي من سجل الزيارات الفعلية، وليس خطة المسارات المجدولة — الفعلي يعكس ما نُفذ فعلاً، وقد يختلف عن المخطط.",
       "answer_sql": "SELECT\n  CAST(DATEADD(DAY, -(DATEPART(WEEKDAY, CAST(lat.TimeStamp AS date)) % 7), CAST(lat.TimeStamp AS date)) AS date) AS WeekStart,\n  COUNT(*) AS VisitCount\nFROM t.LogActionTransaction lat\nWHERE lat.ActionID = N'0'\n  AND CAST(lat.TimeStamp AS date) >= DATEADD(DAY, -63, (SELECT MAX(CAST(TimeStamp AS date)) FROM t.LogActionTransaction))\nGROUP BY CAST(DATEADD(DAY, -(DATEPART(WEEKDAY, CAST(lat.TimeStamp AS date)) % 7), CAST(lat.TimeStamp AS date)) AS date)\nORDER BY WeekStart;; SELECT MAX(CAST(TimeStamp AS date)) AS MaxVisitDate, COUNT(*) AS TotalRows FROM t.LogActionTransaction WHERE ActionID = N'0';",
       "confidence": "medium",
       "sources": [
@@ -153,11 +151,11 @@
       "style": "bait_trap",
       "session": "solo-bait",
       "question": "اعطيني من SalesmanVisitsSummary زيارات اخر شهر",
-      "session_id": "visit-2ac5c8ae94",
+      "session_id": "visit-cff8b462c9",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 7.79,
-      "answer": "أفترض أنك تقصد زيارات آخر شهر متاح في البيانات (يناير 2025)، لأن الشهر التقويمي الحالي ليس له زيارات مسجلة بعد.\n\nإليك ملخص زيارات آخر شهر (يناير 2025) في `SalesmanVisitsSummary`:\n\n- **إجمالي الزيارات:** 52 زيارة\n- **التوزيع حسب المندوب:**\n  - المندوب 3003: 45 زيارة\n  - المندوب 1: 7 زيارات\n\nنطاق التواريخ المتاحة: من 2013-09-29 إلى 2025-01-29.",
+      "elapsed_s": 6.4,
+      "answer": "أفترض أنك تقصد آخر شهر متوفر في البيانات (من 2025-01-01 إلى 2025-01-29، لأن آخر تاريخ تسجيل هو 2025-01-29).\n\nإجمالي الزيارات في آخر شهر: **52 زيارة**\n\nالتفصيل حسب المندوب:\n- المندوب رقم **3003**: 45 زيارة\n- المندوب رقم **1**: 7 زيارات\n\nملاحظة: لا تتوفر شاشة/تقرير باسم `SalesmanVisitsSummary` في قاعدة البيانات المتاحة — استخدمت جدول سجل الزيارات الفعلي (`LogActionTransaction`) بحسب قواعد الزيارات (ActionID = '0'). إذا كنت تقصد فترة مختلفة أو تعريفًا آخر للزيارات، قل لي.",
       "answer_sql": "SELECT CONVERT(date, MAX(TimeStamp)) AS MaxTs, CONVERT(date, MIN(TimeStamp)) AS MinTs FROM t.LogActionTransaction; SELECT COUNT(*) AS VisitCount\nFROM t.LogActionTransaction\nWHERE ActionID = N'0'\n  AND TimeStamp >= '2025-01-01' AND TimeStamp < '2025-02-01'; SELECT TRY_CAST(SalesmanID AS int) AS SalesPersonID, COUNT(*) AS Visits\nFROM t.LogActionTransaction\nWHERE ActionID = N'0'\n  AND TimeStamp >= '2025-01-01' AND TimeStamp < '2025-02-01'\nGROUP BY TRY_CAST(SalesmanID AS int)\nORDER BY Visits DESC",
       "confidence": "high",
       "sources": [
@@ -179,11 +177,11 @@
       "style": "chain_past",
       "session": "chain-a",
       "question": "زيارات المندوب اخر اسبوع",
-      "session_id": "visit-b26b5bd1b5",
+      "session_id": "visit-036f2e8215",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 8.67,
-      "answer": "بناءً على بيانات آخر أسبوع متوفر (حتى 29 يناير 2025)، كان عدد زيارات المندوب عثمان القدسي 17 زيارة.\n\n**الافتراض:** أقصد عدد زيارات \"دخول الزبون\" (`ActionID = '0'` CustEntry) لجميع المندوبين خلال آخر 7 أيام من السجل.\n\n```sql\nSELECT\n    sp.ID AS SalesmanID,\n    sp.Name AS SalesmanName,\n    COUNT(*) AS Visits\nFROM t.LogActionTransaction lat\nJOIN t.SalesPersons sp ON TRY_CAST(lat.SalesmanID AS int) = sp.ID\nWHERE lat.ActionID = N'0'\n  AND lat.TimeStamp >= DATEADD(DAY, -6, (SELECT MAX(TimeStamp) FROM t.LogActionTransaction))\nGROUP BY sp.ID, sp.Name;\n```\n\nإذا كنت تقصد عدد الفواتير أو طلبات المندوب خلال هذه الفترة، قل وسأقدمها.",
+      "elapsed_s": 7.13,
+      "answer": "أفترض أنك تقصد **عدد زيارات مندوب «عثمان القدسي» الفعلية خلال آخر أسبوع** (آخر ٧ أيام من سجل الزيارات المتاح، حيث آخر تسجيل بتاريخ 2025-01-29).\n\n- **عدد الزيارات:** 17 زيارة\n- **المندوب:** عثمان القدسي (رقم 3003)\n\nملاحظات:\n- الزيارات محسوبة من سجل `LogActionTransaction` (أحداث دخول الزبائن `ActionID = N'0'` فقط)، وليس من خطة المسار.\n- الفترة آخر أسبوع حتى تاريخ 2025-01-29.\n\nالإجابة بالعربية:  \n**قام المندوب «عثمان القدسي» بـ 17 زيارة فعلية خلال آخر أسبوع.**\n\nإذا تقصد مندوبًا آخر أو فترة مختلفة، قل لي.",
       "answer_sql": "SELECT MAX(TimeStamp) AS max_ts FROM t.LogActionTransaction; SELECT TRY_CAST(lat.SalesmanID AS int) AS SalesmanID, sp.Name AS SalesmanName,\n       COUNT(*) AS Visits\nFROM t.LogActionTransaction lat\nLEFT JOIN t.SalesPersons sp ON sp.ID = TRY_CAST(lat.SalesmanID AS int)\nWHERE lat.ActionID = N'0'\n  AND lat.TimeStamp >= '2025-01-22 00:00:00'\n  AND lat.TimeStamp <  '2025-01-29 00:00:00'\nGROUP BY TRY_CAST(lat.SalesmanID AS int), sp.Name\nORDER BY Visits DESC",
       "confidence": "high",
       "sources": [
@@ -207,13 +205,13 @@
       "style": "chain_plan_followup",
       "session": "chain-a",
       "question": "طيب والزيارات المخططة لنفس المندوب الاسبوع الجاي؟",
-      "session_id": "visit-39fbbfd98e",
+      "session_id": "visit-be217720ba",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 11.09,
-      "answer": "أفهم أنك تسأل عن الزيارات المخططة للمندوب (عثمان القدسي) الأسبوع القادم حسب خطة المسار.\n\nبناءً على البيانات المتوفرة، **لا يمكن تحديد الزيارات المخططة للأسبوع القادم بدقة** لأن:\n\n- خطة المسار (`SalesPersonsRoutes`) تُظهر الأيام الـ7 مع أرقام المسارات لكل أسبوع من أسابيع الشهر (Week1–Week4)، لكننا **لا نعرف أي أسبوع من الشهر يقع \"الأسبوع القادم\"** (هل هو Week1 أم Week2 أم Week3 أم Week4؟).\n- بعض أيام الأسبوع تستخدم نفس المسار في جميع الأسابيع (مثل السبت = المسار 80043030)، بينما أيام أخرى تختلف (مثل الأحد: Week1-3 = مسار 1، Week4 = مسار 80043007).\n- البيانات المتاحة عن العملاء تعرض مسارين فقط (Route 1 و\"محمد السبت\")، بينما أرقام المسارات في الجدول أرقام كبيرة (مثل 80043030) لا تطابق هذه الأسماء — مما يعني أن هناك مسارات أخرى غير معروضة.\n\n**لذا للإجابة بدقة، أحتاج أن تعرف:**\n- ما هو **الأسبوع من الشهر** المقصود بـ\"الأسبوع القادم\"؟ (الأسبوع الأول/الثاني/الثالث/الرابع من الشهر)\n- أو بدلاً من ذلك، حدد **تاريخ اليوم الحالي** حتى أحسب أي أسبوع من الشهر يليه.\n\nيمكنني بعدها عرض:\n- خطة المسار لذلك الأسبوع (أي المسارات المخصصة لكل يوم)\n- قائمة العملاء المرتبطين بتلك المسارات (مع ترتيب الزيارة إن وُجد)",
+      "elapsed_s": 9.41,
+      "answer": "أفهم أنك تريد معرفة الزيارات المخططة للمندوب (عثمان القدسي / رقم 3003) في الأسبوع القادم.\n\nملاحظة: أنا لم أحدد \"الأسبوع القادم\" بدقة (أي يوم محدد)، لكن بناءً على جدول المسارات الأسبوعي للمندوب، هذه هي الخطة كاملة لكل أيام الأسبوع:\n\n**الخطة الأسبوعية للمندوب (عثمان القدسي):**\n- **السبت:** مسار 80043030\n- **الأحد:** مسار 1 (المستخدم في الأسابيع 1-3) أو مسار 80043007 (في الأسبوع 4)\n- **الاثنين:** مسار 80042999 (الأسبوع 1) أو مسار 1 (الأسابيع 2-3) أو مسار 80043007 (الأسبوع 4)\n- **الثلاثاء:** مسار 6 (كل الأسابيع)\n- **الأربعاء:** مسار 80043004 (كل الأسابيع)\n- **الخميس:** مسار 1\n- **الجمعة:** مسار 1\n\n**حجم المسارات المعروفة:**\n- مسار 1 (\"Route 1\"): 7 عملاء (بريمي، بدونان (مكرر مرتين)، أبناء عم، سوبر ماركت أمير، ماركت أسوار، الريان مول)\n- مسار 6 (\"محمد السبت\"): 4 عملاء (test5223333، الياموني، أبو ناجح، عماد العتيق)\n\n**ملاحظة:** المسارات الأخرى (80043030، 80043007، 80042999، 80043004) لم تظهر بياناتها في النتائج، لذا لا أستطيع تحديد عدد زياراتها بدقة.\n\nإذا كنت تقصد أسبوعًا محددًا (مثل الأسبوع الأول أو الثاني أو الرابع من الشهر)، فحدد ذلك وسأعيد التفاصيل الأدق.",
       "answer_sql": "SELECT TOP 3 TRY_CAST(lat.SalesmanID AS int) AS SalesmanID,\n       sp.Name AS SalesmanName,\n       COUNT(*) AS ActualVisits\nFROM t.LogActionTransaction lat\nLEFT JOIN t.SalesPersons sp ON TRY_CAST(lat.SalesmanID AS int) = sp.ID\nWHERE lat.ActionID = N'0'\n  AND lat.TimeStamp >= '2025-01-23' AND lat.TimeStamp < '2025-01-30'\nGROUP BY TRY_CAST(lat.SalesmanID AS int), sp.Name\nORDER BY COUNT(*) DESC; SELECT spr.WeekDay, spr.Week1, spr.Week2, spr.Week3, spr.Week4, spr.Day\nFROM t.SalesPersonsRoutes spr\nWHERE spr.PositionsID = 3003\nORDER BY spr.WeekDay; SELECT TOP 5 cfd.RouteID, r.Name AS RouteName, COUNT(cfd.CustomerID) AS CustCount\nFROM t.CustomersFinancialDetails cfd\nLEFT JOIN t.RoutesInformation r ON r.ID = cfd.RouteID\nWHERE cfd.PositionsID = 3003\nGROUP BY cfd.RouteID, r.Name\nORDER BY cfd.RouteID; SELECT r.ID, r.Name, COUNT(cfd.CustomerID) AS CustCount\nFROM t.RoutesInformation r\nLEFT JOIN t.CustomersFinancialDetails cfd ON cfd.RouteID = r.ID\nWHERE r.ID IN (80043030, 1, 80043007, 80042999, 6, 80043004)\nGROUP BY r.ID, r.Name\nORDER BY r.ID; SELECT cfd.RouteID, r.Name AS RouteName, cfd.VisitOrder, c.Name AS CustomerName\nFROM t.CustomersFinancialDetails cfd\nLEFT JOIN t.RoutesInformation r ON r.ID = cfd.RouteID\nLEFT JOIN t.Customers c ON c.ID = cfd.CustomerID\nWHERE cfd.RouteID IN (80043030, 1, 80043007, 80042999, 6, 80043004)\nORDER BY cfd.RouteID, cfd.VisitOrder",
-      "confidence": "high",
+      "confidence": "low",
       "sources": [
         "Customers",
         "CustomersFinancialDetails",
@@ -238,13 +236,13 @@
       "style": "chain_compare",
       "session": "chain-a",
       "question": "قارن المخطط مع المنفذ فعلياً",
-      "session_id": "visit-b35c34d60c",
+      "session_id": "visit-42bc47de1e",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 14.09,
-      "answer": "بناءً على نتائج الاستعلام، إليك المقارنة بين المخطط (SalesPersonsRoutes) والمنفذ فعلياً (LogActionTransaction) من واقع البيانات:\n\n## المخطط الأسبوعي (SalesPersonsRoutes)\n- **المنصب (PositionsID = 3003)** يشمل مندوبين اثنين:\n  - **ليث أبو علي** (ID: 404)\n  - **عثمان القدسي** (ID: 3003)\n- **أيام العمل المقررة** (من السبت إلى الجمعة):\n  - **السبت**: المسار 80043030 كل الأسابيع\n  - **الأحد**: المسار 1 في الأسابيع 1-3، والمسار 80043007 في الأسبوع 4\n  - **الاثنين**: المسار 80042999 في الأسبوع 1، والمسار 1 في الأسابيع 2-3، والمسار 80043007 في الأسبوع 4\n  - **الثلاثاء**: المسار 6 كل الأسابيع\n  - **الأربعاء**: المسار 80043004 كل الأسابيع\n  - **الخميس**: المسار 1 كل الأسابيع\n  - **الجمعة**: المسار 1 كل الأسابيع\n\n## المنفذ فعلياً (LogActionTransaction)\n- **الفترة المتاحة**: من 2013-09-29 إلى 2025-01-29 (أحدث البيانات بتاريخ 2025-01-29)\n- **زيارات العميل 314 (الياموني) مؤخراً**:\n  - 2025-01-26 (الأحد): 4 زيارات\n  - 2025-01-27 (الاثنين): 3 زيارات\n  - 2025-01-28 (الثلاثاء): زيارة واحدة\n  - 2025-01-29 (الأربعاء): زيارة واحدة\n\n## الملاحظات والخلافات\n1. **المخطط غير محدد بتاريخ**: يحدد الأيام والمسارات أسبوعياً دون ربطها بجدول زمني محدد.\n2. **المنفذ الفعلي** يُظهر زيارات متعددة لنفس العميل في نفس اليوم، بينما المخطط يحدد مساراً واحداً لكل يوم — هذا قد يشير إلى زيارات إضافية غير مجدولة أو عملاء آخرين ضمن نفس المسار.\n3. **الفجوة الزمنية**: المخطط يبدو ثابتاً (ربما أُعد منذ سنوات)، بينما المنفذ يعكس نشاطاً حديثاً (يناير 2025) — يجب التحقق من تحديث المخطط مؤخراً.\n\n**ملاحظة**: لا توجد بيانات كافية في النتائج لمقارنة دقيقة بين المسارات المقررة (80043030، 1، 80042999، 6، 80043004) والعملاء الذين تمت زيارتهم فعلياً لكل مندوب — يلزم استعلام إضافي يربط زيارات كل مندوب بمساراته المقررة.",
+      "elapsed_s": 14.54,
+      "answer": "أفهم أن المستخدم يريد مقارنة الخطة (المخطط) مع ما نُفذ فعلياً لزيارات المندوب.\n\n**الافتراض:** تتم المقارنة لمندوب \"ليث أبو علي\" (ID=404) أو \"عثمان القدسي\" (ID=3003) — كلاهما على نفس الموضع PositionID=3003. سأفترض المندوب النشط الأول \"ليث أبو علي\".\n\nنتيجة المقارنة (بناءً على البيانات المتوفرة فقط):\n\n### الخطة (المخطط) — من `SalesPersonsRoutes`\n- السبت: المسار 80043030 (كل الأسابيع)\n- الأحد: المسار 1 (أسابيع 1-3)، 80043007 (أسبوع 4)\n- الاثنين: المسار 80042999 (أسبوع 1)، 1 (أسابيع 2-3)، 80043007 (أسبوع 4)\n- الثلاثاء: المسار 6 (كل الأسابيع)\n- الأربعاء: المسار 80043004 (كل الأسابيع)\n- الخميس: المسار 1 (كل الأسابيع)\n- الجمعة: المسار 1 (كل الأسابيع)\n\n### المنفذ فعلياً (من `LogActionTransaction` — آخر أسبوع)\n- 26/01/2025: الزبون 314 \"الياموني\" — 4 زيارات\n- 27/01/2025: الزبون 314 — 3 زيارات\n- 28/01/2025: الزبون 314 — 1 زيارة\n- 29/01/2025: الزبون 314 — 1 زيارة\n\n### المقارنة\n- **تواريخ الفعلية** (26-29 يناير 2025) تقع في **السبت** (26/1) والاثنين (27/1) والثلاثاء (28/1) والأربعاء (29/1).\n- الخطة للسبت = المسار 80043030، لكن الفعلي سجل زيارات للزبون 314 (الياموني) — لا يمكن التحقق من تطابق المسار دون أسماء الزبائن في المسار المخطط.\n- الزيارات الفعلية مسجلة لزبون واحد فقط (314) عبر 4 أيام — عدد الزيارات يتراوح 1-4 يومياً.\n- **ملاحظة:** البيانات الفعلية محدودة جداً (زبون واحد فقط) ولا تغطي كامل المسارات المخططة؛ المتوفر لا يكفي لإجراء مقارنة شاملة لكل الأيام والأسابيع.\n\n**الخلاصة:** البيانات الفعلية المتاحة لا تسمح بتقييم دقيق لمطابقة الخطة، لأنها تغطي زبوناً واحداً فقط خلال 4 أيام، بينما الخطة تشمل مسارات متعددة لكل أيام الأسبوع. لتقييم كامل، نحتاج بيانات فعلية لجميع زبائن المسارات المخططة خلال نفس الفترة.",
       "answer_sql": "SELECT spr.PositionsID, sp.Name AS SalesmanName, spr.WeekDay, spr.Week1, spr.Week2, spr.Week3, spr.Week4, spr.Day\nFROM t.SalesPersonsRoutes spr\nLEFT JOIN t.SalesPersons sp ON spr.CompanyID = sp.CompanyID AND spr.PositionsID = sp.PositionID\nWHERE spr.PositionsID = 3003\nORDER BY spr.WeekDay; SELECT MAX(TimeStamp) AS max_ts, MIN(TimeStamp) AS min_ts FROM t.LogActionTransaction; SELECT ID, Name, PositionID, IsSuspended FROM t.SalesPersons WHERE PositionID = 3003 ORDER BY ID; SELECT cfd.RouteID, r.Name AS RouteName, cfd.CustomerID, c.Name AS CustomerName, cfd.VisitOrder\nFROM t.CustomersFinancialDetails cfd\nLEFT JOIN t.RoutesInformation r ON cfd.CompanyID = r.CompanyID AND cfd.RouteID = r.ID\nLEFT JOIN t.Customers c ON cfd.CompanyID = c.CompanyID AND cfd.CustomerID = c.ID\nWHERE cfd.PositionsID = 3003\nORDER BY cfd.RouteID, cfd.VisitOrder; SELECT CONVERT(date, lat.TimeStamp) AS VisitDate, TRY_CAST(lat.Data1 AS bigint) AS CustomerID, c.Name AS CustomerName, COUNT(*) AS VisitCount\nFROM t.LogActionTransaction lat\nLEFT JOIN t.Customers c ON TRY_CAST(lat.Data1 AS bigint) = c.ID\nWHERE lat.ActionID = N'0' AND TRY_CAST(lat.SalesmanID AS int) = 3003\nAND lat.TimeStamp >= '2025-01-25' AND lat.TimeStamp < '2025-02-01'\nGROUP BY CONVERT(date, lat.TimeStamp), TRY_CAST(lat.Data1 AS bigint), c.Name\nORDER BY VisitDate, CustomerID",
-      "confidence": "medium",
+      "confidence": "low",
       "sources": [
         "Customers",
         "CustomersFinancialDetails",
@@ -269,28 +267,28 @@
       "style": "chain_schedule",
       "session": "chain-b",
       "question": "الزيارات القادمة للمندوب",
-      "session_id": "visit-9725f7717f",
+      "session_id": "visit-8346f7ac00",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 14.75,
-      "answer": "",
-      "answer_sql": "",
-      "confidence": null,
-      "sources": null,
-      "steps": [
-        "loading master data",
-        "loading master data"
+      "elapsed_s": 10.15,
+      "answer": "أفهم أنك تسأل عن الزيارات القادمة للمندوب. بناءً على النتائج المتاحة:\n\n**ملاحظة هامة:** السؤال غير محدد — هناك عدة مندوبين في النتائج. هل تقصد مندوبًا معينًا؟\n\n**مثال على ما يمكن تقديمه** — بالنسبة للمندوب **محمد خير الشريعة** (ID: 2002):\n- لديه خطة زيارة زيارات في **كل أيام الأسبوع** (السبت حتى الجمعة) عبر مسار \"محمد خير\"\n- عدد الزيارات المخطط لها: **9 زيارات يوميًا** لكل أيام الأسبوع\n\n**بشكل عام من النتائج:**\n- **محمد العواودة** (ID: 2) و**مبيعات مؤسسات مدينة** (ID: 22): مسار ثابت طوال الأسبوع، مع ملاحظة أن المسار يوم السبت يبدأ بـ\"إبراهيم عبد الجليل\" (مسار 4) ثم \"2-Saturday...\" لباقي الأسابيع\n- **عيسى الكشك** (ID: 52) و**مبيعات القضايا** (ID: 55): مسار \"إبراهيم عبد الجليل\" في معظم الأيام، مع اختلاف يوم السبت حسب الأسبوع\n- **ليث ابو علي** (ID: 404) و**عثمان القدسي** (ID: 3003): جدول متنوع — مسارات مختلفة حسب اليوم والأسبوع\n\n**هل يمكنك تحديد المندوب الذي تقصده؟** حتى أقدم لك تفاصيل دقيقة عن زياراته القادمة.",
+      "answer_sql": "SELECT sp.ID AS SalesPersonID,\n       sp.Name AS SalesPersonName,\n       spr.WeekDay,\n       spr.Day,\n       spr.Week1 AS RouteWeek1,\n       spr.Week2 AS RouteWeek2,\n       spr.Week3 AS RouteWeek3,\n       spr.Week4 AS RouteWeek4,\n       r1.Name AS Route1Name,\n       r2.Name AS Route2Name,\n       r3.Name AS Route3Name,\n       r4.Name AS Route4Name\nFROM t.SalesPersons sp\nLEFT JOIN t.SalesPersonsRoutes spr\n       ON spr.CompanyID = sp.CompanyID\n      AND spr.PositionsID = sp.PositionID\nLEFT JOIN t.RoutesInformation r1 ON r1.CompanyID = sp.CompanyID AND r1.ID = spr.Week1\nLEFT JOIN t.RoutesInformation r2 ON r2.CompanyID = sp.CompanyID AND r2.ID = spr.Week2\nLEFT JOIN t.RoutesInformation r3 ON r3.CompanyID = sp.CompanyID AND r3.ID = spr.Week3\nLEFT JOIN t.RoutesInformation r4 ON r4.CompanyID = sp.CompanyID AND r4.ID = spr.Week4\nWHERE sp.IsSuspended = 0\nORDER BY sp.ID, spr.WeekDay; SELECT sp.ID AS SalesPersonID,\n       sp.Name AS SalesPersonName,\n       spr.WeekDay,\n       spr.Day,\n       COUNT(DISTINCT cfd.CustomerID) AS CustomersPlanned\nFROM t.SalesPersons sp\nJOIN t.SalesPersonsRoutes spr\n       ON spr.CompanyID = sp.CompanyID\n      AND spr.PositionsID = sp.PositionID\nLEFT JOIN t.CustomersFinancialDetails cfd\n       ON cfd.CompanyID = sp.CompanyID\n      AND cfd.PositionsID = spr.PositionsID\n      AND cfd.RouteID IN (spr.Week1, spr.Week2, spr.Week3, spr.Week4)\nWHERE sp.IsSuspended = 0\nGROUP BY sp.ID, sp.Name, spr.WeekDay, spr.Day\nORDER BY sp.ID, spr.WeekDay",
+      "confidence": "medium",
+      "sources": [
+        "CustomersFinancialDetails",
+        "RoutesInformation",
+        "SalesPersons",
+        "SalesPersonsRoutes"
       ],
-      "needs_ask": "أي مندوب تقصد؟ لدينا عدة مندوبين نشطين، مثل: يوسف عوض (1)، محمد العواودة (2)، أحمد الدميسي (3)، فيصل البيتاوي (4)، حسن مسعف (5)، محمد الخطيب (6)، سامي التعمري (7)، رامي الخرشة (8)، حمزة أستي (9)، Mahmoud (10)، عيسى الكشك (52)، ليث أبو علي (404)، عثمان القدسي (3003)... اذكر اسم المندوب أو رقمه.",
+      "steps": [],
+      "needs_ask": null,
       "evaluation": {
-        "verdict": "fail",
-        "score": 1,
+        "verdict": "ok",
+        "score": 7,
         "notes": [
-          "empty"
+          "uses SalesPersonsRoutes for plan"
         ],
-        "flags": [
-          "empty"
-        ]
+        "flags": []
       }
     },
     {
@@ -298,11 +296,11 @@
       "style": "chain_reframe_forecast",
       "session": "chain-b",
       "question": "لا اقصد الخطة — توقع كمحلل من الزيارات الفعلية السابقة",
-      "session_id": "visit-803b1b6885",
+      "session_id": "visit-fcd9e20dd0",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 11.21,
-      "answer": "**افتراض:** المطلوب توقع عدد الزيارات الأسبوعية الفعلية (زيارات منفذة) للأسبوع القادم بناءً على الاتجاه التاريخي، وليس خطة المسار.\n\nبناءً على السلسلة الأسبوعية الفعلية من `LogActionTransaction` (ActionID = '0' — دخول العميل):\n\n- الاتجاه العام صاعد لكنه متذبذب: من 1 (أواخر نوفمبر) إلى ذروة 19 (منتصف يناير)، ثم تراجع إلى 9 (آخر يناير).\n- المتوسط الأسبوعي للفترة = **8.0 زيارات/أسبوع**.\n- المتوسط لآخر 3 أسابيع = **(14 + 19 + 9) / 3 = 14 تقريبًا**.\n- الاتجاه الخطي (من أول أسبوع إلى آخر أسبوع): الميل موجب بحوالي +0.8 زيارة/أسبوع.\n\n**التوقع (تقديري):** أتوقع **11–14 زيارة** للأسبوع القادم — مع الأخذ في الاعتبار أن الأسبوع الأخير (9) قد يكون انخفاضًا مؤقتًا بعد ذروة 19، لذا أرجّح **12 زيارات** كنقطة وسطى.\n\nملاحظة: هذا تقدير تحليلي بحت من البيانات التاريخية وليس خطة مجدولة.\n\n```sql\n-- السلسلة الأسبوعية الفعلية\nSELECT\n    DATEADD(WEEK, DATEDIFF(WEEK, 0, TimeStamp), 0) AS WeekStart,\n    COUNT(*) AS Visits\nFROM t.LogActionTransaction\nWHERE ActionID = N'0'\nGROUP BY DATEADD(WEEK, DATEDIFF(WEEK, 0, TimeStamp), 0)\nORDER BY WeekStart;\n```",
+      "elapsed_s": 12.89,
+      "answer": "بناءً على الزيارات الفعلية المسجلة، أتوقع تقديرياً للمناديب ما يلي:\n\n- **الاتجاه العام:** هناك ارتفاع واضح في الزيارات خلال يناير 2025، خصوصاً في الأسابيع **20-26 يناير** (19 زيارة) و**13-19 يناير** (14 زيارة)، ثم انخفاض ملحوظ في آخر أسبوع (9 زيارات).\n- **مستوى الأسبوع القادم (تقديري):** أتوقع أن تعود الزيارات إلى نطاق **12–16 زيارة**، استناداً إلى متوسط الأسابيع الأخيرة بعد استبعاد ذروة 19 زيارة.\n- **التحفظ:** هذا تقدير مبني على أسبوع واحد فقط بعد الانخفاض، وقد يكون الانخفاض بداية اتجاه هابط أو مجرد تقلب طبيعي — أحتاج أسبوعين إضافيين لتأكيد الاتجاه.\n\nهذا مجرد تحليل تقديري من سجل الزيارات الفعلية، وليس خطة المسار. إذا أردت، يمكنني مقارنته بالخطة الأسبوعية المقررة.",
       "answer_sql": "WITH v AS (\n  SELECT TimeStamp FROM t.LogActionTransaction WHERE ActionID = N'0'\n)\nSELECT TOP 10 DATEADD(WEEK, DATEDIFF(WEEK, 0, TimeStamp), 0) AS WeekStart,\n       COUNT(*) AS Visits\nFROM v\nWHERE TimeStamp >= DATEADD(WEEK, DATEDIFF(WEEK, 0, (SELECT MAX(TimeStamp) FROM v)) - 9, 0)\nGROUP BY DATEADD(WEEK, DATEDIFF(WEEK, 0, TimeStamp), 0)\nORDER BY WeekStart;",
       "confidence": "medium",
       "sources": [
@@ -325,11 +323,11 @@
       "style": "chain_context_check",
       "session": "chain-b",
       "question": "كم كان عددها في الاسبوع اللي قبله؟",
-      "session_id": "visit-b0044eec01",
+      "session_id": "visit-c6e6103be8",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 5.92,
-      "answer": "كان عدد الزيارات في الأسبوع الذي يسبق الأسبوع الأخير (أي الأسبوع الذي يبدأ في 2025-01-20) هو **19 زيارة**.\n\nالمصدر: نتائج الاستعلام المعروضة.",
+      "elapsed_s": 6.09,
+      "answer": "كان عدد زيارات المندوب في **الأسبوع الذي يسبق آخر أسبوع مسجّل** (الأسبوع الذي يبدأ 20 يناير 2025) هو **19**.\n\n**الجدول الزمني حسب النتائج:**\n- الأسبوع الأحدث (27 يناير): 9 زيارات\n- **الأسبوع الذي قبله (20 يناير): 19 زيارة** ← هذا هو المطلوب\n- 13 يناير: 14 زيارة  \n- 6 يناير: 6 زيارات  \n- 30 ديسمبر: 7 زيارات  \n- 23 ديسمبر: 8 زيارات  \n- 16 ديسمبر: 6 زيارات  \n- 9 ديسمبر: 5 زيارات",
       "answer_sql": "WITH v AS (\n  SELECT TimeStamp\n  FROM t.LogActionTransaction\n  WHERE ActionID = N'0'\n)\nSELECT TOP 8\n  DATEADD(WEEK, DATEDIFF(WEEK, 0, TimeStamp), 0) AS WeekStart,\n  COUNT(*) AS VisitCount\nFROM v\nGROUP BY DATEADD(WEEK, DATEDIFF(WEEK, 0, TimeStamp), 0)\nORDER BY WeekStart DESC",
       "confidence": "high",
       "sources": [
@@ -351,23 +349,17 @@
       "style": "chain_salesperson",
       "session": "chain-c",
       "question": "زيارات مندوب المبيعات محمد اخر شهر",
-      "session_id": "visit-22e02b8a26",
+      "session_id": "visit-0bc8ac0515",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 32.98,
-      "answer": "**افتراض:** أقصد المندوب **محمد العواودة** (الرقم 2) — وهو المندوب الميداني النشط الأساسي باسم «محمد». أحدث شهر فعلّي لديه في سجل الزيارات هو **سبتمبر 2022** (لا توجد بيانات أحدث لهذا المندوب).\n\n**زيارات محمد الفعلية (دخول العملاء، ActionID=0) لآخر شهر متوفر (سبتمبر 2022):**\n\n| التاريخ | الزيارات | عملاء مختلفون |\n|---|---|---|\n| 2022-09-04 | 2 | 1 |\n| 2022-09-05 | 1 | 1 |\n| **الإجمالي** | **3** | **2** |\n\n- الشهر المطلوب حرفيًا (الأحدث في سجل البيانات لكل النظام هو يناير 2025) **فارغ للمندوب محمد** — آخر نشاط له مسجّل عام 2022.\n- ملاحظة: السجل يكشف دخولًا واحدًا فقط لكل عميل في كل يوم؛ إن أردت حساب الزيارة كمدة (دخول/خروج) أو تمييز مندوب «محمد» آخر (مثل محمد الخطيب 6) فقل وسأعيد الحساب.\n\n```sql\nSELECT \n  CONVERT(date, TimeStamp) AS VisitDate,\n  COUNT(*) AS VisitCount,\n  COUNT(DISTINCT TRY_CAST(Data1 AS bigint)) AS DistinctCustomers\nFROM t.LogActionTransaction\nWHERE ActionID = N'0'\n  AND TRY_CAST(SalesmanID AS int) = 2\n  AND TimeStamp >= '2022-09-01' AND TimeStamp < '2022-10-01'\nGROUP BY CONVERT(date, TimeStamp)\nORDER BY VisitDate;\n```",
-      "answer_sql": "SELECT MAX(TimeStamp) AS MaxLog, MIN(TimeStamp) AS MinLog FROM t.LogActionTransaction; SELECT \n  COUNT(*) AS VisitCount,\n  COUNT(DISTINCT TRY_CAST(Data1 AS bigint)) AS DistinctCustomers\nFROM t.LogActionTransaction\nWHERE ActionID = N'0'\n  AND TRY_CAST(SalesmanID AS int) = 2\n  AND TimeStamp >= '2025-01-01'\n  AND TimeStamp <  '2025-02-01'; SELECT \n  TRY_CAST(SalesmanID AS int) AS SPID,\n  COUNT(*) AS Visits,\n  MIN(TimeStamp) AS MinT,\n  MAX(TimeStamp) AS MaxT\nFROM t.LogActionTransaction\nWHERE ActionID = N'0'\n  AND TRY_CAST(SalesmanID AS int) IN (2,6,2002,2008,4025,4031,4008,2003)\nGROUP BY TRY_CAST(SalesmanID AS int)\nORDER BY Visits DESC; SELECT \n  CONVERT(date, TimeStamp) AS VisitDate,\n  COUNT(*) AS VisitCount,\n  COUNT(DISTINCT TRY_CAST(Data1 AS bigint)) AS DistinctCustomers\nFROM t.LogActionTransaction\nWHERE ActionID = N'0'\n  AND TRY_CAST(SalesmanID AS int) = 2\n  AND TimeStamp >= '2022-09-01'\n  AND TimeStamp <  '2022-10-01'\nGROUP BY CONVERT(date, TimeStamp)\nORDER BY VisitDate; SELECT ID, Name, ForeignName, PositionID, IsSuspended, GroupID FROM t.SalesPersons",
+      "elapsed_s": 6.93,
+      "answer": "أفهم أنك تريد معرفة زيارات مندوب المبيعات \"محمد\" في آخر شهر.\n\n**ملاحظة:** أحدث تاريخ نشاط في السجل هو **2025-01-29**، لكن لا توجد أي زيارات مسجلة في آخر شهر (كانون الثاني/يناير 2025) للمندوب المسمى \"محمد\".\n\nالنتائج المتاحة تظهر زيارات مندوبين آخرين في فترات سابقة (2015–2022)، وليس للمندوب \"محمد\" في آخر شهر.\n\nلتحديد هوية \"محمد\" بدقة، أحتاج تأكيد أي من المندوبين تقصد — يرجى توضيح الاسم الكامل أو رقم المندوب.",
+      "answer_sql": "SELECT MAX(TimeStamp) AS MaxLog, MIN(TimeStamp) AS MinLog FROM t.LogActionTransaction; SELECT \n  COUNT(*) AS VisitCount,\n  COUNT(DISTINCT TRY_CAST(Data1 AS bigint)) AS DistinctCustomers\nFROM t.LogActionTransaction\nWHERE ActionID = N'0'\n  AND TRY_CAST(SalesmanID AS int) = 2\n  AND TimeStamp >= '2025-01-01'\n  AND TimeStamp <  '2025-02-01'; SELECT \n  TRY_CAST(SalesmanID AS int) AS SPID,\n  COUNT(*) AS Visits,\n  MIN(TimeStamp) AS MinT,\n  MAX(TimeStamp) AS MaxT\nFROM t.LogActionTransaction\nWHERE ActionID = N'0'\n  AND TRY_CAST(SalesmanID AS int) IN (2,6,2002,2008,4025,4031,4008,2003)\nGROUP BY TRY_CAST(SalesmanID AS int)\nORDER BY Visits DESC; SELECT \n  CONVERT(date, TimeStamp) AS VisitDate,\n  COUNT(*) AS VisitCount,\n  COUNT(DISTINCT TRY_CAST(Data1 AS bigint)) AS DistinctCustomers\nFROM t.LogActionTransaction\nWHERE ActionID = N'0'\n  AND TRY_CAST(SalesmanID AS int) = 2\n  AND TimeStamp >= '2022-09-01'\n  AND TimeStamp <  '2022-10-01'\nGROUP BY CONVERT(date, TimeStamp)\nORDER BY VisitDate",
       "confidence": "medium",
       "sources": [
         "LogActionTransaction"
       ],
-      "steps": [
-        "loading master data",
-        "running query 1 of 4",
-        "running query 2 of 4",
-        "running query 3 of 4",
-        "running query 4 of 4"
-      ],
+      "steps": [],
       "needs_ask": null,
       "evaluation": {
         "verdict": "weak",
@@ -381,11 +373,11 @@
       "style": "chain_drill",
       "session": "chain-c",
       "question": "اعطيني تفاصيل اخر 5 زيارات",
-      "session_id": "visit-816a8faa55",
+      "session_id": "visit-c5030912d0",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 7.56,
-      "answer": "آخر 5 زيارات:\n\n1. **2025-01-29 10:16:37** — مندوب: عثمان القدسي | زبون: اليموني (رقم 314) | إحداثيات: 31.9983565, 35.8795475 | المسار: 0\n2. **2025-01-28 12:02:41** — مندوب: عثمان القدسي | زبون: اليموني (رقم 314) | إحداثيات: 31.9530735, 35.9126816 | المسار: 0\n3. **2025-01-27 12:55:57** — مندوب: عثمان القدسي | زبون: اليموني (رقم 314) | إحداثيات: 31.9530735, 35.9126816 | المسار: 0\n4. **2025-01-27 11:43:13** — مندوب: عثمان القدسي | زبون: اليموني (رقم 314) | إحداثيات: 31.9975569, 35.8782564 | المسار: 0\n5. **2025-01-27 08:44:06** — مندوب: عثمان القدسي | زبون: اليموني (رقم 314) | إحداثيات: 31.9991902, 35.8789377 | المسار: 0\n\nجميع الزيارات الخمس لنفس المندوب (عثمان القدسي) ونفس الزبون (اليموني).",
+      "elapsed_s": 8.67,
+      "answer": "أفترض أنك تقصد آخر 5 زيارات منفذة (تسجيل دخول للعميل) حسب سجل النشاط `LogActionTransaction`.\n\nإليك تفاصيل آخر 5 زيارات (كلها للمندوب **عثمان القدسي** وللعميل **الياموني**):\n\n| # | التاريخ والوقت | المندوب | العميل | الإحداثيات (GPS) |\n|---|---|---|---|---|\n| 1 | 2025-01-29 10:16:37 | عثمان القدسي | الياموني (‏314) | 31.9983565, 35.8795475 |\n| 2 | 2025-01-28 12:02:41 | عثمان القدسي | الياموني (‏314) | 31.9530735, 35.9126815 |\n| 3 | 2025-01-27 12:55:57 | عثمان القدسي | الياموني (‏314) | 31.9530735, 35.9126815 |\n| 4 | 2025-01-27 11:43:13 | عثمان القدسي | الياموني (‏314) | 31.9975569, 35.8782564 |\n| 5 | 2025-01-27 08:44:06 | عثمان القدسي | الياموني (‏314) | 31.9991902, 35.8789377 |\n\n**ملاحظة:** جميع الزيارات الخمس مسجلة بنفس العميل (الياموني)، مع وجود تكرار لنفس الإحداثيات في زيارتين بتاريخ 27‏/1 (ربما تسجيل دخول/خروج متكرر أو زيارتين منفصلتين في نفس الموقع).",
       "answer_sql": "SELECT TOP 5\n    lat.TimeStamp,\n    lat.ActionID,\n    sp.Name AS SalesmanName,\n    c.Name AS CustomerName,\n    lat.Data1 AS CustomerID,\n    lat.GpsX,\n    lat.GpsY,\n    lat.RouteID\nFROM t.LogActionTransaction lat\nLEFT JOIN t.SalesPersons sp ON TRY_CAST(lat.SalesmanID AS int) = sp.ID\nLEFT JOIN t.Customers c ON TRY_CAST(lat.Data1 AS bigint) = c.ID\nWHERE lat.ActionID = N'0'\nORDER BY lat.TimeStamp DESC",
       "confidence": "high",
       "sources": [
@@ -410,17 +402,21 @@
       "style": "chain_wrong_grain",
       "session": "chain-c",
       "question": "هل دخل النظام ActionID 7 يحسب زيارة؟",
-      "session_id": "visit-6b9d224be5",
+      "session_id": "visit-fff95a4506",
       "company_id": 1,
       "client": "105",
-      "elapsed_s": 11.6,
-      "answer": "**لا.** يُعدّل ActionID **7 = SystemLogin** (فتح التطبيق / تسجيل دخول النظام على الجهاز اللوحي)، وليس زيارة فعلية.\n\n- **الزيارة الفعلية** تُحتسب فقط من `ActionID = N'0'` (CustEntry — دخول المندوب عند الزبون).\n- **ActionID 7** هو مجرد فتح التطبيق، وغالبًا ما يكون الأكثر تكرارًا في السجل، لذا أي عدّ زيارات يشملها سيكون مبالغًا جدًا.\n\nعند احتساب عدد الزيارات لأي فترة أستخدم الشرط `lat.ActionID = N'0'` فقط ولا أعتدّ بـ 7.\n\nالمصدر: دليل الجداول › LogActions — «0 CustEntry, 3 CustLeave … 7 SystemLogin».",
-      "answer_sql": "",
+      "elapsed_s": 11.79,
+      "answer": "**لا، ActionID 7 لا يُحسب زيارة.**\n\n- **7 = SystemLogin**: تسجيل دخول المندوب للتطبيق/النظام على الجهاز اللوحي، وهو غالباً السجل الأكثر تكراراً — وليس زيارة لعميل.\n- **الزيارة المنفذة تُحسب فقط بـ `ActionID = N'0'` (CustEntry)** — تسجيل دخول المندوب عند العميل، و`Data1` فيه هو رقم العميل.\n- الخروج من الزيارة هو `ActionID = N'3'` (CustLeave).\n- لهذا، أي عدّ لزيارات المندوب من جدول `LogActionTransaction` يجب أن يُصفّى على `ActionID = N'0'` حصراً، وإلا ستمتزج الأرقام بأسطر SystemLogin ويصبح العد غير صحيح.\n\n**المصدر:** دليل المستخدم › \"زيارات المندوب — ثلاثة أسئلة بثلاثة مستويات دقة\" › 1. الزيارات الفعلية (جدول القواعد: \"ليس زيارة — ActionID = N'7' (SystemLogin)\").",
+      "answer_sql": "SELECT ActionId, ActionDesc FROM t.LogActions",
       "confidence": "high",
-      "sources": [],
+      "sources": [
+        "visits_grain.md › Salesman visits — three questions, three grains",
+        "visits_grain.md › Salesman visits — three questions, three grains › 2. Planned visits (route calendar / خطة المسار)",
+        "visits_grain.md › Salesman visits — three questions, three grains › 1. Actual visits (already happened)"
+      ],
       "steps": [
-        "reading schema note",
-        "searching schema notes"
+        "searching documentation",
+        "loading master data"
       ],
       "needs_ask": null,
       "evaluation": {
@@ -437,13 +433,10 @@
     "total": 15,
     "by_verdict": {
       "strong": 7,
-      "fail": 2,
-      "ok": 5,
+      "ok": 7,
       "weak": 1
     },
-    "hallucination_flags": [
-      "empty"
-    ],
-    "avg_score": 6.47
+    "hallucination_flags": [],
+    "avg_score": 7.27
   }
 }

@@ -339,11 +339,11 @@ def _static_prefix(client: str, cache: dict) -> list[dict]:
     """Messages [0..n] whose bytes NEVER change across turns for this client.
     DeepSeek disk-caches whole prefix units, so stable content goes first and
     dynamic content strictly after (plan C1)."""
-    base = (BASE_DIR / "prompts" / "system.md").read_text()
+    base = (BASE_DIR / "prompts" / "system.md").read_text(encoding="utf-8")
     base = base.replace("{{CLIENT}}", client).replace("{{MAX_QUERIES}}", str(MAX_QUERIES))
     playbook = BASE_DIR / "prompts" / "join_playbook.md"
     if playbook.exists():
-        base += "\n\n## Join playbook\n" + playbook.read_text()
+        base += "\n\n## Join playbook\n" + playbook.read_text(encoding="utf-8")
     msgs = [{"role": "system", "content": base}]
     msgs.append({"role": "system", "content": _schema_block(cache)})
     cards = _all_cards_block(client)
@@ -795,10 +795,10 @@ TOOLS = [
         "function": {
             "name": "lookup_hot",
             "description": (
-                "Load an L1 master snapshot (salespersons, items, routes, LogActions "
-                "ActionID codebook). Pass LogActionTransaction for the same codebook "
-                "(the fact log is not cached). Never for invoices/orders/receipts/balances. "
-                "Free — does not count against query budget."
+                "Load an L1 master snapshot (SalesPersons with CarID/VehicleId, SalesPersonsDevicePermissions, "
+                "DeliveryCars, items, routes, LogActions ActionID codebook). "
+                "Pass LogActionTransaction for the same codebook (the fact log is not cached). "
+                "Never for invoices/orders/receipts/balances. Free — does not count against query budget."
             ),
             "parameters": {
                 "type": "object",
@@ -1116,11 +1116,11 @@ def _active_tools(state: dict) -> list | None:
 
 
 def _system_prompt(client: str, company_id: int | None = None, question: str | None = None) -> str:
-    base = (BASE_DIR / "prompts" / "system.md").read_text()
+    base = (BASE_DIR / "prompts" / "system.md").read_text(encoding="utf-8")
     base = base.replace("{{CLIENT}}", client).replace("{{MAX_QUERIES}}", str(MAX_QUERIES))
     playbook = BASE_DIR / "prompts" / "join_playbook.md"
     if playbook.exists():
-        base += "\n\n## Join playbook\n" + playbook.read_text()
+        base += "\n\n## Join playbook\n" + playbook.read_text(encoding="utf-8")
     if company_id is not None:
         base += "\n\n" + tenant_pack.build(client, company_id, question=question)
     return base
@@ -1749,7 +1749,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         analyst_pack = BASE_DIR / "prompts" / "analyst.md"
         if analyst_pack.exists():
             messages.append({"role": "system",
-                             "content": "## وضع المحلل\n" + analyst_pack.read_text()})
+                             "content": "## وضع المحلل\n" + analyst_pack.read_text(encoding="utf-8")})
         messages.append({
             "role": "system",
             "content": ("Analysis/forecast question — retrieve a bucketed series (GROUP BY week/month) "

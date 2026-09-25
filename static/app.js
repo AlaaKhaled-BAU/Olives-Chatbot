@@ -5,11 +5,26 @@ const companyLabel = document.getElementById("company-label");
 const companySelect = document.getElementById("company-select");
 const clientLabel = document.getElementById("client-label");
 const asOfLabel = document.getElementById("as-of-label");
+const sessionList = document.getElementById("session-list");
+const newChatBtn = document.getElementById("new-chat-btn");
+const sidebar = document.getElementById("sidebar");
+const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
+const sidebarCloseBtn = document.getElementById("sidebar-close-btn");
+const sidebarBackdrop = document.getElementById("sidebar-backdrop");
 
 const ARABIC_RE = /[؀-ۿ]/;
 const SESSION_KEY = "olives_session_id";
 
 let contextAsOf = { calendar_today: null, max_invoice_date: null };
+
+function scrollToBottom() {
+  const scrollArea = document.querySelector(".chat-scroll-area");
+  if (scrollArea) {
+    scrollArea.scrollTop = scrollArea.scrollHeight;
+  } else if (messages) {
+    messages.scrollTop = messages.scrollHeight;
+  }
+}
 
 function sessionId() {
   let id = sessionStorage.getItem(SESSION_KEY);
@@ -65,7 +80,7 @@ async function loadContext() {
     if (!resp.ok) return;
     const ctx = await resp.json();
     const dbBtn = document.getElementById("db-open-btn");
-    if (dbBtn) dbBtn.classList.toggle("hidden", !ctx.lab_db_ui);
+    if (dbBtn) dbBtn.classList.remove("hidden");
     if (ctx.company) {
       companyLabel.textContent = `CompanyID: ${ctx.company.ID} — ${ctx.company.Name}`;
     } else if (ctx.company_id) {
@@ -125,8 +140,11 @@ companySelect.addEventListener("change", async () => {
 });
 
 function replayTranscript(transcript) {
-  if (!transcript || !transcript.length) return;
   const empty = document.getElementById("empty-state");
+  if (!transcript || !transcript.length) {
+    if (empty) empty.classList.remove("hidden");
+    return;
+  }
   if (empty && !empty.classList.contains("hidden")) empty.classList.add("hidden");
   for (const row of transcript) {
     addMessage(row.q, "user");
@@ -134,6 +152,7 @@ function replayTranscript(transcript) {
     if (row.sql) addSqlPanel(bot, row.sql, null);
     addFeedbackRow(bot, row.id);
   }
+  scrollToBottom();
 }
 
 function addMessage(text, role) {
@@ -146,7 +165,7 @@ function addMessage(text, role) {
   else div.textContent = text;
   div.style.unicodeBidi = "plaintext";
   messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
+  scrollToBottom();
   return div;
 }
 
@@ -283,7 +302,7 @@ async function ask(question) {
         streamedText += data.answer_chunk;
         bot.textContent = streamedText;
         bot.classList.toggle("en", !ARABIC_RE.test(streamedText));
-        messages.scrollTop = messages.scrollHeight;
+        scrollToBottom();
       } else if (data.answer && String(data.answer).trim()) {
         bot.textContent = data.answer;
         bot.classList.toggle("en", !ARABIC_RE.test(data.answer));
@@ -305,6 +324,8 @@ async function ask(question) {
           asOf.max_invoice_date || contextAsOf.max_invoice_date,
         );
         if (asOfLine) addAsOfPanel(bot, asOfLine);
+        loadSessionsList();
+        scrollToBottom();
       } else if (data.answer_sql && !data.answer) {
         lastAnswerSql = data.answer_sql;
       } else if (data.needs_ask) {
@@ -527,6 +548,151 @@ document.querySelectorAll(".chip-btn, .chip-btn").forEach((btn) => {
 
 loadContext();
 
+/* ===== إدارة المحادثات والشريط الجانبي (ChatGPT-like Sessions) ===== */
+function isMobile() {
+  return window.innerWidth <= 768;
+}
+
+function toggleSidebar(open) {
+  if (!sidebar) return;
+  if (open === undefined) {
+    sidebar.classList.toggle("collapsed");
+  } else if (open) {
+    sidebar.classList.remove("collapsed");
+  } else {
+    sidebar.classList.add("collapsed");
+  }
+  const isCollapsed = sidebar.classList.contains("collapsed");
+  if (sidebarBackdrop) {
+    if (isMobile() && !isCollapsed) {
+      sidebarBackdrop.classList.remove("hidden");
+    } else {
+      sidebarBackdrop.classList.add("hidden");
+    }
+  }
+}
+
+if (sidebarToggleBtn) {
+  sidebarToggleBtn.addEventListener("click", () => toggleSidebar());
+}
+if (sidebarCloseBtn) {
+  sidebarCloseBtn.addEventListener("click", () => toggleSidebar(false));
+}
+if (sidebarBackdrop) {
+  sidebarBackdrop.addEventListener("click", () => toggleSidebar(false));
+}
+if (isMobile() && sidebar) {
+  sidebar.classList.add("collapsed");
+}
+
+async function loadSessionsList() {
+  if (!sessionList) return;
+  try {
+    const resp = await fetch("/sessions");
+    if (!resp.ok) return;
+    const data = await resp.json();
+    renderSessionsList(data.sessions || []);
+  } catch (e) {
+    console.error("Failed to load sessions:", e);
+  }
+}
+
+function renderSessionsList(sessions) {
+  if (!sessionList) return;
+  sessionList.innerHTML = "";
+  const curSid = sessionId();
+  if (!sessions.length) {
+    const emptyNotice = document.createElement("div");
+    emptyNotice.className = "sidebar-section-title";
+    emptyNotice.style.padding = "12px 8px";
+    emptyNotice.textContent = "لا توجد محادثات سابقة";
+    sessionList.appendChild(emptyNotice);
+    return;
+  }
+
+  sessions.forEach((s) => {
+    const item = document.createElement("div");
+    item.className = "session-item";
+    if (s.id === curSid) item.classList.add("active");
+
+    const titleEl = document.createElement("span");
+    titleEl.className = "session-item-title";
+    titleEl.textContent = s.title || "محادثة سابقة";
+    if (!ARABIC_RE.test(titleEl.textContent)) titleEl.classList.add("en");
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "session-delete-btn";
+    delBtn.title = "حذف المحادثة";
+    delBtn.setAttribute("aria-label", "حذف");
+    delBtn.innerHTML = "✕";
+    delBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteSession(s.id);
+    });
+
+    item.appendChild(titleEl);
+    item.appendChild(delBtn);
+
+    item.addEventListener("click", () => {
+      selectSession(s.id);
+    });
+
+    sessionList.appendChild(item);
+  });
+}
+
+async function selectSession(sid) {
+  if (sid === sessionId() && messages.children.length > 0) {
+    if (isMobile()) toggleSidebar(false);
+    return;
+  }
+  sessionStorage.setItem(SESSION_KEY, sid);
+  messages.innerHTML = "";
+  const empty = document.getElementById("empty-state");
+  if (empty) empty.classList.add("hidden");
+
+  document.querySelectorAll(".session-item").forEach((el) => el.classList.remove("active"));
+  await loadContext();
+  loadSessionsList();
+  if (isMobile()) toggleSidebar(false);
+  scrollToBottom();
+}
+
+async function newChat() {
+  const newSid = crypto.randomUUID();
+  sessionStorage.setItem(SESSION_KEY, newSid);
+  messages.innerHTML = "";
+  const empty = document.getElementById("empty-state");
+  if (empty) empty.classList.remove("hidden");
+
+  document.querySelectorAll(".session-item").forEach((el) => el.classList.remove("active"));
+  questionInput.value = "";
+  questionInput.focus();
+  await loadContext();
+  loadSessionsList();
+  if (isMobile()) toggleSidebar(false);
+}
+
+async function deleteSession(sid) {
+  try {
+    await fetch(`/sessions/${encodeURIComponent(sid)}`, { method: "DELETE" });
+  } catch (e) {
+    console.error("Failed to delete session:", e);
+  }
+  if (sid === sessionId()) {
+    await newChat();
+  } else {
+    await loadSessionsList();
+  }
+}
+
+if (newChatBtn) {
+  newChatBtn.addEventListener("click", () => newChat());
+}
+
+loadSessionsList();
+
 
 /* ===== إعدادات الاتصال ===== */
 (function () {
@@ -535,11 +701,16 @@ loadContext();
   if (!modal || !openBtn || !closeBtn) return;
   const orb = el("db-orb"), badge = el("db-badge");
   const serverIn = el("db-server"), portIn = el("db-port"), userIn = el("db-user");
-  const passIn = el("db-pass"), eyeBtn = el("db-eye"), chipLocal = el("db-local-chip");
-  const nameSel = el("db-name-select"), nameIn = el("db-name"), trustedChk = el("db-trusted");
-  const testBtn = el("db-test"), saveBtn = el("db-save"), resetBtn = el("db-reset");
+  const passIn = el("db-pass"), eyeBtn = el("db-eye");
+  const localToggle = el("db-local-toggle");
+  const bakPath = el("db-bak-path");
+  const remoteFields = el("db-remote-fields");
+  const remoteActions = el("db-remote-actions");
+  const statusLine = el("db-status-line");
+  const testBtn = el("db-test"), saveBtn = el("db-save");
   const msgEl = el("db-msg");
-  let lastProbe = null;
+  let snapshotDb = "";
+  let filling = false;
 
   function openModal() {
     modal.classList.remove("hidden");
@@ -566,22 +737,47 @@ loadContext();
   }
 
   function paintStatus(status) {
-    const live = status.source === "live";
-    orb.className = "orb " + (live ? "green" : "amber");
-    badge.textContent = live ? "متصل مباشرة" : "نسخة محلية";
-    badge.className = "badge " + (live ? "badge-live" : "badge-snapshot");
-    resetBtn.classList.toggle("hidden", !live);
-    if (live && status.active) {
-      serverIn.value = status.active.host || "";
-      portIn.value = status.active.port ?? 1433;
-      userIn.value = status.active.user || "";
-      passIn.value = "";
-      passIn.placeholder = "•••••• (محفوظة)";
-      nameIn.value = status.active.database || "";
+    const local = status.source !== "live";
+    const connected = !!status.connected;
+    const a = status.active || {};
+    const d = status.defaults || {};
+    snapshotDb = d.database || a.database || "";
+    filling = true;
+    localToggle.checked = local;
+    remoteFields.classList.toggle("is-disabled", local);
+    remoteActions.classList.toggle("hidden", local);
+    [serverIn, portIn, userIn, passIn, testBtn, saveBtn].forEach((n) => {
+      if (n) n.disabled = local;
+    });
+    serverIn.value = a.host || d.host || "";
+    portIn.value = a.port ?? d.port ?? 1433;
+    userIn.value = a.user || d.user || "";
+    passIn.value = "";
+    passIn.placeholder = a.has_password || local ? "••••••" : "";
+    if (bakPath) {
+      bakPath.textContent = d.bak_mount ? ` ${d.bak_mount}` : "";
     }
-    setMsg(live
-      ? `مصدر حي: ${status.active.host}:${status.active.port}/${status.active.database}`
-      : "", "");
+    filling = false;
+
+    orb.className = "orb " + (connected ? "green" : "red");
+    badge.textContent = connected
+      ? (local ? "محلي · متصل" : "خادم · متصل")
+      : (local ? "محلي · غير متصل" : "خادم · غير متصل");
+    badge.className = "badge " + (connected ? "badge-live" : "badge-snapshot");
+    const probe = status.probe || {};
+    const where = `${a.host || "—"}:${a.port || "—"}`;
+    if (statusLine) {
+      if (connected) {
+        statusLine.textContent = `متصل — ${where}`
+          + (probe.server_name ? ` (${probe.server_name})` : "")
+          + (probe.database ? ` / ${probe.database}` : "");
+        statusLine.className = "db-status-line ok";
+      } else {
+        statusLine.textContent = `غير متصل — ${where}`
+          + (probe.error ? ` · ${probe.error}` : "");
+        statusLine.className = "db-status-line err";
+      }
+    }
   }
 
   async function refreshStatus() {
@@ -596,82 +792,64 @@ loadContext();
     if (e.key === "Escape" && !modal.classList.contains("hidden")) closeModal();
   });
 
-  chipLocal.addEventListener("click", () => {
-    serverIn.value = "(.)";
-    portIn.value = 1433;
-    userIn.focus();
-  });
-
   eyeBtn.addEventListener("click", () => {
     passIn.type = passIn.type === "password" ? "text" : "password";
   });
 
-  trustedChk.addEventListener("change", () => {
-    const off = trustedChk.checked;
-    userIn.disabled = off; passIn.disabled = off;
-    saveBtn.disabled = true;
+  localToggle.addEventListener("change", async () => {
+    if (filling) return;
+    if (localToggle.checked) {
+      await fetch("/db/reset", { method: "POST" });
+      await refreshStatus();
+      try { await loadContext(); } catch {}
+      setMsg("يعمل على النسخة المحلية", "ok");
+    } else {
+      remoteFields.classList.remove("is-disabled");
+      remoteActions.classList.remove("hidden");
+      [serverIn, portIn, userIn, passIn, testBtn, saveBtn].forEach((n) => {
+        if (n) n.disabled = false;
+      });
+      setMsg("أدخل عنوان الخادم ثم «حفظ واتصال»", "");
+    }
   });
+
+  function remotePayload() {
+    return {
+      server: serverIn.value,
+      port: portIn.value ? Number(portIn.value) : null,
+      user: userIn.value,
+      password: passIn.value,
+      database: snapshotDb || null,
+      trusted: false,
+    };
+  }
 
   testBtn.addEventListener("click", async () => {
     setMsg("جارٍ الفحص…", "");
-    const payload = {
-      server: serverIn.value, port: portIn.value ? Number(portIn.value) : null,
-      user: userIn.value, password: passIn.value,
-      database: nameSel.classList.contains("hidden")
-        ? (nameIn.value || null) : nameSel.value,
-      trusted: trustedChk.checked,
-    };
+    let probe;
     try {
-      lastProbe = await jpost("/db/test", payload);
+      probe = await jpost("/db/test", remotePayload());
     } catch { setMsg("تعذر الوصول للخدمة", "error"); return; }
-    if (!lastProbe.ok) { setMsg(lastProbe.error || "فشل الاتصال", "error"); return; }
-    const dbs = lastProbe.databases || [];
-    if (dbs.length) {
-      nameSel.innerHTML = "";
-      for (const d of dbs) {
-        const o = document.createElement("option");
-        o.value = o.textContent = d;
-        nameSel.appendChild(o);
-      }
-      const want = nameIn.value.trim();
-      if (want && dbs.includes(want)) nameSel.value = want;
-      else if (dbs.length === 1) nameSel.value = dbs[0];
-      nameSel.classList.remove("hidden");
-      nameIn.classList.add("hidden");
-    } else {
-      nameSel.classList.add("hidden"); nameIn.classList.remove("hidden");
-    }
-    saveBtn.disabled = false;
-    setMsg(`✓ ${lastProbe.server_name} — ${lastProbe.version_line}\nقواعد متاحة: ${dbs.length}`, "ok");
+    if (!probe.ok) { setMsg(probe.error || "فشل الاتصال", "error"); return; }
+    setMsg(`✓ ${probe.server_name} — ${probe.version_line || ""}`.trim(), "ok");
   });
 
   saveBtn.addEventListener("click", async () => {
-    const database = nameSel.classList.contains("hidden")
-      ? (nameIn.value.trim() || null) : nameSel.value;
-    const payload = {
-      server: serverIn.value, port: portIn.value ? Number(portIn.value) : null,
-      user: userIn.value, password: passIn.value,
-      database, trusted: trustedChk.checked,
-    };
-    saveBtn.disabled = true; saveBtn.textContent = "جارٍ التثبيت…";
+    saveBtn.disabled = true;
+    const prev = saveBtn.textContent;
+    saveBtn.textContent = "جارٍ الاتصال…";
     try {
-      const res = await jpost("/db/connect", payload);
+      const res = await jpost("/db/connect", remotePayload());
       if (!res.ok) {
-        setMsg(res.error || "فشل التثبيت", "error");
+        setMsg(res.error || "فشل الاتصال", "error");
       } else {
-        paintStatus({ source: "live", active: res.active });
-        const n = (lastProbe && Array.isArray(lastProbe.databases)) ? lastProbe.databases.length : null;
-        setMsg(`✓ تم تثبيت المصدر الحي: ${res.probe.server_name}${n !== null ? ` (${n} قاعدة)` : ""}`, "ok");
+        await refreshStatus();
+        setMsg(`✓ تم الاتصال: ${res.probe && res.probe.server_name ? res.probe.server_name : ""}`.trim(), "ok");
         try { await loadContext(); } catch {}
       }
     } catch { setMsg("تعذر الوصول للخدمة", "error"); }
-    saveBtn.textContent = "اتصال وتثبيت";
-  });
-
-  resetBtn.addEventListener("click", async () => {
-    await fetch("/db/reset", { method: "POST" });
-    refreshStatus();
-    try { await loadContext(); } catch {}
+    saveBtn.disabled = false;
+    saveBtn.textContent = prev;
   });
 
   refreshStatus();

@@ -14,6 +14,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / ".env")
+except ImportError:
+    pass
+
 import yaml  # noqa: E402
 from fastapi import FastAPI, HTTPException, Request, Response  # noqa: E402
 from fastapi.responses import StreamingResponse  # noqa: E402
@@ -143,7 +149,6 @@ def _touch_session(session_id: str, default_factory) -> dict:
     now = time.time()
     for sid in [sid for sid, s in SESSIONS.items() if now - s["_touched"] > SESSION_IDLE_SECONDS]:
         del SESSIONS[sid]
-        sessions.delete(sid)
     sessions.sweep()
     if session_id in SESSIONS:
         SESSIONS.move_to_end(session_id)
@@ -158,8 +163,7 @@ def _touch_session(session_id: str, default_factory) -> dict:
         state.setdefault("transcript", [])
         SESSIONS[session_id] = state
         while len(SESSIONS) > SESSION_MAX:
-            old_sid, _ = SESSIONS.popitem(last=False)
-            sessions.delete(old_sid)
+            SESSIONS.popitem(last=False)
     return SESSIONS[session_id]
 
 
@@ -225,7 +229,7 @@ def _resolve_context_company_id(client: str, conversation: dict) -> int | None:
 
 
 def _load_companies_live(client: str, conversation: dict) -> list[dict]:
-    """Load company ID+Name rows from t.Companies (live DB, not cached probe)."""
+    """Load company ID+Name rows from t.Companies (live DB, fallback to cached probe if DB down)."""
     profile = params.discover_profile(client)
     seed_ids: list[int] = []
     for row in profile.get("_companies") or []:
@@ -238,19 +242,25 @@ def _load_companies_live(client: str, conversation: dict) -> list[dict]:
 
     companies: list[dict] = []
     seen: set[int] = set()
-    conn = sql.get_conn(client)
     try:
-        for cid in seed_ids:
-            sql.set_tenant(conn, cid)
-            cur = conn.cursor(as_dict=True)
-            cur.execute("SELECT ID, Name FROM t.Companies")
-            for row in cur.fetchall():
-                rid = int(row["ID"])
-                if rid not in seen:
-                    seen.add(rid)
-                    companies.append({"id": rid, "name": row["Name"]})
-    finally:
-        conn.close()
+        conn = sql.get_conn(client)
+        try:
+            tbl_prefix = "t" if sql.has_tenant_views(conn) else "dbo"
+            for cid in seed_ids:
+                sql.set_tenant(conn, cid)
+                cur = conn.cursor(as_dict=True)
+                cur.execute(f"SELECT ID, Name FROM {tbl_prefix}.Companies")
+                for row in cur.fetchall():
+                    rid = int(row["ID"])
+                    if rid not in seen:
+                        seen.add(rid)
+                        companies.append({"id": rid, "name": row["Name"]})
+        finally:
+            conn.close()
+    except Exception:
+        # DB unreachable yet (e.g. before user configures DB in UI) - fall back to schema probe
+        for row in profile.get("_companies") or []:
+            companies.append({"id": int(row["id"]), "name": row.get("name") or str(row["id"])})
     return sorted(companies, key=lambda c: c["id"])
 
 
@@ -260,18 +270,22 @@ def _context_payload(client: str, conversation: dict) -> dict:
     company_row = None
     clients_active = []
     if company_id is not None:
-        conn = sql.get_conn(client)
         try:
-            sql.set_tenant(conn, company_id)
-            cur = conn.cursor(as_dict=True)
-            cur.execute("SELECT ID, Name FROM t.Companies")
-            rows = cur.fetchall()
-            if rows:
-                company_row = rows[0]
-            cur.execute("SELECT CompanyID, ClientID FROM t.ClientsActive")
-            clients_active = cur.fetchall()
-        finally:
-            conn.close()
+            conn = sql.get_conn(client)
+            try:
+                tbl_prefix = "t" if sql.has_tenant_views(conn) else "dbo"
+                sql.set_tenant(conn, company_id)
+                cur = conn.cursor(as_dict=True)
+                cur.execute(f"SELECT ID, Name FROM {tbl_prefix}.Companies")
+                rows = cur.fetchall()
+                if rows:
+                    company_row = rows[0]
+                cur.execute(f"SELECT CompanyID, ClientID FROM {tbl_prefix}.ClientsActive")
+                clients_active = cur.fetchall()
+            finally:
+                conn.close()
+        except Exception:
+            pass
     return {
         "lab_db_ui": os.environ.get("CHATBOT_LAB_DB", "").strip() in ("1", "true", "yes"),
         "client": client,
@@ -297,6 +311,20 @@ def get_context(session_id: str | None = None):
     payload = _context_payload(client, conversation)
     payload["transcript"] = transcript
     return payload
+
+
+@app.get("/sessions")
+def get_sessions():
+    """List recent sessions for the chat history sidebar."""
+    return {"sessions": sessions.list_sessions()}
+
+
+@app.delete("/sessions/{sid}")
+def delete_session(sid: str):
+    """Delete a session from both memory cache and backing SQLite."""
+    SESSIONS.pop(sid, None)
+    sessions.delete(sid)
+    return {"ok": True, "deleted": sid}
 
 
 @app.post("/db/test")
@@ -346,18 +374,19 @@ def db_reset():
 
 @app.get("/db/status")
 def db_status():
+    defaults = dblink.snapshot_defaults(PINNED_CLIENT)
     override = dblink.active_override()
-    if override:
-        return {"source": "live", "active": override}
+    source = "live" if override else "snapshot"
+    active = override if override else {k: defaults[k] for k in
+                                        ("host", "port", "user", "password", "database")}
+    probe = dblink.probe_runtime(PINNED_CLIENT)
     return {
-        "source": "snapshot",
-        "active": {
-            "host": os.environ.get("DB_HOST", "127.0.0.1"),
-            "port": int(os.environ.get("DB_PORT", "1433")),
-            "user": "chatbot_ro",
-            "password": "••••••",
-            "database": config.load_client(PINNED_CLIENT)["db_name"],
-        },
+        "source": source,
+        "local": source == "snapshot",
+        "connected": bool(probe.get("ok")),
+        "probe": probe,
+        "active": active,
+        "defaults": defaults,
     }
 
 

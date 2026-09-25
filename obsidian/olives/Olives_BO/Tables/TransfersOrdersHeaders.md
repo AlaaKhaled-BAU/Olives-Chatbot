@@ -108,9 +108,14 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
 
-Core data table in the Back Office (server-side) — stores transfersordersheaders records.
+Core transfer and replenishment document table in Olives_BO for Cash Van vehicle logistics.
+- Synced from tablet mobile tables `OSFA_DB.dbo.OT_ConsOrderHF` and `OT_ConsOrderDF` via procedure `dbo.OT_ImportUploadOrders`.
+- **Master Discriminator (`VouType`):**
+  - **`VouType = 1` (أمر تحميل Load Order):** Restocking the mobile van from the central warehouse (`StoreNo`). Approved via `Pro_ConvertLoadOrderToTransaction`, converting into `TransactionsHeaders` with **`TransactionTypeID = 6`**, and incrementing van stock in `SalesPersonItemsBalance`.
+  - **`VouType = 2` (أمر تفريغ/تنزيل Unload Order):** Returning unsold goods from the van back to the central warehouse (`StoreNo`). Approved via `Pro_ConvertUnloadOrderToTransaction`, converting into `TransactionsHeaders` with **`TransactionTypeID = 7`**, and decrementing van stock in `SalesPersonItemsBalance`.
+- **Workflow & Approval:** Governed by `WFApproved` and `Approve` flags. Triggers workflow functions (Function 7 for Load, Function 9 for Unload).
+- **CRITICAL QUERY RULE:** Approved load/unload orders enter `TransactionsHeaders` as types 6 and 7. The chatbot must never query `TransactionsHeaders` for sales without explicitly filtering `TransactionTypeID = 1`.
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

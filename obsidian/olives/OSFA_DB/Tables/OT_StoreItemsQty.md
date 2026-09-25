@@ -16,9 +16,12 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
 
-Tablet-side data table in OSFA_DB, synced to/from Back Office.
+Mobile tablet inventory store in OSFA_DB for **Cash Van (فانات البيع المباشر)** salespersons.
+- Keyed by `(CompNo, StoreNo, ItemNo)`.
+- In Cash Van operations, `@SalesmanNo` is passed as the `@StoreNo` (`StoreNo = SalesmanNo`), representing the salesperson's mobile van custody store.
+- Populated and synchronized by the procedure `dbo.OT_SendSalesmanData` directly from Back-Office `dbo.SalesPersonItemsBalance`.
+- During field sales on the tablet, the mobile app validates available quantities against this table to prevent negative van stock or out-of-stock invoice issuing.
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

@@ -15,19 +15,17 @@ import pymssql
 
 from . import config, gate, memory
 
-_SHARED_WORK_DIR = Path(__file__).resolve().parent.parent / "work"
+def _shared_work_dir() -> Path:
+    env_work = os.environ.get("CHATBOT_WORK_DIR")
+    if env_work:
+        return Path(env_work)
+    return Path(__file__).resolve().parent.parent / "work"
 
 
 def _ro_password() -> str:
     # chatbot_ro is a SERVER-level login (one per SQL Server instance, not
     # per client database) -- its password is shared, not per-client.
-    return (_SHARED_WORK_DIR / "ro_password.txt").read_text().strip()
-
-
-def _ro_password() -> str:
-    # chatbot_ro is a SERVER-level login (one per SQL Server instance, not
-    # per client database) -- its password is shared, not per-client.
-    return (_SHARED_WORK_DIR / "ro_password.txt").read_text().strip()
+    return (_shared_work_dir() / "ro_password.txt").read_text().strip()
 
 
 def get_conn(client: str):
@@ -55,14 +53,41 @@ def get_conn(client: str):
             conn_kwargs["user"] = override.get("user", "")
             conn_kwargs["password"] = override.get("password", "")
         return pymssql.connect(**conn_kwargs)
+    user = os.environ.get("DB_USER") or "chatbot_ro"
+    password = os.environ.get("DB_PASSWORD")
+    if not password:
+        try:
+            password = _ro_password()
+        except Exception:
+            password = ""
     return pymssql.connect(
         server=os.environ.get("DB_HOST", "127.0.0.1"),
         port=int(os.environ.get("DB_PORT", "1433")),
-        user="chatbot_ro",
-        password=_ro_password(),
+        user=user,
+        password=password,
         database=db_name,
         timeout=30, login_timeout=10,
     )
+
+
+_TENANT_VIEW_SUPPORT: dict[str, bool] = {}
+
+
+def has_tenant_views(conn) -> bool:
+    """Check if the connected database has the t schema created."""
+    server_key = getattr(conn, "_server_key", None)
+    if server_key and server_key in _TENANT_VIEW_SUPPORT:
+        return _TENANT_VIEW_SUPPORT[server_key]
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM sys.schemas WHERE name = 't'")
+        res = cur.fetchone()
+        has_t = bool(res and res[0] > 0)
+    except Exception:
+        has_t = True
+    if server_key:
+        _TENANT_VIEW_SUPPORT[server_key] = has_t
+    return has_t
 
 
 def set_tenant(conn, company_id: int):
@@ -104,8 +129,14 @@ def run_select(
     conn = get_conn(client)
     try:
         set_tenant(conn, company_id)
+        exec_sql = safe_sql
+        if not has_tenant_views(conn):
+            # Remote server connected with base tables (e.g. direct cds login)
+            import re
+            exec_sql = re.sub(r"(?i)\bfrom\s+t\.", "FROM dbo.", exec_sql)
+            exec_sql = re.sub(r"(?i)\bjoin\s+t\.", "JOIN dbo.", exec_sql)
         cur = conn.cursor(as_dict=True)
-        cur.execute(safe_sql)
+        cur.execute(exec_sql)
         rows = cur.fetchall()
     finally:
         conn.close()

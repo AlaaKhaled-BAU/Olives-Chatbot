@@ -1,0 +1,43 @@
+# Option A — demo kit: chatbot + pre-restored Olives_BO (zero SQL setup).
+# Usage: copy docker/.env.example → .env, set DEEPSEEK_API_KEY, then:
+#   docker compose -f docker-compose.demo.yml up
+services:
+  mssql:
+    image: olives-mssql-demo:latest
+    environment:
+      ACCEPT_EULA: "Y"
+      # Must match the SA password baked into olives-mssql-demo (see docker/out/mssql-demo.env).
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-${DB_SA_PASSWORD:-OlivesDemo_SA_2026!}}
+      MSSQL_PID: Developer
+    # SQL is reachable inside the compose network as hostname `mssql`.
+    # Uncomment to expose to the host (SSMS) — pick a free port if 1433 is taken:
+    # ports:
+    #   - "${MSSQL_PUBLISH_PORT:-14330}:1433"
+    restart: unless-stopped
+
+  chatbot:
+    image: olives-chatbot:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8100:8100"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      CHATBOT_CLIENT: ${CHATBOT_CLIENT:-105}
+      # Same path as run.sh + .env, but hostname `mssql` inside compose network.
+      DB_HOST: mssql
+      DB_PORT: ${DB_PORT:-1433}
+      SQL_SNAPSHOT_MOUNT: ${SQL_SNAPSHOT_MOUNT:-/snapshots}
+      CHATBOT_MODEL_FAST: ${CHATBOT_MODEL_FAST:-deepseek-v4-flash}
+      CHATBOT_MODEL_HEAVY: ${CHATBOT_MODEL_HEAVY:-deepseek-v4-pro}
+    depends_on:
+      - mssql
+    volumes:
+      - chatbot-work:/app/work
+    restart: unless-stopped
+
+volumes:
+  chatbot-work:

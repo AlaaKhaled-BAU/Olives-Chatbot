@@ -90,6 +90,17 @@ def _ensure_top(select, row_cap):
         select.set("limit", exp.Limit(expression=exp.Literal.number(row_cap)))
 
 
+def _ensure_column_aliases(stmt):
+    col_idx = 1
+    for select in stmt.find_all(exp.Select):
+        for expr in select.expressions:
+            if isinstance(expr, exp.Column):
+                continue
+            if not expr.alias:
+                expr.replace(exp.Alias(this=expr.copy(), alias=exp.to_identifier(f"Col_{col_idx}")))
+                col_idx += 1
+
+
 def _schema_columns(schema_cache: dict, bare_name: str) -> list | None:
     return schema_cache.get("tables", {}).get(f"dbo.{bare_name}")
 
@@ -269,6 +280,7 @@ def validate(
         _inject_tenant_predicates(stmt, company_id, schema_cache)
 
     _ensure_top(stmt, row_cap)
+    _ensure_column_aliases(stmt)
     _prefix_arabic_literals(stmt)
     return stmt.sql(dialect="tsql")
 

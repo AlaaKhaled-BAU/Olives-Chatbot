@@ -41,6 +41,13 @@ METRICS = {
             "top item by quantity and by value (type 1/2 non-void invoices)."
         ),
     },
+    "sales_pipeline": {
+        "aliases": ["مسار المبيعات", "المبيعات والطلبات", "sales_pipeline", "orders_and_sales"],
+        "description": (
+            "Consolidated sales overview: invoiced sales (TransactionsHeaders Type 1) and "
+            "booked sales orders (OrdersHeaders with approved and undelivered status)."
+        ),
+    },
 }
 
 
@@ -216,6 +223,25 @@ def build_sql(metric: str, filters: dict | None = None, *, company_id: int) -> s
             "sp.PositionID = cfd.PositionsID AND sp.CompanyID = cfd.CompanyID "
             f"WHERE 1=1{_company_id_filter(cid, 'c', 'cfd', 'sp')}{where} "
             "GROUP BY sp.ID, sp.Name"
+        )
+    if metric == "sales_pipeline":
+        extra_th = _invoice_date_filters(filters, alias="th")
+        extra_oh = _order_date_filters(filters, alias="oh")
+        return (
+            "SELECT "
+            "(SELECT COUNT(*) FROM t.TransactionsHeaders th WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0"
+            + _company_id_filter(cid, "th") + extra_th + ") AS invoiced_count, "
+            "(SELECT SUM(td.Quantity * td.Price) FROM t.TransactionsHeaders th "
+            "INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID "
+            "AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo "
+            "WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0"
+            + _company_id_filter(cid, "th", "td") + extra_th + ") AS invoiced_amount, "
+            "(SELECT COUNT(*) FROM t.OrdersHeaders oh WHERE ISNULL(oh.IsVoid, 0) = 0"
+            + _company_id_filter(cid, "oh") + extra_oh + ") AS total_orders_count, "
+            "(SELECT COUNT(*) FROM t.OrdersHeaders oh WHERE ISNULL(oh.IsVoid, 0) = 0 AND ISNULL(oh.WFApproved, 0) = 1"
+            + _company_id_filter(cid, "oh") + extra_oh + ") AS approved_orders_count, "
+            "(SELECT COUNT(*) FROM t.OrdersHeaders oh WHERE ISNULL(oh.IsVoid, 0) = 0 AND ISNULL(oh.IsDelivered, 0) = 0"
+            + _company_id_filter(cid, "oh") + extra_oh + ") AS undelivered_orders_count"
         )
     if metric == "daily_sales_pack":
         day_filter = _single_day_filter(filters)

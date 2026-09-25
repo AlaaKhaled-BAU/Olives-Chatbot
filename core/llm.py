@@ -28,11 +28,15 @@ module owns exactly one retry layer. Interactive gears fail fast into
 ProviderUnavailableError; async gear p may retry transient failures.
 """
 import os
+from pathlib import Path
 import random
 import time
 
+from dotenv import load_dotenv
 import openai
 from openai import OpenAI
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 FAST_MODEL = os.environ.get("CHATBOT_MODEL_FAST", "deepseek-v4-flash")
 HEAVY_MODEL = os.environ.get("CHATBOT_MODEL_HEAVY", "deepseek-v4-pro")

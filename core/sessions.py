@@ -14,8 +14,17 @@ from pathlib import Path
 
 TRANSCRIPT_CAP = 100
 
+import os
+
 DB_PATH = Path(__file__).resolve().parent.parent / "work" / "sessions.sqlite"
-IDLE_SECONDS = 3600
+
+def _db_path() -> Path:
+    env_work = os.environ.get("CHATBOT_WORK_DIR")
+    if env_work:
+        return Path(env_work) / "sessions.sqlite"
+    return DB_PATH
+
+IDLE_SECONDS = 30 * 86400  # 30 days retention for chat histories
 MAX_SESSIONS = 5000
 
 _SCHEMA = (
@@ -29,8 +38,9 @@ _lock = threading.Lock()
 
 
 def _conn() -> sqlite3.Connection:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=10)
+    p = _db_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(p, timeout=10)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     conn.execute(_SCHEMA)
@@ -112,6 +122,41 @@ def delete(sid: str) -> None:
         try:
             conn.execute("DELETE FROM sessions WHERE sid=?", (sid,))
             conn.commit()
+        finally:
+            conn.close()
+
+
+def list_sessions(limit: int = 50) -> list[dict]:
+    """Return past chat session summaries ordered by most recently touched."""
+    with _lock:
+        conn = _conn()
+        try:
+            cur = conn.execute(
+                "SELECT sid, data, touched FROM sessions ORDER BY touched DESC LIMIT ?",
+                (limit,),
+            )
+            out = []
+            for sid, raw, touched in cur.fetchall():
+                try:
+                    data = json.loads(raw)
+                except Exception:
+                    continue
+                transcript = data.get("transcript") or []
+                if not transcript:
+                    continue
+                first_q = str(transcript[0].get("q") or "").strip()
+                title = data.get("title") or first_q
+                if len(title) > 40:
+                    title = title[:40].rstrip() + "..."
+                if not title:
+                    title = "محادثة سابقة"
+                out.append({
+                    "id": sid,
+                    "title": title,
+                    "touched": touched,
+                    "turns": len(transcript),
+                })
+            return out
         finally:
             conn.close()
 

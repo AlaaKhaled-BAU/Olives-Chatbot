@@ -8,26 +8,64 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header>
-    <div class="header-left">
-      <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 20h18"/><path d="M5 16l4-6 4 3 6-9"/>
-        </svg>
-      </span>
-      <div>
-        <h1>مساعد بيانات Olives</h1>
-        <span class="brand-sub">إجابات مُتحقَّق منها من قاعدة بياناتك</span>
+  <div id="app-layout">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <button type="button" id="new-chat-btn" class="new-chat-btn" title="بدء محادثة جديدة">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>محادثة جديدة</span>
+        </button>
+        <button type="button" id="sidebar-close-btn" class="sidebar-close-btn mobile-only" aria-label="إغلاق القائمة">✕</button>
       </div>
-    </div>
-    <div id="context-bar" class="header-right">
-      <span id="company-label"></span>
-      <select id="company-select" class="hidden" aria-label="Company"></select>
-      <span id="client-label"></span>
-      <span id="as-of-label" class="as-of-label hidden" aria-label="As-of dates"></span>
-      <button type="button" id="db-open-btn" class="settings-btn settings-btn" title="الإعدادات" aria-label="الإعدادات">إعدادات</button>
-    </div>
-  </header>
+
+      <div class="sidebar-section-title">
+        <span>المحادثات السابقة</span>
+      </div>
+
+      <div id="session-list" class="session-list" role="navigation" aria-label="سجل المحادثات">
+        <!-- Injected via JavaScript -->
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="sidebar-brand-name">مساعد بيانات Olives</span>
+      </div>
+    </aside>
+
+    <div id="sidebar-backdrop" class="sidebar-backdrop hidden"></div>
+
+    <!-- Main Content -->
+    <div id="main-content" class="main-content">
+      <header>
+        <div class="header-left">
+          <button type="button" id="sidebar-toggle-btn" class="sidebar-toggle-btn" title="القائمة الجانبية" aria-label="تبديل القائمة">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 20h18"/><path d="M5 16l4-6 4 3 6-9"/>
+            </svg>
+          </span>
+          <div>
+            <h1>مساعد بيانات Olives</h1>
+            <span class="brand-sub">إجابات مُتحقَّق منها من قاعدة بياناتك</span>
+          </div>
+        </div>
+        <div id="context-bar" class="header-right">
+          <span id="company-label"></span>
+          <select id="company-select" class="hidden" aria-label="Company"></select>
+          <span id="client-label"></span>
+          <span id="as-of-label" class="as-of-label hidden" aria-label="As-of dates"></span>
+          <button type="button" id="db-open-btn" class="settings-btn settings-btn" title="الإعدادات" aria-label="الإعدادات">إعدادات</button>
+        </div>
+      </header>
 
   <div id="db-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="db-modal-title">
     <div class="modal-card">
@@ -37,72 +75,70 @@
         <span id="db-badge" class="badge badge-snapshot">محلي</span>
         <button type="button" id="db-close" class="modal-x" aria-label="إغلاق">✕</button>
       </div>
-      <div class="grid4">
-        <label>الخادم
-          <div class="srv-wrap">
-            <input id="db-server" placeholder="(.) أو host:port" autocomplete="off" spellcheck="false" dir="ltr">
-            <button type="button" id="db-local-chip" class="chip" title="محلي">(.)</button>
-          </div>
-          <span class="hint">(.) = هذا الجهاز</span>
+      <label class="switch-row">
+        <input type="checkbox" id="db-local-toggle">
+        <span class="switch-ui" aria-hidden="true"></span>
+        <span>
+          مصدر محلي (.bak)
+          <span id="db-bak-path" class="hint" dir="ltr"></span>
+        </span>
+      </label>
+      <p id="db-status-line" class="db-status-line" role="status"></p>
+      <div id="db-remote-fields" class="grid4">
+        <label>العنوان (IP)
+          <input id="db-server" placeholder="127.0.0.1" autocomplete="off" spellcheck="false" dir="ltr">
         </label>
         <label>المنفذ
           <input id="db-port" type="number" min="1" max="65535" value="1433">
-          <span class="hint">عادة 1433</span>
         </label>
         <label>المستخدم
           <input id="db-user" autocomplete="username" spellcheck="false" dir="ltr">
-          <span class="hint">حساب قراءة فقط</span>
         </label>
         <label>كلمة المرور
           <div class="pw-wrap">
             <input id="db-pass" type="password" autocomplete="current-password" dir="ltr">
             <button type="button" id="db-eye" class="chip" aria-label="إظهار كلمة المرور">👁</button>
           </div>
-          <span class="hint">تبقى على هذا الجهاز</span>
         </label>
       </div>
-      <div class="grid4">
-        <label class="span2">قاعدة البيانات
-          <select id="db-name-select" class="hidden"></select>
-          <input id="db-name" placeholder="Olives_BO" spellcheck="false" dir="ltr">
-          <span class="hint">«فحص» يملأ القائمة</span>
-        </label>
-        <label class="trusted-label">
-          <input type="checkbox" id="db-trusted"> Windows Auth
-          <span class="hint">بدون كلمة مرور</span>
-        </label>
-        <div class="btn-row">
-          <button type="button" id="db-test" class="ghost-btn">فحص</button>
-          <button type="button" id="db-save" class="primary-btn">حفظ واتصال</button>
-          <button type="button" id="db-reset" class="danger-btn hidden">النسخة المحلية</button>
-        </div>
+      <div class="btn-row" id="db-remote-actions">
+        <button type="button" id="db-test" class="ghost-btn">فحص</button>
+        <button type="button" id="db-save" class="primary-btn">حفظ واتصال</button>
       </div>
       <div id="db-msg" class="db-msg hidden"></div>
     </div>
   </div>
 
-  <section id="empty-state" aria-hidden="false">
-    <span class="hero-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 20h18"/><path d="M5 16l4-6 4 3 6-9"/>
-      </svg>
-    </span>
-    <h2>اسأل بياناتك مباشرة</h2>
-    <p>أجيب بالأرقام مع الاستعلام الذي أنتجها — الشركة من القائمة أعلاه.</p>
-    <div class="hero-chips">
-      <button type="button" class="chip-btn chip-btn" data-q="كم عدد الزبائن النشطين؟">كم عدد الزبائن النشطين؟</button>
-      <button type="button" class="chip-btn chip-btn" data-q="كم مبيعات يوليو 2025؟">مبيعات يوليو 2025؟</button>
-      <button type="button" class="chip-btn chip-btn" data-q="مين أفضل مندوب عندنا؟">أفضل مندوب؟</button>
-      <button type="button" class="chip-btn chip-btn" data-q="كيف أضيف عميل جديد؟">كيف أضيف عميل جديد؟</button>
+      <div class="chat-viewport">
+        <div class="chat-scroll-area">
+          <section id="empty-state" aria-hidden="false">
+            <span class="hero-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 20h18"/><path d="M5 16l4-6 4 3 6-9"/>
+              </svg>
+            </span>
+            <h2>اسأل بياناتك مباشرة</h2>
+            <p>أجيب بالأرقام مع الاستعلام الذي أنتجها — الشركة من القائمة أعلاه.</p>
+            <div class="hero-chips">
+              <button type="button" class="chip-btn" data-q="كم عدد الزبائن النشطين؟">كم عدد الزبائن النشطين؟</button>
+              <button type="button" class="chip-btn" data-q="كم مبيعات يوليو 2025؟">مبيعات يوليو 2025؟</button>
+              <button type="button" class="chip-btn" data-q="مين أفضل مندوب عندنا؟">أفضل مندوب؟</button>
+              <button type="button" class="chip-btn" data-q="كيف أضيف عميل جديد؟">كيف أضيف عميل جديد؟</button>
+            </div>
+          </section>
+
+          <main id="messages" aria-live="polite"></main>
+        </div>
+
+        <div class="ask-form-wrap">
+          <form id="ask-form">
+            <input id="question" type="text" placeholder="اسأل عن بياناتك..." autocomplete="off" required>
+            <button type="submit">إرسال</button>
+          </form>
+        </div>
+      </div>
     </div>
-  </section>
-
-  <main id="messages" aria-live="polite"></main>
-
-  <form id="ask-form">
-    <input id="question" type="text" placeholder="اسأل عن بياناتك..." autocomplete="off" required>
-    <button type="submit">إرسال</button>
-  </form>
+  </div>
   <script src="/app.js"></script>
 </body>
 </html>
