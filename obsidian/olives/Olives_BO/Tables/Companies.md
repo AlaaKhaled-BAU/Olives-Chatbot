@@ -82,7 +82,7 @@ referenced_by:
   - [[X3_INTEGRATION_WITHLOG]]
   - [[X3_Integ_DeliveryInvoice]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-09-26
 related_workflows:
   - Company-Setup
 ---
@@ -120,6 +120,18 @@ Multi-company/tenant configuration — name, address, tax info, and branding ass
 | CID | int | YES |  |  |  |
 | CompanyUID | varchar | YES |  |  |  |
 | SalesTaxSerial | nvarchar | YES |  |  |  |
+
+## Column semantics — DataSize / LogSize / NullData / ServerDate (verified 2026-09-26 vs live DB)
+
+> Verified against live `Olives_BO` via `sp_helptext` + `sys.columns`. Vault previously had no per-column definition.
+
+- `NullData int NULL, no default, not computed` — **salesman-license enforcement flag**. `0` = no enforcement, `1` = enforce salesman-count quotas. Current state: all rows `0` (feature OFF).
+- `DataSize int NULL` + `LogSize int NULL` — quota inputs, maintained alongside `NullData`. Current state: all rows `0`.
+- `ServerDate smalldatetime NULL` — last-touch timestamp written together with the three columns.
+- Writer: `[[Pro_Companies]]` branch `@cmdType='Update Log File'` — `UPDATE Companies SET DataSize=@DataSize, LogSize=@LogSize, NullData=@NullData, ServerDate=GETDATE()` (no `WHERE`, touches every row). `INSERT`/`Update` branches do NOT touch these columns; `SELECT` branches return them.
+- Reader: `dbo.GetSalesman()` TVF (no vault note — functions are referenced as plain text, e.g. in `[[OT_ImportSalesOrders]]`). Logic: `SELECT TOP 1 @NullData = ISNULL(NullData,0) FROM Companies`; if `0` returns empty (no blocking). If `1`: quota `(@DataSize+45)/700` / `(@LogSize+45)/700`, counts distinct active salesmen in last 24h (FOC from `OrdersHeaders`+`TransactionsHeaders`+`Receipts`, WFC from `WF_SubLog` where `ActionNeed='AR'`), returns `TOP(actual-quota)` most-recently-active salesmen as overflow list.
+- Effect: `OT_Import*` procs (`[[OT_ImportSalesOrders]]`, `[[OT_ImportSalesInvoices]]`, `[[OT_ImportSalesIssueItems]]`, `[[OT_ImportSalesQuotations]]`, `[[OT_ImportReturnOrder]]`) filter `SalesmanNo NOT IN (SELECT SalesMan FROM dbo.GetSalesman() WHERE Company=@CompNo AND TType='FOC')` — over-quota salesmen's tablet data stays in `OSFA_DB`, never posts to `Olives_BO`.
+- Quirks: `[[Pro_Companies]]` param is `@NullData bit` while column is `int`; `GetSalesman` uses `TOP 1` with no `WHERE`, so in a multi-company table the flag/quota comes from an arbitrary row.
 ## Primary Key
 ID
 ## Foreign Keys
