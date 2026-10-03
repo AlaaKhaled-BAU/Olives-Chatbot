@@ -8,8 +8,15 @@ from . import gate, sql
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 METRICS = {
+    "sales": {
+        "aliases": ["مبيعات", "sales"],
+        "description": (
+            "Parameterized sales scan: gross_sales, returns, net_of_returns, "
+            "invoice_count, return_count (types 1/2, single SELECT)."
+        ),
+    },
     "net_sales": {
-        "aliases": ["مبيعات", "sales", "gross_sales"],
+        "aliases": ["gross_sales"],
         "description": "Non-void sales invoices (TransactionTypeID=1) with optional gross from line items.",
     },
     "net_sales_by_salesperson": {
@@ -142,6 +149,116 @@ def _order_date_filters(filters: dict, alias: str = "oh") -> str:
     return (" AND " + " AND ".join(parts)) if parts else ""
 
 
+def line_amount_sql(alias: str = "td") -> str:
+    """Charged line total. Price is the extended amount and already includes tax.
+    Do not multiply by Quantity."""
+    return (
+        f"ABS({alias}.Price) - ABS({alias}.DiscountAmount) "
+        f"- ABS({alias}.VoucherDiscount) "
+        f"- ABS(ISNULL({alias}.CustomerDiscountAmount,0))"
+    )
+
+
+_SALES_GROUP_BY = frozenset({"salesperson", "customer", "item", "day"})
+
+
+def _sales_line_amount(tax: str, alias: str = "td") -> str:
+    base = line_amount_sql(alias)
+    if tax == "excl":
+        return f"({base} - ABS({alias}.TaxAmount))"
+    return base
+
+
+def _sales_half_open_dates(filters: dict, alias: str = "th") -> str:
+    parts = []
+    from_date = _safe_date(filters.get("from_date", ""))
+    to_date = _safe_date(filters.get("to_date", ""))
+    if from_date:
+        parts.append(f"{alias}.TransactionDate >= '{from_date}'")
+    if to_date:
+        parts.append(f"{alias}.TransactionDate < '{to_date}'")
+    return (" AND " + " AND ".join(parts)) if parts else ""
+
+
+def _sales_filter_basis(filters: dict) -> tuple[str, str]:
+    tax = (filters.get("tax") or "incl").strip().lower()
+    returns = (filters.get("returns") or "gross").strip().lower()
+    if tax not in ("incl", "excl"):
+        raise ValueError(f"invalid tax filter {tax!r}; use incl or excl")
+    if returns not in ("gross", "net"):
+        raise ValueError(f"invalid returns filter {returns!r}; use gross or net")
+    return tax, returns
+
+
+def build_sales_sql(company_id: int, filters: dict | None = None) -> str:
+    """Single-scan sales/returns SELECT with optional GROUP BY dimension."""
+    filters = dict(filters or {})
+    tax, _returns = _sales_filter_basis(filters)
+    cid = int(company_id)
+    amt = _sales_line_amount(tax)
+    gross_expr = f"SUM(CASE WHEN th.TransactionTypeID = 1 THEN {amt} ELSE 0 END)"
+    returns_expr = f"SUM(CASE WHEN th.TransactionTypeID = 2 THEN {amt} ELSE 0 END)"
+    invoice_cnt = (
+        "COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 "
+        "THEN th.TransactionNo END)"
+    )
+    return_cnt = (
+        "COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 "
+        "THEN th.TransactionNo END)"
+    )
+    select_dims = ""
+    join_extra = ""
+    group_by = ""
+    group_key = (filters.get("group_by") or "").strip().lower() or None
+    if group_key:
+        if group_key not in _SALES_GROUP_BY:
+            raise ValueError(
+                f"invalid group_by {group_key!r}; "
+                f"use one of {', '.join(sorted(_SALES_GROUP_BY))}"
+            )
+        if group_key == "salesperson":
+            select_dims = "th.SalesPersonID, sp.Name AS SalesPersonName, "
+            join_extra = (
+                "INNER JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID "
+                "AND sp.CompanyID = th.CompanyID "
+            )
+            group_by = " GROUP BY th.SalesPersonID, sp.Name"
+        elif group_key == "customer":
+            select_dims = "th.CustomerID, c.Name AS CustomerName, "
+            join_extra = (
+                "INNER JOIN t.Customers c ON c.ID = th.CustomerID "
+                "AND c.CompanyID = th.CompanyID "
+            )
+            group_by = " GROUP BY th.CustomerID, c.Name"
+        elif group_key == "item":
+            select_dims = "td.ItemCode, i.Name AS ItemName, "
+            join_extra = (
+                "INNER JOIN t.Items i ON i.ItemCode = td.ItemCode "
+                "AND i.CompanyID = td.CompanyID "
+            )
+            group_by = " GROUP BY td.ItemCode, i.Name"
+        elif group_key == "day":
+            select_dims = "th.TransactionDate AS sale_day, "
+            group_by = " GROUP BY th.TransactionDate"
+
+    return (
+        "SELECT "
+        + select_dims
+        + f"ISNULL({gross_expr}, 0) AS gross_sales, "
+        + f"ISNULL({returns_expr}, 0) AS returns, "
+        + f"ISNULL({gross_expr}, 0) - ISNULL({returns_expr}, 0) AS net_of_returns, "
+        + f"ISNULL({invoice_cnt}, 0) AS invoice_count, "
+        + f"ISNULL({return_cnt}, 0) AS return_count "
+        "FROM t.TransactionsHeaders th "
+        + _detail_join()
+        + join_extra
+        + "WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0"
+        + _company_id_filter(cid, "th", "td")
+        + _sales_half_open_dates(filters)
+        + group_by
+    )
+
+
 def build_sql(metric: str, filters: dict | None = None, *, company_id: int) -> str:
     """Return the SELECT for a canonical metric name. Raises ValueError if unknown."""
     filters = filters or {}
@@ -154,7 +271,7 @@ def build_sql(metric: str, filters: dict | None = None, *, company_id: int) -> s
             + _company_id_filter(cid, "thc")
             + extra.replace("th.", "thc.")
             + ") AS invoice_count, "
-            "SUM(td.Quantity * td.Price) AS gross_amount "
+            f"SUM({line_amount_sql('td')}) AS gross_amount "
             "FROM t.TransactionsHeaders th "
             "INNER JOIN t.TransactionsDetails td ON "
             "th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID "
@@ -169,7 +286,7 @@ def build_sql(metric: str, filters: dict | None = None, *, company_id: int) -> s
         return (
             "SELECT th.SalesPersonID, sp.Name AS SalesPersonName, "
             "COUNT(*) AS invoice_count, "
-            "(SELECT SUM(td.Quantity * td.Price) FROM t.TransactionsHeaders th2 "
+            f"(SELECT SUM({line_amount_sql('td')}) FROM t.TransactionsHeaders th2 "
             "INNER JOIN t.TransactionsDetails td ON "
             "th2.CompanyID = td.CompanyID AND th2.TransactionTypeID = td.TransactionTypeID "
             "AND th2.TransactionYear = td.TransactionYear AND th2.TransactionNo = td.TransactionNo "
@@ -231,7 +348,7 @@ def build_sql(metric: str, filters: dict | None = None, *, company_id: int) -> s
             "SELECT "
             "(SELECT COUNT(*) FROM t.TransactionsHeaders th WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0"
             + _company_id_filter(cid, "th") + extra_th + ") AS invoiced_count, "
-            "(SELECT SUM(td.Quantity * td.Price) FROM t.TransactionsHeaders th "
+            f"(SELECT SUM({line_amount_sql('td')}) FROM t.TransactionsHeaders th "
             "INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID "
             "AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo "
             "WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0"
@@ -263,9 +380,9 @@ def build_sql(metric: str, filters: dict | None = None, *, company_id: int) -> s
             "top_val.top_val_item_code, top_val.top_val_item_name, top_val.top_val "
             "FROM ("
             "SELECT "
-            "SUM(CASE WHEN th.TransactionTypeID = 1 THEN td.Quantity * td.Price ELSE 0 END) AS sales_value, "
+            f"SUM(CASE WHEN th.TransactionTypeID = 1 THEN {line_amount_sql('td')} ELSE 0 END) AS sales_value, "
             "SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Quantity) ELSE 0 END) AS sales_qty, "
-            "SUM(CASE WHEN th.TransactionTypeID = 2 THEN td.Quantity * td.Price ELSE 0 END) AS returns_value, "
+            f"SUM(CASE WHEN th.TransactionTypeID = 2 THEN {line_amount_sql('td')} ELSE 0 END) AS returns_value, "
             "SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Quantity) ELSE 0 END) AS returns_qty "
             "FROM t.TransactionsHeaders th "
             + _detail_join()
@@ -284,14 +401,14 @@ def build_sql(metric: str, filters: dict | None = None, *, company_id: int) -> s
             + ") top_qty "
             "CROSS APPLY ("
             "SELECT TOP 1 td.ItemCode AS top_val_item_code, i.Name AS top_val_item_name, "
-            "SUM(td.Quantity * td.Price) AS top_val "
+            f"SUM({line_amount_sql('td')}) AS top_val "
             "FROM t.TransactionsHeaders th "
             + _detail_join()
             + item_join
             + "WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0"
             + _company_id_filter(cid, "th", "td", "i")
             + day_filter
-            + " GROUP BY td.ItemCode, i.Name ORDER BY SUM(td.Quantity * td.Price) DESC"
+            + f" GROUP BY td.ItemCode, i.Name ORDER BY SUM({line_amount_sql('td')}) DESC"
             + ") top_val"
         )
     raise ValueError(f"unknown metric {metric!r}")
@@ -311,6 +428,21 @@ def run_metric(
         known = ", ".join(sorted(METRICS))
         return {"error": f"unknown metric {metric_name!r}. Known: {known}"}
     filters = dict(filters or {})
+    if canonical == "sales":
+        try:
+            tax, returns = _sales_filter_basis(filters)
+        except ValueError as exc:
+            return {"error": str(exc)}
+        sql_text = build_sales_sql(company_id, filters)
+        rows = sql.run_select(sql_text, company_id, client, allowed_procs=allowed_procs)
+        primary_measure = "net_of_returns" if returns == "net" else "gross_sales"
+        return {
+            "metric": "sales",
+            "sql": sql_text,
+            "rows": rows,
+            "basis": {"tax": tax, "returns": returns},
+            "primary_measure": primary_measure,
+        }
     if canonical == "daily_sales_pack" and not _safe_date(
         filters.get("date") or filters.get("from_date") or filters.get("to_date")
     ):

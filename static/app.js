@@ -273,7 +273,6 @@ async function ask(question) {
   const decoder = new TextDecoder();
   let buffer = "";
   let gotAnything = false;
-  let streaming = false;
   let streamedText = "";
   let lastAnswerSql = null;
 
@@ -290,22 +289,29 @@ async function ask(question) {
       const data = JSON.parse(payload);
       gotAnything = true;
       if (data.step) {
-        if (!streaming) {
-          bot.textContent = `${data.step}…`;
-          bot.classList.add("en");
-        }
+        bot.textContent = `${data.step}…`;
+        bot.classList.add("en");
       } else if (data.answer_chunk) {
-        if (!streaming) {
-          streaming = true;
-          bot.textContent = "";
-        }
         streamedText += data.answer_chunk;
-        bot.textContent = streamedText;
-        bot.classList.toggle("en", !ARABIC_RE.test(streamedText));
-        scrollToBottom();
-      } else if (data.answer && String(data.answer).trim()) {
-        bot.textContent = data.answer;
-        bot.classList.toggle("en", !ARABIC_RE.test(data.answer));
+      } else if (data.needs_ask) {
+        bot.textContent = data.needs_ask;
+        bot.classList.toggle("en", !ARABIC_RE.test(data.needs_ask));
+      } else if (data.error) {
+        bot.textContent = data.error;
+        bot.className = "msg error";
+      } else if ("answer" in data) {
+        const holdStream = data.hold_stream === true;
+        let displayText = "";
+        if (holdStream) {
+          displayText = data.answer != null ? String(data.answer) : "";
+        } else {
+          const trimmedAnswer = data.answer != null ? String(data.answer).trim() : "";
+          displayText = trimmedAnswer ? data.answer : streamedText;
+        }
+        if (displayText) {
+          bot.textContent = displayText;
+          bot.classList.toggle("en", !ARABIC_RE.test(displayText));
+        }
         if (data.answer_sql) lastAnswerSql = data.answer_sql;
         const asOf = extractAsOfFromDone(data);
         if (asOf.calendar_today || asOf.max_invoice_date) {
@@ -328,12 +334,6 @@ async function ask(question) {
         scrollToBottom();
       } else if (data.answer_sql && !data.answer) {
         lastAnswerSql = data.answer_sql;
-      } else if (data.needs_ask) {
-        bot.textContent = data.needs_ask;
-        bot.classList.toggle("en", !ARABIC_RE.test(data.needs_ask));
-      } else if (data.error) {
-        bot.textContent = data.error;
-        bot.className = "msg error";
       }
     }
   }

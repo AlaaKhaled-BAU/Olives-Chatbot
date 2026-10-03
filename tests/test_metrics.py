@@ -12,7 +12,7 @@ COMPANY_ID = 2
 
 def test_resolve_metric_aliases():
     assert metrics.resolve_metric("net_sales") == "net_sales"
-    assert metrics.resolve_metric("مبيعات") == "net_sales"
+    assert metrics.resolve_metric("مبيعات") == "sales"
     assert metrics.resolve_metric("أفضل مندوب") == "net_sales_by_salesperson"
     assert metrics.resolve_metric("best salesman") == "net_sales_by_salesperson"
     assert metrics.resolve_metric("محصلة يومية") == "daily_sales_pack"
@@ -23,6 +23,24 @@ def test_resolve_metric_aliases():
     assert metrics.resolve_metric("van_stock") == "van_stock"
     assert metrics.resolve_metric("عملاء المندوب") == "cfd_assignment"
     assert metrics.resolve_metric("unknown_metric") is None
+
+
+def test_net_sales_uses_charged_line_not_quantity_times_price():
+    sql_text = metrics.build_sql("net_sales", company_id=COMPANY_ID)
+    assert "ABS(td.Price)" in sql_text
+    assert "ABS(td.DiscountAmount)" in sql_text
+    assert "ABS(td.VoucherDiscount)" in sql_text
+    assert "CustomerDiscountAmount" in sql_text
+    assert "Quantity *" not in sql_text
+    for name in ("net_sales_by_salesperson", "sales_pipeline"):
+        other = metrics.build_sql(name, company_id=COMPANY_ID)
+        assert "Quantity *" not in other
+        assert "ABS(td.Price)" in other
+    pack = metrics.build_sql(
+        "daily_sales_pack", {"date": "2025-07-15"}, company_id=COMPANY_ID
+    )
+    assert "Quantity * td.Price" not in pack
+    assert pack.count("ABS(td.Price)") >= 3
 
 
 def test_net_sales_sql_has_type_and_void_filters():
@@ -131,3 +149,75 @@ def test_daily_sales_pack_defaults_last_posting_day():
     assert mock_run.call_count == 2
     assert "TransactionDate = '2025-07-15'" in result["sql"]
     assert result["metric"] == "daily_sales_pack"
+
+
+def test_build_sales_sql_has_isnull_and_types_one_and_two():
+    sql_text = metrics.build_sales_sql(
+        COMPANY_ID,
+        {"from_date": "2025-06-01", "to_date": "2025-07-01"},
+    )
+    assert "ISNULL(" in sql_text
+    assert "TransactionTypeID IN (1, 2)" in sql_text
+    assert "ISNULL(th.IsVoid, 0) = 0" in sql_text
+    assert "TransactionDate >= '2025-06-01'" in sql_text
+    assert "TransactionDate < '2025-07-01'" in sql_text
+    assert "TransactionDate <=" not in sql_text
+
+
+def test_build_sales_sql_excl_subtracts_tax_amount():
+    sql_text = metrics.build_sales_sql(COMPANY_ID, {"tax": "excl"})
+    assert "TaxAmount" in sql_text
+    incl = metrics.build_sales_sql(COMPANY_ID, {"tax": "incl"})
+    assert "TaxAmount" not in incl
+
+
+def test_build_sales_sql_net_of_returns_subtracts_type_two():
+    sql_text = metrics.build_sales_sql(COMPANY_ID, {"returns": "net"})
+    assert "TransactionTypeID = 2" in sql_text
+    assert "net_of_returns" in sql_text
+    assert "ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1" in sql_text
+    assert "- ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2" in sql_text
+
+
+def test_build_sales_sql_group_by_salesperson():
+    sql_text = metrics.build_sales_sql(
+        COMPANY_ID,
+        {"group_by": "salesperson", "from_date": "2025-06-01", "to_date": "2025-07-01"},
+    )
+    assert "SalesPersonName" in sql_text
+    assert "GROUP BY th.SalesPersonID, sp.Name" in sql_text
+    assert "SalesPersons sp" in sql_text
+
+
+def test_run_metric_sales_returns_basis_and_primary_measure():
+    fake_rows = [
+        {
+            "gross_sales": 1000.0,
+            "returns": 50.0,
+            "net_of_returns": 950.0,
+            "invoice_count": 10,
+            "return_count": 2,
+        }
+    ]
+    with patch.object(metrics.sql, "run_select", return_value=fake_rows) as mock_run:
+        gross = metrics.run_metric(
+            "sales",
+            COMPANY_ID,
+            "105",
+            allowed_procs=[],
+            filters={"tax": "incl", "returns": "gross"},
+        )
+        net = metrics.run_metric(
+            "sales",
+            COMPANY_ID,
+            "105",
+            allowed_procs=[],
+            filters={"returns": "net"},
+        )
+    assert mock_run.call_count == 2
+    assert gross["metric"] == "sales"
+    assert gross["basis"] == {"tax": "incl", "returns": "gross"}
+    assert gross["primary_measure"] == "gross_sales"
+    assert net["basis"]["returns"] == "net"
+    assert net["primary_measure"] == "net_of_returns"
+    assert "TransactionTypeID IN (1, 2)" in gross["sql"]

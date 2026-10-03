@@ -1,0 +1,387 @@
+{
+  "run_at": "2026-08-29T18:28:49.672412+00:00",
+  "mode": "direct_agent",
+  "client": "105",
+  "company_id": 1,
+  "cases_file": "/media/alaa/data/client-chatbot/evals/comprehensive_system_battery.jsonl",
+  "results": [
+    {
+      "id": "recall-01",
+      "category": "memory",
+      "difficulty": "easy",
+      "session": "recall-followup",
+      "question": "قديش مبيعات المندوب عثمان القدسي بيوليو 2025 مش ملغية؟",
+      "expect": {
+        "must_have_sql": true,
+        "min_score_criteria": "recall_setup"
+      },
+      "client": "105",
+      "company_id": 1,
+      "elapsed_s": 11.38,
+      "answer": "مبيعات المندوب **عثمان القدسي** في يوليو 2025 (فواتير مبيعات غير ملغية، نوع 1، `IsVoid = 0`):\n\n- **إجمالي المبيعات:** **5.25**\n- **عدد الفواتير:** **2**\n\n```sql\nSELECT COUNT(*) AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount\nFROM t.TransactionsHeaders th\nINNER JOIN t.TransactionsDetails td\n  ON th.CompanyID = td.CompanyID\n AND th.TransactionTypeID = td.TransactionTypeID\n AND th.TransactionYear = td.TransactionYear\n AND th.TransactionNo = td.TransactionNo\nWHERE th.TransactionTypeID = 1\n  AND ISNULL(th.IsVoid, 0) = 0\n  AND th.TransactionDate >= '2025-07-01'\n  AND th.TransactionDate <= '2025-07-31'\n  AND th.SalesPersonID = 3003;\n```\n\nإذا كنت تقصد قيمة مختلفة (مثل المبيعات الصافية بعد الخصومات والضرائب، أو عدد الفواتير، أو إجمالي مرتجعات الشهر)، قل لي.",
+      "answer_sql": "SELECT ID, Name FROM t.SalesPersons WHERE Name LIKE N'%عثمان%القدسي%' OR Name LIKE N'%القدسي%'; SELECT (SELECT COUNT(*) FROM t.TransactionsHeaders thc WHERE thc.TransactionTypeID = 1 AND ISNULL(thc.IsVoid, 0) = 0 AND thc.CompanyID = 1 AND thc.TransactionDate >= '2025-07-01' AND thc.TransactionDate <= '2025-07-31' AND thc.SalesPersonID = 3003) AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 1 AND td.CompanyID = 1 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate <= '2025-07-31' AND th.SalesPersonID = 3003",
+      "confidence": "high",
+      "sources": [
+        "SalesPersons",
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4",
+        "running query 2 of 4"
+      ],
+      "needs_ask": null,
+      "tools_ms": {
+        "run_select": 120,
+        "run_metric": 113
+      },
+      "report_name": null,
+      "doc_search_count": 0,
+      "transcript_before": 0,
+      "transcript_after": 1,
+      "action": null,
+      "evaluation": {
+        "verdict": "ok",
+        "score": 6,
+        "notes": [
+          "has SQL",
+          "setup turn recorded"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "recall-02",
+      "category": "memory",
+      "difficulty": "easy",
+      "session": "recall-followup",
+      "question": "قديش عدد العملاء المسجلين؟",
+      "expect": {
+        "must_have_sql": true,
+        "min_score_criteria": "recall_setup"
+      },
+      "client": "105",
+      "company_id": 1,
+      "elapsed_s": 2.75,
+      "answer": "عدد العملاء المسجلين هو **10,372 عميل**.\n\n```sql\nSELECT COUNT(*) AS TotalCustomers\nFROM t.Customers\n```",
+      "answer_sql": "SELECT COUNT(*) AS TotalCustomers FROM t.Customers",
+      "confidence": "high",
+      "sources": [
+        "Customers"
+      ],
+      "steps": [],
+      "needs_ask": null,
+      "tools_ms": {},
+      "report_name": null,
+      "doc_search_count": 0,
+      "transcript_before": 1,
+      "transcript_after": 2,
+      "action": null,
+      "evaluation": {
+        "verdict": "ok",
+        "score": 6,
+        "notes": [
+          "has SQL",
+          "setup turn recorded"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "recall-03",
+      "category": "memory",
+      "difficulty": "easy",
+      "session": "recall-followup",
+      "question": "قديش صنف مسجل؟",
+      "expect": {
+        "must_have_sql": true,
+        "min_score_criteria": "recall_setup"
+      },
+      "client": "105",
+      "company_id": 1,
+      "elapsed_s": 2.73,
+      "answer": "563 صنف مسجل.",
+      "answer_sql": "SELECT COUNT(*) AS TotalCategories FROM t.ItemsCategories",
+      "confidence": "high",
+      "sources": [
+        "ItemsCategories"
+      ],
+      "steps": [],
+      "needs_ask": null,
+      "tools_ms": {},
+      "report_name": null,
+      "doc_search_count": 0,
+      "transcript_before": 2,
+      "transcript_after": 3,
+      "action": null,
+      "evaluation": {
+        "verdict": "ok",
+        "score": 6,
+        "notes": [
+          "has SQL",
+          "setup turn recorded"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "recall-04",
+      "category": "memory",
+      "difficulty": "easy",
+      "session": "recall-followup",
+      "question": "قديش مسار مسجل؟",
+      "expect": {
+        "must_have_sql": true,
+        "min_score_criteria": "recall_setup"
+      },
+      "client": "105",
+      "company_id": 1,
+      "elapsed_s": 3.16,
+      "answer": "عدد المسارات المسجلة = **1050 مسار**.\n\n```sql\nSELECT COUNT(*) AS RouteCount\nFROM t.RoutesInformation;\n```",
+      "answer_sql": "SELECT COUNT(*) AS RouteCount FROM t.RoutesInformation",
+      "confidence": "high",
+      "sources": [
+        "RoutesInformation"
+      ],
+      "steps": [],
+      "needs_ask": null,
+      "tools_ms": {},
+      "report_name": null,
+      "doc_search_count": 0,
+      "transcript_before": 3,
+      "transcript_after": 4,
+      "action": null,
+      "evaluation": {
+        "verdict": "ok",
+        "score": 6,
+        "notes": [
+          "has SQL",
+          "setup turn recorded"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "recall-05",
+      "category": "memory",
+      "difficulty": "easy",
+      "session": "recall-followup",
+      "question": "قديش سند قبض بيوليو 2025؟",
+      "expect": {
+        "must_have_sql": true,
+        "min_score_criteria": "recall_setup"
+      },
+      "client": "105",
+      "company_id": 1,
+      "elapsed_s": 3.76,
+      "answer": "عدد سندات القبض في يوليو 2025 هو **17 سند قبض**.\n\nهذا العدد يشمل جميع سندات القبض غير الملغاة (حيث تم استبعاد `IsVoid = 1`). إذا كنت تقصد عددًا مختلفًا (مثل عدد الفواتير أو الزبائن)، قل لي.",
+      "answer_sql": "SELECT COUNT(*) AS ReceiptCount\nFROM t.Receipts\nWHERE TransactionTypeID = 3\n  AND ISNULL(IsVoid, 0) = 0\n  AND TransactionDate >= '2025-07-01'\n  AND TransactionDate <  '2025-08-01'",
+      "confidence": "high",
+      "sources": [
+        "Receipts"
+      ],
+      "steps": [],
+      "needs_ask": null,
+      "tools_ms": {},
+      "report_name": null,
+      "doc_search_count": 0,
+      "transcript_before": 4,
+      "transcript_after": 5,
+      "action": null,
+      "evaluation": {
+        "verdict": "ok",
+        "score": 6,
+        "notes": [
+          "has SQL",
+          "setup turn recorded"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "recall-06",
+      "category": "memory",
+      "difficulty": "easy",
+      "session": "recall-followup",
+      "question": "قديش طلب بيوليو 2025؟",
+      "expect": {
+        "must_have_sql": true,
+        "min_score_criteria": "recall_setup"
+      },
+      "client": "105",
+      "company_id": 1,
+      "elapsed_s": 4.52,
+      "answer": "سؤالك «كم طلب في يوليو 2025؟» — حسب النتيجة المسترجعة:\n\n**إجمالي الطلبات لشهر يوليو 2025:** 2 طلبات (وكلاهما غير مُسلّم).\n\nهذا يعتمد على افتراض أن «الطلب» يقصد به طلبات البيع (Orders) وليس الفواتير. إذا كنت تقصد عدد الفواتير أو شيء آخر، قلّ.",
+      "answer_sql": "SELECT COUNT(*) AS total_orders, SUM(CASE WHEN ISNULL(oh.IsDelivered, 0) = 0 THEN 1 ELSE 0 END) AS undelivered_orders FROM t.OrdersHeaders oh WHERE 1=1 AND oh.CompanyID = 1 AND oh.OrderDate >= '2025-07-01' AND oh.OrderDate <= '2025-07-31'",
+      "confidence": "medium",
+      "sources": [
+        "OrdersHeaders"
+      ],
+      "steps": [],
+      "needs_ask": null,
+      "tools_ms": {},
+      "report_name": null,
+      "doc_search_count": 0,
+      "transcript_before": 5,
+      "transcript_after": 6,
+      "action": null,
+      "evaluation": {
+        "verdict": "ok",
+        "score": 6,
+        "notes": [
+          "has SQL",
+          "setup turn recorded"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "recall-07",
+      "category": "memory",
+      "difficulty": "easy",
+      "session": "recall-followup",
+      "question": "تسلم",
+      "expect": {
+        "min_score_criteria": "recall_setup"
+      },
+      "client": "105",
+      "company_id": 1,
+      "elapsed_s": 3.57,
+      "answer": "عفواً! جاهز لأي سؤال عن بيانات الشركة — مبيعات، طلبات، مرتجعات، عملاء، رصيد السيارة، أو زيارات المندوبين. 😊",
+      "answer_sql": "",
+      "confidence": "high",
+      "sources": [],
+      "steps": [],
+      "needs_ask": null,
+      "tools_ms": {},
+      "report_name": null,
+      "doc_search_count": 0,
+      "transcript_before": 6,
+      "transcript_after": 7,
+      "action": null,
+      "evaluation": {
+        "verdict": "ok",
+        "score": 6,
+        "notes": [
+          "setup turn recorded"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "recall-08",
+      "category": "memory",
+      "difficulty": "hard",
+      "session": "recall-followup",
+      "chain": "recall-01",
+      "question": "نفس المندوب الشهر الحالي مش ملغية",
+      "expect": {
+        "must_have_sql": true,
+        "answer_sql_must_contain": [
+          "Salesman",
+          "SalesPerson"
+        ],
+        "must_not_contain_sql": [
+          "2025-07"
+        ],
+        "min_score_criteria": "recall_rerequery"
+      },
+      "client": "105",
+      "company_id": 1,
+      "elapsed_s": 5.58,
+      "answer": "أفهم أنك تريد معرفة مبيعات نفس المندوب (عثمان القدسي) للشهر الحالي مع استبعاد الفواتير الملغية.\n\nبناءً على نتائج الاستعلام:\n\n- **المندوب:** عثمان القدسي (ID: 3003)\n- **آخر تاريخ فاتورة مسجل:** 12/07/2026 (يوليو 2026)\n- **عدد الفواتير (غير الملغية):** 6 فواتير\n- **إجمالي المبيعات (غير الملغية):** 52,811.04\n\nملاحظة: الشهر الحالي حسب السياق هو يوليو 2026، وهذا هو آخر شهر مسجل فيه فواتير.\n\n```sql\n-- عدد الفواتير وإجمالي المبيعات للمندوب 3003 في يوليو 2026 (غير الملغية)\nSELECT \n    COUNT(*) AS invoice_count,\n    SUM(th.DiscountAmount + th.Notes) AS gross_amount -- ملاحظة: هذا غير دقيق، الرجاء التحقق\nFROM t.TransactionsHeaders th\nWHERE th.SalesPersonID = 3003\n  AND th.TransactionTypeID = 1\n  AND ISNULL(th.IsVoid, 0) = 0\n  AND th.TransactionYear = 2026\n  AND MONTH(th.TransactionDate) = 7\n```",
+      "answer_sql": "SELECT ID, Name FROM t.SalesPersons WHERE Name LIKE N'%القدسي%'; SELECT MAX(TransactionDate) AS MaxInvDate, YEAR(MAX(TransactionDate)) AS MaxYear, MONTH(MAX(TransactionDate)) AS MaxMonth FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid,0) = 0; SELECT (SELECT COUNT(*) FROM t.TransactionsHeaders thc WHERE thc.TransactionTypeID = 1 AND ISNULL(thc.IsVoid, 0) = 0 AND thc.CompanyID = 1 AND thc.TransactionDate >= '2026-07-01' AND thc.TransactionDate <= '2026-07-31' AND thc.SalesPersonID = 3003) AS invoice_count, SUM(td.Quantity * td.Price) AS gross_amount FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 1 AND td.CompanyID = 1 AND th.TransactionDate >= '2026-07-01' AND th.TransactionDate <= '2026-07-31' AND th.SalesPersonID = 3003",
+      "confidence": "medium",
+      "sources": [
+        "SalesPersons",
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [],
+      "needs_ask": null,
+      "tools_ms": {},
+      "report_name": null,
+      "doc_search_count": 0,
+      "transcript_before": 7,
+      "transcript_after": 8,
+      "action": null,
+      "evaluation": {
+        "verdict": "weak",
+        "score": 5,
+        "notes": [
+          "has SQL"
+        ],
+        "flags": [
+          "sql_missing_Salesman"
+        ]
+      }
+    },
+    {
+      "id": "recall-ordinal-01",
+      "category": "memory",
+      "difficulty": "hard",
+      "session": "recall-followup",
+      "chain": "recall-01",
+      "question": "ارجع للسؤال الأول — عن أي مندوب كان؟",
+      "expect": {
+        "must_recall": [
+          "عثمان",
+          "القدسي"
+        ],
+        "must_not_deny": true,
+        "min_score_criteria": "transcript_index"
+      },
+      "client": "105",
+      "company_id": 1,
+      "elapsed_s": 4.37,
+      "answer": "سؤالك الأول كان عن **المندوب عثمان القدسي** — كم مبيعاته في يوليو 2025 غير الملغية (غير الملغاة). 🧾\n\nهل تريدني أن أعيد حساب هذا الرقم الآن، أم أن لديك سؤالاً تالياً عنه؟",
+      "answer_sql": "",
+      "confidence": "high",
+      "sources": [],
+      "steps": [],
+      "needs_ask": null,
+      "tools_ms": {},
+      "report_name": null,
+      "doc_search_count": 0,
+      "transcript_before": 8,
+      "transcript_after": 9,
+      "action": null,
+      "evaluation": {
+        "verdict": "ok",
+        "score": 7,
+        "notes": [
+          "recall hit 2/2"
+        ],
+        "flags": []
+      }
+    }
+  ],
+  "summary": {
+    "total": 9,
+    "by_verdict": {
+      "ok": 8,
+      "weak": 1
+    },
+    "by_category": {
+      "memory": {
+        "ok": 8,
+        "weak": 1
+      }
+    },
+    "by_difficulty": {
+      "easy": {
+        "ok": 7
+      },
+      "hard": {
+        "weak": 1,
+        "ok": 1
+      }
+    },
+    "avg_score": 6.0,
+    "pass_rate_strong_ok_pct": 88.9,
+    "hallucination_flags": [
+      "sql_missing_Salesman"
+    ],
+    "total_elapsed_s": 41.8
+  }
+}

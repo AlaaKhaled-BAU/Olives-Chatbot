@@ -179,9 +179,12 @@ CompanyID -> [[Companies]](ID)
 
 ## Estimated Size / Volatility
 Typical business table
+## Status codes (LastStatus)
+
+Decode **`0` open / `1` approved / `2` rejected / `3` canceled** — full tables, inbox rules, and Arabic labels: [[Workflow_Approval_Codes]]. Not `SystemCodes` type `Status`.
+
 ## Common Issues
 
-- **Status codes**: LastStatus observed live: 0/1/2/3 (numeric; meaning app-side) — do not invent labels
 - **Approver resolution**: FunctionID joins [[WF_Functions]].ID by convention (no declared FK); PositionID -> Positions
 - **Volume**: append-only log — always bound queries by date
 ## Tenancy

@@ -84,9 +84,19 @@ def normalize_question(question: str) -> str:
     return " ".join(question.strip().lower().split())
 
 
-def cache_key(client: str, company_id, role: str, model: str, question: str, schema_version: str = "") -> str:
-    raw = "|".join([str(client), str(company_id), str(role), str(model),
-                     normalize_question(question), str(schema_version)])
+def cache_key(
+    client: str,
+    company_id,
+    role: str,
+    model: str,
+    question: str,
+    schema_version: str = "",
+    semantic_version: str = "",
+) -> str:
+    raw = "|".join([
+        str(client), str(company_id), str(role), str(model),
+        normalize_question(question), str(schema_version), str(semantic_version),
+    ])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 

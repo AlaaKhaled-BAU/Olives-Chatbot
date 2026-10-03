@@ -20,7 +20,8 @@ import threading
 import time
 from pathlib import Path
 
-from . import catalog, config, docs, gate, hot_cache, llm, memory, metrics, params, reports, sql, tenant_pack, trace, vault
+from . import catalog, config, docs, gate, hot_cache, llm, locale_ar, memory, metrics, params, reports, sql, tenant_pack, thread, trace, vault, verify
+from .usage import Usage
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 # Live-tested at 6: a model that doesn't already know this schema's exact
@@ -30,6 +31,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # the right recovery strategy, it just needs more room to get there.
 MAX_TURNS = 12
 MODEL_ALIAS = "chatbot"  # cache-key namespace for plan/result keys (kept stable deliberately)
+# Bump when playbook/metric meaning changes; pair with setup/clear_plan_cache.py (I1).
+PLAN_SEMANTIC_VERSION = "2"
 # DeepSeek gears (core/llm.GEARS): f0 = flash non-thinking (docs/envelope/fast
 # paths), t1 = flash think-low (standard NL2SQL), t2 = flash think-high
 # (escalated joins/compound), p = pro think-high — rescue path ONLY
@@ -335,6 +338,14 @@ def _all_cards_block(client: str) -> str:
     return "\n".join(lines)
 
 
+def _prefix_messages(client: str, cache: dict, thread_head: dict | None = None) -> list[dict]:
+    """Stable prefix plus optional thread card (card is NOT part of prefix_hash)."""
+    msgs = _static_prefix(client, cache)
+    if thread_head:
+        msgs.append({"role": "system", "content": thread.format_card_prompt(thread_head)})
+    return msgs
+
+
 def _static_prefix(client: str, cache: dict) -> list[dict]:
     """Messages [0..n] whose bytes NEVER change across turns for this client.
     DeepSeek disk-caches whole prefix units, so stable content goes first and
@@ -350,6 +361,12 @@ def _static_prefix(client: str, cache: dict) -> list[dict]:
     if cards:
         msgs.append({"role": "system", "content": cards})
     return msgs
+
+
+def prefix_hash(client: str, cache: dict) -> str:
+    """Identity of the cached prefix. A playbook or schema edit changes it."""
+    blob = json.dumps(_static_prefix(client, cache), ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 _DOCS_ONLY_SCHEMA_TOOLS = frozenset({
     "introspect_schema", "search_schema_notes", "read_schema_note", "get_joins",
@@ -486,7 +503,7 @@ def _still_buffering_tool_syntax(buffer: str) -> bool:
 
 
 def _stream_turn(messages, tools, gear: str = DEFAULT_GEAR, user_id: str | None = None,
-                 cancel: threading.Event | None = None):
+                 cancel: threading.Event | None = None, usage_acc=None):
     """Runs one LLM completion with stream=True in the requested gear.
     Yields {"type": "answer_chunk", "text": ...} live as content tokens
     arrive (C7). Tool-call deltas are reconstructed silently and NEVER
@@ -498,7 +515,8 @@ def _stream_turn(messages, tools, gear: str = DEFAULT_GEAR, user_id: str | None 
     `cancel` (TRACK D): a threading.Event checked between chunks — set it
     when the client disconnects and this raises TurnCancelled promptly,
     closing the upstream HTTP stream instead of generating for nobody."""
-    stream = llm.complete(messages, gear=gear, tools=tools, stream=True, user_id=user_id)
+    stream = llm.complete(messages, gear=gear, tools=tools, stream=True,
+                          user_id=user_id, usage_acc=usage_acc)
     buffer = ""
     reasoning = ""
     forwarding = False
@@ -509,6 +527,7 @@ def _stream_turn(messages, tools, gear: str = DEFAULT_GEAR, user_id: str | None 
         if cancel is not None and cancel.is_set():
             stream.close()
             raise TurnCancelled("client disconnected")
+        # Final usage chunk: choices is empty. Do not read choices[0].
         if not chunk.choices:
             continue
         last_choice = chunk.choices[0]
@@ -727,8 +746,8 @@ TOOLS = [
             "name": "run_metric",
             "description": (
                 "Run a named business metric with the correct grain — prefer over run_select for "
-                "net sales, salesperson sales rank, returns, orders, van stock, or "
-                "customer-to-salesperson assignment. Counts against the query budget."
+                "sales, salesperson rank, returns, orders, van stock, or customer-to-salesperson "
+                "assignment. Counts against the query budget."
             ),
             "parameters": {
                 "type": "object",
@@ -736,18 +755,32 @@ TOOLS = [
                     "metric": {
                         "type": "string",
                         "description": (
-                            "Metric name or alias: net_sales (مبيعات), "
-                            "net_sales_by_salesperson (أفضل مندوب / best salesman), "
-                            "daily_sales_pack (محصلة يومية / daily sales), "
-                            "returns (مرتجعات), orders (طلبات), van_stock (رصيد السيارة), "
-                            "cfd_assignment (عملاء المندوب)."
+                            "Prefer sales (مبيعات) with filters tax and returns. "
+                            "Also: net_sales_by_salesperson (أفضل مندوب), "
+                            "daily_sales_pack (محصلة يومية), returns (مرتجعات), orders (طلبات), "
+                            "van_stock (رصيد السيارة), cfd_assignment (عملاء المندوب). "
+                            "Legacy net_sales remains for old plans only."
                         ),
                     },
                     "filters": {
                         "type": "object",
                         "properties": {
                             "from_date": {"type": "string", "description": "YYYY-MM-DD"},
-                            "to_date": {"type": "string", "description": "YYYY-MM-DD"},
+                            "to_date": {"type": "string", "description": "YYYY-MM-DD (half-open end)"},
+                            "tax": {
+                                "type": "string",
+                                "enum": ["incl", "excl"],
+                                "description": "incl=charged total (default); excl=before tax (قبل الضريبة)",
+                            },
+                            "returns": {
+                                "type": "string",
+                                "enum": ["gross", "net"],
+                                "description": "gross=sales only (default); net=gross minus returns (بعد المرتجعات)",
+                            },
+                            "group_by": {
+                                "type": "string",
+                                "enum": ["salesperson", "customer", "item", "day"],
+                            },
                             "sales_person_id": {"type": "integer"},
                             "undelivered_only": {"type": "boolean"},
                         },
@@ -1203,13 +1236,14 @@ def _build_arabic_stub(state: dict) -> str:
     return "تعذر صياغة الإجابة من البيانات المتاحة."
 
 
-def _retry_empty_final(messages: list, user_id: str | None = None) -> str | None:
+def _retry_empty_final(messages: list, user_id: str | None = None, usage_acc=None) -> str | None:
     """One extra completion with tools=None after successful tools yielded
     empty content. Gear p (pro think-high): this is the rescue path — rare,
     non-streamed, worth heavy-model quality; never used for streaming turns."""
     retry_messages = messages + [{"role": "system", "content": _EMPTY_FINAL_RETRY_NUDGE}]
     try:
-        resp = llm.complete(retry_messages, tools=None, stream=False, gear="p", user_id=user_id)
+        resp = llm.complete(retry_messages, tools=None, stream=False, gear="p",
+                            user_id=user_id, usage_acc=usage_acc)
         return _sanitize_final_text(resp.choices[0].message.content)
     except Exception:  # noqa: BLE001
         return None
@@ -1228,7 +1262,7 @@ def _resolve_final_text(final_text: str | None, messages: list, state: dict) -> 
             return final_text.strip()
     if not _has_evidence(state):
         return final_text or ""
-    retried = _retry_empty_final(messages, state.get("_user_id"))
+    retried = _retry_empty_final(messages, state.get("_user_id"), state.get("_usage"))
     if not _is_blank(retried) and not _UNRESOLVED_TOKEN_RE.search(retried):
         return retried.strip()
     return _build_arabic_stub(state)
@@ -1314,6 +1348,72 @@ def _analyze(args: dict) -> dict:
                      f"trend_direction, growth_compare, or top_movers"}
 
 
+_INVOICE_WORD_RE = re.compile(r"فاتور|invoice", re.IGNORECASE)
+_LINES_WORD_RE = re.compile(r"بنود|سطور|\blines\b", re.IGNORECASE)
+
+
+def _apply_count_backstop(final_text: str | None, state: dict) -> str:
+    """Append header recount or line-grain warning when prose treats lines as invoices."""
+    text = (final_text or "").strip()
+    if not text or not state.get("had_lines_count"):
+        return text
+    if _LINES_WORD_RE.search(text):
+        return text
+    if not _INVOICE_WORD_RE.search(text):
+        return text
+    hc = state.get("header_count")
+    if hc is not None:
+        suffix = locale_ar.HEADER_COUNT_SUFFIX.format(n=hc)
+        if suffix not in text:
+            return f"{text}\n{suffix}"
+    elif locale_ar.COUNT_NOTE_USER not in text:
+        return f"{text}\n{locale_ar.COUNT_NOTE_USER}"
+    return text
+
+
+def _after_business_sql(
+    name: str,
+    args: dict,
+    sql_text: str,
+    result,
+    cache: dict,
+    company_id,
+    client: str,
+    state: dict,
+    allowed_proc_names: list,
+):
+    """Verify hook (I1): count_note, header recount, query_log — not on recount SQL."""
+    rows = result.get("rows") if isinstance(result, dict) else result
+    if not isinstance(rows, list):
+        return result
+    state.setdefault("query_log", [])
+    state["query_log"].append({"name": name, "args": dict(args or {}), "sql": sql_text, "rows": rows})
+
+    scopes = verify.count_scopes(sql_text)
+    has_lines = any(s.get("kind") == "lines" for s in scopes)
+    extra: dict = {}
+    if has_lines:
+        extra["count_note"] = verify.COUNT_NOTE
+        state["hold_stream"] = True
+        state["had_lines_count"] = True
+
+    if has_lines and verify.needs_header_recount(sql_text, cache):
+        recount_sql = verify.header_recount_sql(sql_text)
+        if recount_sql:
+            recount_rows = sql.run_select(
+                recount_sql, company_id, client, allowed_procs=allowed_proc_names,
+            )
+            if recount_rows and recount_rows[0].get("header_count") is not None:
+                extra["header_count"] = recount_rows[0]["header_count"]
+                state["header_count"] = recount_rows[0]["header_count"]
+
+    if not extra:
+        return result
+    if isinstance(result, dict):
+        return {**result, **extra}
+    return {"rows": rows, **extra}
+
+
 def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, client, state):
     if name == "introspect_schema":
         return _introspect(cache, catalog_procs, args.get("name", ""))
@@ -1374,6 +1474,9 @@ def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, 
             rows = result.get("rows")
             if isinstance(rows, list) and (state["last_rows"] is None or len(rows) > len(state["last_rows"])):
                 state["last_rows"] = rows
+            result = _after_business_sql(
+                name, args, sql_text, result, cache, company_id, client, state, allowed_proc_names,
+            )
         return result
     if name == "run_report":
         report_name = args.get("name", "")
@@ -1426,6 +1529,9 @@ def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, 
             # clobber the actual breakdown data as "the" table.
             if isinstance(result, list) and (state["last_rows"] is None or len(result) > len(state["last_rows"])):
                 state["last_rows"] = result
+            result = _after_business_sql(
+                name, args, sql_text, result, cache, company_id, client, state, allowed_proc_names,
+            )
         return result
     return {"error": f"unknown tool {name}"}
 
@@ -1492,7 +1598,7 @@ def _build_sources(queries: list, doc_source_pairs: list[tuple[str, str]]) -> li
     return tables + _format_doc_sources(doc_source_pairs)
 
 
-def _final_contract(question: str, final_text: str, user_id: str | None) -> dict | None:
+def _final_contract(question: str, final_text: str, user_id: str | None, usage_acc=None) -> dict | None:
     """E1: one structured f0 completion (NO tools — golden rule 9 made
     structural). Returns {followups, confidence, refusal, answer_md} or None
     on any failure; the envelope degrades gracefully to the legacy shape."""
@@ -1505,6 +1611,7 @@ def _final_contract(question: str, final_text: str, user_id: str | None) -> dict
             gear=DOCS_GEAR,
             response_format={"type": "json_object"},
             user_id=user_id,
+            usage_acc=usage_acc,
         )
         data = json.loads(resp.choices[0].message.content or "{}")
         if not isinstance(data, dict):
@@ -1531,16 +1638,22 @@ def _build_envelope(question: str, final_text: str, state: dict) -> dict:
     the optional JSON contract (followups/confidence); never a second ask
     for numbers the tools already returned."""
     table = _build_table(state["last_rows"])
-    contract = _final_contract(question, final_text, state.get("_user_id")) if final_text else None
-    followups = (contract or {}).get("followups") or []
-    if not followups and final_text:
-        followups = list(_DEFAULT_FOLLOWUPS)
+    contract = _final_contract(question, final_text, state.get("_user_id"), state.get("_usage")) if final_text else None
+    thread_head = state.get("thread_head")
+    if thread_head:
+        followups = thread.card_followups(thread_head)
+    else:
+        followups = (contract or {}).get("followups") or []
+        if not followups and final_text:
+            followups = list(_DEFAULT_FOLLOWUPS)
     out: dict = {
         "table": table,
         "chart": _build_chart(table),
         "sources": _build_sources(state["queries"], state["doc_source_pairs"]),
         "followups": followups,
     }
+    if thread_head:
+        out["thread_head"] = thread_head
     if contract and not contract["refusal"] and contract["confidence"]:
         out["confidence"] = contract["confidence"]
     if state.get("report_name"):
@@ -1551,6 +1664,7 @@ def _build_envelope(question: str, final_text: str, state: dict) -> dict:
 def ask_stream(client: str, question: str, conversation: dict = None, role: str = "manager",
                subject: str | None = None, history: list[dict] | None = None,
                transcript: list | None = None,
+               thread_head: dict | None = None,
                cancel: threading.Event | None = None):
     """Generator form of ask() (C7). Yields progress/content events as they
     happen:
@@ -1562,6 +1676,23 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     threaded through to every trace.log_event call below. Optional so direct
     CLI/test callers (no HTTP auth layer) don't need to fabricate one."""
     start = time.monotonic()
+    ttft_ms: int | None = None
+
+    def _elapsed_ms() -> int:
+        return int((time.monotonic() - start) * 1000)
+
+    def _timing_fields() -> dict:
+        return {"latency_ms": _elapsed_ms(), "ttft_ms": ttft_ms}
+
+    def _mark_ttft_from_event(event: dict) -> None:
+        nonlocal ttft_ms
+        if ttft_ms is None and event.get("type") == "answer_chunk":
+            ttft_ms = _elapsed_ms()
+
+    def _mark_ttft_tool_call() -> None:
+        nonlocal ttft_ms
+        if ttft_ms is None:
+            ttft_ms = _elapsed_ms()
 
     def _record_latency():
         trace.observe_latency(client, time.monotonic() - start)
@@ -1571,6 +1702,8 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     name_aliases = client_config.get("name_aliases", [client])
 
     cache = _schema_cache(client)
+    usage_acc = Usage()
+    trace.note_prefix_hash(client, prefix_hash(client, cache))
     catalog_procs = catalog.for_client(client, name_aliases)
     allowed_proc_names: list[str] = []
 
@@ -1585,7 +1718,10 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     # a query issued after a refresh -- different version, different key,
     # a clean miss instead of a wrong hit.
     schema_version = _schema_version(cache)
-    key = memory.cache_key(client, company_id, role, MODEL_ALIAS, question, schema_version)
+    key = memory.cache_key(
+        client, company_id, role, MODEL_ALIAS, question, schema_version, PLAN_SEMANTIC_VERSION,
+    )
+    prior_card = thread_head
     report_path = _is_report_path(question, client)
 
     # Live-proven (post-swap extreme test, q13): the calendar guard MUST run
@@ -1598,7 +1734,8 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     # plan — cached SQL bakes in dates resolved on a previous day.
     calendar_ask = _empty_calendar_needs_ask(question, client, company_id)
     if calendar_ask:
-        trace.log_event(client, question, event="needs_ask", subject=subject, param="calendar_period")
+        trace.log_event(client, question, event="needs_ask", subject=subject, param="calendar_period",
+                        queries=0, result_rows=0, **_timing_fields(), **usage_acc.totals())
         _record_latency()
         yield {"type": "done", "answer": None, "needs_ask": calendar_ask}
         return
@@ -1617,7 +1754,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                 raise TurnCancelled("client disconnected before replay")
             raw_results = [sql.run_select(q, company_id, client, allowed_procs=allowed_proc_names) for q in queries]
             results = [_cap_for_context(r) for r in raw_results]
-            messages = _static_prefix(client, cache) + [
+            messages = _prefix_messages(client, cache, prior_card) + [
                 {"role": "user", "content": question},
                 {
                     "role": "user",
@@ -1628,23 +1765,22 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             answer = None
             for event in _stream_turn(messages, None, gear=DOCS_GEAR,
                                       user_id=_user_id(client, company_id, subject),
-                                      cancel=cancel):
+                                      cancel=cancel, usage_acc=usage_acc):
                 if event["type"] == "_turn_done":
                     answer = event["message"]["content"]
                 else:
+                    _mark_ttft_from_event(event)
                     yield event
             last_rows = max((r for r in raw_results if isinstance(r, list)), key=len, default=None)
             cache_state = {
                 "queries": queries, "last_rows": last_rows, "doc_source_pairs": [],
+                "_usage": usage_acc,
             }
             if _is_blank(answer) and _has_evidence(cache_state):
                 answer = _resolve_final_text(answer, messages, cache_state)
             elif answer:
                 answer = answer.strip()
             trace.record_cache_hit(client)
-            trace.log_event(client, question, event="answer", subject=subject,
-                            company_id=company_id, source="plan_cache",
-                            path=_path_flags(question, client))
             trace.record_table_uses(client, _SOURCE_TABLE_RE.findall("; ".join(queries)))
             _record_latency()
             # C3: cache_key/answer_sql returned so /feedback can act on THIS
@@ -1659,14 +1795,29 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             # -- same reasoning as _run_tool's own tracking (a smaller,
             # later query must not clobber a genuinely bigger earlier one).
             envelope = _build_envelope(question, answer, cache_state)
+            trace.log_event(client, question, event="answer", subject=subject,
+                            company_id=company_id, source="plan_cache",
+                            path=_path_flags(question, client),
+                            queries=len(queries),
+                            result_rows=len(last_rows) if isinstance(last_rows, list) else 0,
+                            **_timing_fields(), **usage_acc.totals())
+            _usage_pc = usage_acc.totals()
             yield {"type": "done", "answer": answer, "needs_ask": None,
-                   "answer_sql": "; ".join(queries), "cache_key": key,
-                   "doc_search_count": 0, **envelope}
+                   "answer_sql": "; ".join(queries), "queries": list(queries),
+                   "cache_key": key,
+                   "hold_stream": False, "thread_head": prior_card,
+                   "doc_search_count": 0,
+                   "llm_calls": _usage_pc.get("llm_calls", 0),
+                   "prompt_tokens": _usage_pc.get("prompt_tokens", 0),
+                   "completion_tokens": _usage_pc.get("completion_tokens", 0),
+                   "cache_hit_tokens": _usage_pc.get("cache_hit_tokens", 0),
+                   "cache_miss_tokens": _usage_pc.get("cache_miss_tokens", 0),
+                   **envelope}
             return
         except gate.GateError:
             pass  # cached plan no longer validates -- fall through to a full turn
 
-    messages = _static_prefix(client, cache)
+    messages = _prefix_messages(client, cache, prior_card)
     shots = memory.few_shots(client, company_id, question, limit=3)
     if shots:
         examples = "\n".join(f'- "{s["question"]}" -> `{s["proc_or_sql"]}`' for s in shots)
@@ -1852,6 +2003,11 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         "transcript": transcript or [],
         "had_business_rows": False,
         "recall_used": False,
+        "query_log": [],
+        "hold_stream": False,
+        "had_lines_count": False,
+        "header_count": None,
+        "thread_head": prior_card,
         # A3: gear routing + escalation counters. Interactive turns never use
         # gear p (C5) — p is reserved for the empty-final rescue completion.
         "gear": _initial_gear(question, howto_path=howto_path, report_path=report_path,
@@ -1860,6 +2016,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         "gate_errors": 0,
         "_user_id": _user_id(client, company_id, subject),
         "tools_ms": {},
+        "_usage": usage_acc,
         "_path_flags": (
             f"fc{int(fast_count)},ht{int(howto_path)},rp{int(report_path)},"
             f"an{int(bool(_ANALYSIS_HINT_RE.search(question)))}"
@@ -1867,18 +2024,34 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     }
     final_text = None
 
+    def _turn_trace(event: str, **fields) -> None:
+        rows = state.get("last_rows")
+        trace.log_event(
+            client, question, event=event, subject=subject,
+            queries=len(state.get("queries") or []),
+            result_rows=len(rows) if isinstance(rows, list) else 0,
+            path=state.get("_path_flags"),
+            **_timing_fields(),
+            **usage_acc.totals(),
+            **fields,
+        )
+
     for _ in range(MAX_TURNS):
         if cancel is not None and cancel.is_set():
             raise TurnCancelled("client disconnected")
         tools = _active_tools(state)
         msg = None
         for event in _stream_turn(messages, tools, gear=state["gear"],
-                                  user_id=state["_user_id"], cancel=cancel):
+                                  user_id=state["_user_id"], cancel=cancel,
+                                  usage_acc=usage_acc):
             if event["type"] == "_turn_done":
                 msg = event["message"]
             else:
+                _mark_ttft_from_event(event)
                 yield event
         tool_calls = msg.get("tool_calls")
+        if tool_calls:
+            _mark_ttft_tool_call()
 
         if not tool_calls and _looks_like_malformed_tool_syntax(msg.get("content")):
             continue  # drop this turn, don't add it to messages, try again
@@ -1923,7 +2096,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                         ),
                     })
                     continue
-                trace.log_event(client, question, event="needs_ask", subject=subject, param=asked)
+                _turn_trace("needs_ask", param=asked)
                 _record_latency()
                 yield {"type": "done", "answer": None, "needs_ask": asked}
                 return
@@ -2004,29 +2177,37 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
 
     if _has_evidence(state):
         final_text = _resolve_final_text(final_text, messages, state)
+        final_text = _apply_count_backstop(final_text, state)
+        new_card = thread.card_from_query_log(state.get("query_log"))
+        if new_card:
+            state["thread_head"] = new_card
         _kw = {"company_id": company_id}
         if state.get("tools_ms"):
             _kw["tools_ms"] = state["tools_ms"]
-        trace.log_event(client, question, event="answer", subject=subject, **_kw)
         if state["queries"] and not state.get("report_path"):
             memory.set_plan(key, client, {"queries": state["queries"]})
         envelope = _build_envelope(question, final_text, state)
+        _turn_trace("answer", **_kw)
     elif _is_blank(final_text):
         final_text = "I can't answer that confidently from the available data."
         _kw = {}
         if state.get("tools_ms"):
             _kw["tools_ms"] = state["tools_ms"]
-        trace.log_event(client, question, event="refused", subject=subject, **_kw)
+        _turn_trace("refused", **_kw)
         envelope = {"table": None, "chart": None, "sources": [], "followups": [], "doc_search_count": state.get("doc_searches", 0)}
     else:
         final_text = final_text.strip()
-        _kw = {"company_id": company_id, "path": state.get("_path_flags")}
+        final_text = _apply_count_backstop(final_text, state)
+        new_card = thread.card_from_query_log(state.get("query_log"))
+        if new_card:
+            state["thread_head"] = new_card
+        _kw = {"company_id": company_id}
         if state.get("tools_ms"):
             _kw["tools_ms"] = state["tools_ms"]
-        trace.log_event(client, question, event="answer", subject=subject, **_kw)
         if state["queries"] and not state.get("report_path"):
             memory.set_plan(key, client, {"queries": state["queries"]})
         envelope = _build_envelope(question, final_text, state)
+        _turn_trace("answer", **_kw)
 
     # TRACK B: which tables did this turn actually touch?
     used_tables = _SOURCE_TABLE_RE.findall(_answer_sql(state) or "")
@@ -2038,10 +2219,31 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     # never re-executed, only ever displayed as few-shot text, so joining
     # multiple statements here is safe even though gate.py would reject
     # them joined (plan_cache keeps the real separable list instead, above).
+    _usage = usage_acc.totals()
+    _ql = state.get("queries") or []
+    _qlog = [
+        {
+            "name": e.get("name"),
+            "sql": e.get("sql"),
+            "row_count": len(e.get("rows") or []) if isinstance(e.get("rows"), list) else None,
+        }
+        for e in (state.get("query_log") or [])
+        if e.get("sql")
+    ]
     yield {"type": "done", "answer": final_text, "needs_ask": None,
-           "answer_sql": _answer_sql(state), "cache_key": key,
+           "answer_sql": _answer_sql(state), "queries": list(_ql), "query_log": _qlog,
+           "cache_key": key,
+           "hold_stream": bool(state.get("hold_stream")),
+           "thread_head": state.get("thread_head"),
            "doc_search_count": state.get("doc_searches", 0),
-           "tools_ms": dict(state.get("tools_ms") or {}), **envelope}
+           "vault_search_count": state.get("vault_searches", 0),
+           "tools_ms": dict(state.get("tools_ms") or {}),
+           "llm_calls": _usage.get("llm_calls", 0),
+           "prompt_tokens": _usage.get("prompt_tokens", 0),
+           "completion_tokens": _usage.get("completion_tokens", 0),
+           "cache_hit_tokens": _usage.get("cache_hit_tokens", 0),
+           "cache_miss_tokens": _usage.get("cache_miss_tokens", 0),
+           **envelope}
 
 
 def ask(client: str, question: str, conversation: dict = None, role: str = "manager", subject: str | None = None) -> dict:

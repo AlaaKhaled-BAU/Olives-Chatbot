@@ -985,7 +985,10 @@ def test_report_path_bypasses_poisoned_plan_cache(monkeypatch, tmp_path):
     question = "اعرض تقرير المبيعات والطلبات لمقارنة المناديب"
     scope = {"CompanyID": 2}
     cache = agent._schema_cache("105")
-    key = memory.cache_key("105", 2, "manager", agent.MODEL_ALIAS, question, agent._schema_version(cache))
+    key = memory.cache_key(
+        "105", 2, "manager", agent.MODEL_ALIAS, question,
+        agent._schema_version(cache), agent.PLAN_SEMANTIC_VERSION,
+    )
     poison_sql = "SELECT COUNT(DISTINCT th.TransactionNo) FROM t.TransactionsHeaders th"
     memory.set_plan(key, "105", {"queries": [poison_sql]})
 
@@ -1060,6 +1063,50 @@ def test_not_certified_clears_report_path_lock():
     assert "run_select" not in names
     assert "introspect_schema" not in names
     assert names <= {"run_metric", "run_report", "ask_user", "analyze", "recall_turns"}
+
+
+def test_run_tool_lines_count_adds_verify_fields(monkeypatch, tmp_path):
+    july_lines_sql = """
+SELECT COUNT(*) AS line_count
+FROM t.TransactionsHeaders th
+INNER JOIN t.TransactionsDetails td
+  ON th.CompanyID = td.CompanyID
+ AND th.TransactionTypeID = td.TransactionTypeID
+ AND th.TransactionYear = td.TransactionYear
+ AND th.TransactionNo = td.TransactionNo
+WHERE th.CompanyID = 2
+  AND th.TransactionTypeID = 1
+  AND ISNULL(th.IsVoid, 0) = 0
+  AND th.TransactionDate >= '2025-07-01'
+  AND th.TransactionDate < '2025-08-01'
+"""
+    schema_cache = {
+        "tables": {
+            "dbo.TransactionsHeaders": [
+                {"column": "CompanyID"}, {"column": "TransactionTypeID"},
+                {"column": "TransactionYear"}, {"column": "TransactionNo"},
+                {"column": "IsVoid"}, {"column": "TransactionDate"},
+            ],
+        },
+    }
+    state = {"queries": [], "last_rows": None, "doc_source_pairs": []}
+
+    def fake_run_select(sql_text, *a, **k):
+        if "DISTINCT" in sql_text.upper():
+            return [{"header_count": 2}]
+        return [{"line_count": 5}]
+
+    with patch.object(agent.sql, "run_select", side_effect=fake_run_select):
+        result = agent._run_tool(
+            "run_select",
+            {"sql": july_lines_sql},
+            schema_cache, {}, [], 2, "105", state,
+        )
+    assert result["count_note"] == agent.verify.COUNT_NOTE
+    assert result["header_count"] == 2
+    assert state["hold_stream"] is True
+    assert len(state["query_log"]) == 1
+    assert state["query_log"][0]["sql"] == july_lines_sql
 
 
 def test_visit_plan_ask_salesman_singular():

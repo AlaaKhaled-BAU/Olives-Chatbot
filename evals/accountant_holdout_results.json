@@ -1,0 +1,552 @@
+{
+  "run_at": "2026-10-03T11:17:02.190705+00:00",
+  "client": "105",
+  "llm_base_url": "https://api-for-cursor.standardagents.ai/v1",
+  "llm_model_fast": "composer-2.5",
+  "battery_note": "Representative 16-turn subset only; full 67-turn holdout not run in this session.",
+  "cases_file": "accountant_holdout.jsonl",
+  "repeat": 1,
+  "turns": 16,
+  "sessions": 10,
+  "status_counts": {
+    "fail": 2,
+    "skipped_pending_gold": 5,
+    "pass": 7,
+    "weak": 2
+  },
+  "flake": null,
+  "results": [
+    {
+      "id": "ah-001",
+      "session": "s-july-sales",
+      "turn": 1,
+      "question": "قديش صافي مبيعات يوليو 2025؟",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "client": "105",
+      "elapsed_s": 116.25,
+      "answer": "",
+      "answer_sql": "",
+      "needs_ask": null,
+      "sources": [],
+      "steps": [],
+      "error": "APIError: Agent agent-ef1dabee-444e-4749-bfb8-55e2d7a4187c already has active run",
+      "evaluation": {
+        "status": "fail",
+        "kind": "number",
+        "notes": [
+          "APIError: Agent agent-ef1dabee-444e-4749-bfb8-55e2d7a4187c already has active run"
+        ],
+        "flags": [
+          "agent_error"
+        ]
+      }
+    },
+    {
+      "id": "ah-002",
+      "session": "s-july-sales",
+      "turn": 2,
+      "question": "طيب قبل الضريبة",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "client": "105",
+      "elapsed_s": 1.41,
+      "answer": "",
+      "answer_sql": "",
+      "needs_ask": null,
+      "sources": [],
+      "steps": [],
+      "error": "APIError: Agent agent-ef1dabee-444e-4749-bfb8-55e2d7a4187c already has active run",
+      "evaluation": {
+        "status": "fail",
+        "kind": "number",
+        "notes": [
+          "APIError: Agent agent-ef1dabee-444e-4749-bfb8-55e2d7a4187c already has active run"
+        ],
+        "flags": [
+          "agent_error"
+        ]
+      }
+    },
+    {
+      "id": "ah-003",
+      "session": "s-july-sales",
+      "turn": 3,
+      "question": "وبعد المرتجعات",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "client": "105",
+      "elapsed_s": 164.0,
+      "answer": "**صافي المبيعات بعد خصم المرتجعات يبلغ 520.84 (شاملاً الضريبة)، ولا يختلف عن إجمالي المبيعات لأنه لم تُسجَّل أي مرتجعات (0.00).**\n\nيُحتسب ذلك من فاتورتي مبيعات غير ملغات (`TransactionTypeID = 1`)، دون أي فاتورة مرتجع (`TransactionTypeID = 2`) في الفترة المعتمدة للاستعلام.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [],
+      "error": null,
+      "evaluation": {
+        "status": "skipped_pending_gold",
+        "kind": "number",
+        "notes": [
+          "gold pending — human must fill from read-only SQL"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-004",
+      "session": "s-july-sales",
+      "turn": 4,
+      "question": "منيح هيك؟",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "opinion",
+        "must_not_invent_target": true
+      },
+      "client": "105",
+      "elapsed_s": 102.19,
+      "answer": "**نعم — الرقم متسق مع تعريف «بعد المرتجعات» في هذه الفترة: 520.84 شاملاً الضريبة، دون أي خصم مرتجعات لأن المسجل 0.00.**\n\nيُحتسب ذلك من **فاتورتي مبيعات** غير ملغات (نوع 1) في نطاق الشركة المحددة في الواجهة؛ بما أنه لا توجد فواتير مرتجع (نوع 2)، يطابق صافي المبيعات بعد المرتجعات إجمالي المبيعات قبل خصم المرتجعات. إذا كان المطلوب مقارنةً **إجمالي يوليو 2025 لجميع المناديب** أو **المبلغ قبل الضريبة**، يمكن تحديد ذلك باستعلام منفصل.",
+      "answer_sql": "",
+      "needs_ask": null,
+      "sources": [],
+      "steps": [],
+      "error": null,
+      "evaluation": {
+        "status": "pass",
+        "kind": "opinion",
+        "notes": [
+          "opinion without invented target"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-005",
+      "session": "s-net-en",
+      "turn": 1,
+      "question": "July 2025 gross sales including tax — what's the total?",
+      "company_id": 2,
+      "lang": "en",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "client": "105",
+      "elapsed_s": 88.8,
+      "answer": "**Gross sales for July 2025, including tax, total 520.84** — from two non-void sales invoices (type 1); no returns were recorded in that period (returns 0.00).",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [],
+      "error": null,
+      "evaluation": {
+        "status": "skipped_pending_gold",
+        "kind": "number",
+        "notes": [
+          "gold pending — human must fill from read-only SQL"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-006",
+      "session": "s-net-en",
+      "turn": 2,
+      "question": "Same period net of credit notes",
+      "company_id": 2,
+      "lang": "en-mixed",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "client": "105",
+      "elapsed_s": 82.49,
+      "answer": "**Net sales for the same period after credit notes: 520.84 (tax included).** No return invoices (type 2) were posted in that window, so the figure matches gross sales on two non-void sales invoices. Return volume recorded: **0.00** (**0** credit notes). If you need the amount before tax or a breakdown by salesperson, that can be pulled separately.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [],
+      "error": null,
+      "evaluation": {
+        "status": "skipped_pending_gold",
+        "kind": "number",
+        "notes": [
+          "gold pending — human must fill from read-only SQL"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-008",
+      "session": "s-paraphrase-returns",
+      "turn": 1,
+      "question": "كم طلعلنا مبيعات شهر 7 سنة 2025؟",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "client": "105",
+      "elapsed_s": 84.12,
+      "answer": "**إجمالي مبيعات يوليو 2025 (شاملاً الضريبة، فواتير مبيعات غير ملغاة من نوع 1) يبلغ 520.84**، من **2** فاتورة مبيعات؛ لم تُسجَّل مرتجعات في الشهر (**0.00**)، فيتطابق الصافي بعد المرتجعات مع نفس الرقم (**520.84**). يمكن التحديد في حال كان المطلوب المبلغ قبل الضريبة أو التوزيع حسب المندوب.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [],
+      "error": null,
+      "evaluation": {
+        "status": "skipped_pending_gold",
+        "kind": "number",
+        "notes": [
+          "gold pending — human must fill from read-only SQL"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-009",
+      "session": "s-paraphrase-returns",
+      "turn": 2,
+      "question": "بدون المرتجعات",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "client": "105",
+      "elapsed_s": 86.65,
+      "answer": "**إجمالي مبيعات يوليو 2025 دون خصم المرتجعات (شاملاً الضريبة، فواتير مبيعات غير ملغاة من نوع 1) يبلغ 520.84** — من **2** فاتورة؛ لم تُسجَّل مرتجعات في الشهر (**0.00**)، فيتطابق الرقم مع الصافي بعد المرتjعات. يمكن التحديد في حال كان المطلوب المبلغ قبل الضريبة أو التوزيع حسب المندوب.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [],
+      "error": null,
+      "evaluation": {
+        "status": "skipped_pending_gold",
+        "kind": "number",
+        "notes": [
+          "gold pending — human must fill from read-only SQL"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-010",
+      "session": "s-paraphrase-returns",
+      "turn": 3,
+      "question": "شو رأيك نركز على مين من المندوبين؟",
+      "company_id": 2,
+      "lang": "ar-msa",
+      "expects": {
+        "type": "opinion",
+        "must_not_invent_target": true
+      },
+      "client": "105",
+      "elapsed_s": 76.34,
+      "answer": "**يُنصَح بالتركيز على المندوب Imad (SalesPersonID: 1)** — ففي يوليو 2025 لم تُسجَّل مبيعات فواتير (نوع 1، غير ملغاة) إلا لديه: **520.84** شاملة الضريبة من **2** فاتورة، و**0.00** مرتجعات، أي أن **100%** من نشاط المبيعات في الشهر يعود إليه.\n\nلا يوجد في النتائج مندوب آخر يمكن مقارنته أو توزيع الحصة عليه؛ أي تحليل «من نركز عليه» في هذا الشهر يقتصر عملياً على **Imad**. إذا رغبت في مقارنة مع أشهر أخرى أو مع مناديب لم يُصدِروا فواتير في يوليو، يمكن طلب ذلك صراحةً.",
+      "answer_sql": "SELECT th.SalesPersonID, sp.Name AS SalesPersonName, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo INNER JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID AND sp.CompanyID = th.CompanyID WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01' GROUP BY th.SalesPersonID, sp.Name",
+      "needs_ask": null,
+      "sources": [
+        "SalesPersons",
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [],
+      "error": null,
+      "evaluation": {
+        "status": "pass",
+        "kind": "opinion",
+        "notes": [
+          "opinion without invented target"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-014",
+      "session": "s-nextday",
+      "turn": 2,
+      "question": "نفس الرقم",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "clarify",
+        "must_not_reuse_yesterday": true,
+        "asks_period": true
+      },
+      "client": "105",
+      "elapsed_s": 151.6,
+      "answer": "**نعم — الرقم كما سبق: إجمالي مبيعات يوليو 2025 (فواتير مبيعات نوع 1 غير ملغاة، شاملاً الضريبة، دون خصم المرتjعات) يبلغ 520.84**، من **2** فاتورة، والمرتجعات **0.00**، فيتطابق الصافي بعد المرتجعات مع **520.84**.\n\nيُحتسب ذلك على أساس مبيعات الفواتير الميدانية (شامل الضريبة، gross). إذا كان المقصود المبلغ قبل الضريبة أو صافياً بعد خصم المرتjعات صراحةً، يمكن التحديد لإعادة العرض بنفس الحبة.\nتنبيه: العدد المذكور كفواتير هو عدد البنود، وليس عدد رؤوس الفواتير.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "looking up earlier questions",
+        "running query 1 of 4"
+      ],
+      "error": null,
+      "evaluation": {
+        "status": "weak",
+        "kind": "clarify",
+        "notes": [],
+        "flags": [
+          "did_not_ask_period"
+        ]
+      }
+    },
+    {
+      "id": "ah-019",
+      "session": "s-howto-assign",
+      "turn": 1,
+      "question": "كيف بسند الزبائن على المندوب بالباك أوفيس؟",
+      "company_id": 1,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "howto",
+        "phrases": [
+          "Position",
+          "Update",
+          "مندوب",
+          "زبون",
+          "assign"
+        ]
+      },
+      "client": "105",
+      "elapsed_s": 70.31,
+      "answer": "**يُنفَّذ التسكين من شاشة «Assign Customers for Salesman» (تعيين الزبائن للمندوب) في الباك أوفيس، عبر اختيار منصب المندوب ثم تحديد الزبائن وحفظ التعديل.**\n\n- افتح نافذة **تعيين الزبائن للمندوب** ضمن إدارة **الزبائن (Customers)** في الباك أوفيس.\n- اختر **منصب المندوب (Salesman Position)** من القائمة؛ التسكين يتم على مستوى المنصب وليس باختيار اسم المندوب مباشرة في هذه الشاشة.\n- فعّل **مربعات الاختيار** بجانب الزبائن المراد إسنادهم إلى ذلك المنصب.\n- اضغط **Update** لحفظ الإسناد؛ بدون هذا الإجراء **لا يظهر الزبون على جهاز المندوب** ولا يمكن إجراء معاملات معه من التطبيق الميداني.\n- لإلغاء الإسناد، أزل التحديد عن الزبون ثم اضغط **Update** مرة أخرى.\n\n**المصدر:** back-office/customers.md › **4.8 Customers - Assign Customers for Salesman**",
+      "answer_sql": "",
+      "needs_ask": null,
+      "sources": [
+        "back-office/customers.md › 4.8 Customers - Assign Customers for Salesman",
+        "back-office/salespersons.md › 3.3.5 Sales Persons -Salespersons Management-Assign Item for salesman",
+        "back-office/customers.md › 4.12 Customers - Customers Item Assignment",
+        "user_guide.md › 4.8 Customers - Assign Customers for Salesman",
+        "create_sales_invoice.md › إنشاء فاتورة مبيعات جديدة — Create Sales Invoice › أين تُنشأ فاتورة المبيعات؟ › في الباك أوفيس (Transactions — Sales Invoice §7.3)"
+      ],
+      "steps": [
+        "searching documentation"
+      ],
+      "error": null,
+      "evaluation": {
+        "status": "pass",
+        "kind": "howto",
+        "notes": [
+          "howto cues 5/5"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-020",
+      "session": "s-howto-cust-types",
+      "turn": 1,
+      "question": "وين بضيف نوع زبون جديد؟",
+      "company_id": 1,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "howto",
+        "phrases": [
+          "نوع",
+          "type",
+          "customer",
+          "زبون"
+        ]
+      },
+      "client": "105",
+      "elapsed_s": 122.79,
+      "answer": "**يُضاف نوع الزبون الجديد من تبويب «أنواع الزبائن» (Customers Types) ضمن قسم الزبائن (Customers) في الباك أوفيس.**\n\n- افتح **Customers (الزبائن)** في الباك أوفيس، ثم انتقل إلى تبويب **Customers Types / أنواع الزبائن**.\n- من هذا التبويب يمكن **إضافة، تعديل، أو حذف** سجلات أنواع الزبائن (مثل: جملة، هايبرماركت، نقدي، وغيرها).\n- عند الإضافة أو التعديل تظهر نافذة بحقول **Name (الاسم)** و**Short Name (الاسم المختصر)** فقط.\n- الأنواع المعرّفة هنا **تظهر للمندوب على الجهاز اللوحي** لتسهيل اختيار الزبون عند تنفيذ المعاملات.\n- **تنويه:** «أنواع الزبائن» تختلف عن **«فئات الزبائن» (Customers Classes)**؛ الفئات تصنيف إداري في الباك أوفيس ولا تُعرض على لوحة المندوب بنفس طريقة الأنواع.\n\n**المصدر:** back-office/customers.md › **4.1 Customers - Customers Types**",
+      "answer_sql": "",
+      "needs_ask": null,
+      "sources": [
+        "back-office/customers.md › 4.8 Customers - Assign Customers for Salesman",
+        "back-office/customers.md › 4.12 Customers - Customers Item Assignment",
+        "back-office/customers.md › 4.23 Customers - Add Discount by Customers type",
+        "back-office/customers.md › 4.24 Customers - Customers in Map",
+        "user_guide.md › 4.8 Customers - Assign Customers for Salesman",
+        "back-office/customers.md › 4.1 Customers - Customers Types",
+        "back-office/customers.md › 4.13 Customers - Customers Classes",
+        "back-office/customers.md › 4.22 Customers - New Customers Locations"
+      ],
+      "steps": [
+        "searching documentation",
+        "searching documentation"
+      ],
+      "error": null,
+      "evaluation": {
+        "status": "pass",
+        "kind": "howto",
+        "notes": [
+          "howto cues 4/4"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-039",
+      "session": "s-label-tax",
+      "turn": 1,
+      "question": "مبيعات يوليو 2025 — شامل الضريبة ولا قبلها؟",
+      "company_id": 2,
+      "lang": "ar-msa",
+      "expects": {
+        "type": "clarify",
+        "asks_basis_or_period": true
+      },
+      "client": "105",
+      "elapsed_s": 148.6,
+      "answer": "**مبيعات يوليو 2025 شاملة الضريبة: 520.84** (قبل الضريبة: **449.00**؛ ضريبة محسوبة تقريباً **71.84**).\n\nعند ذكر «مبيعات» دون تحديد، يُقصد في أوليفز المعيار الافتراضي: **إجمالي المبلغ المحصّل على بنود فواتير المبيعات بعد الخصومات وشامل الضريبة**، لأن حقل `Price` في تفاصيل الفاتورة يمثل قيمة السطر شاملة الضريبة. المبلغ قبل الضريبة يُستخرج بخصم `TaxAmount` من نفس الأساس.\n\nالرقم محسوب على **فواتير مبيعات** (`TransactionTypeID = 1`) غير الملغاة، للفترة من 2025-07-01 إلى 2025-08-01، **بدون خصم المرتجعات** (لم تُسجَّل مرتجعات في يوليو). وُجدت **فاتورتان** في الشهر.\n\nإذا رغبت في **صافي المبيعات بعد المرتجعات** أو في **طلبات الحجز** بدلاً من الفواتير، يمكن التحديد لإعادة الاحتساب على ذلك الأساس.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'; SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN (ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) - ABS(td.TaxAmount)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN (ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) - ABS(td.TaxAmount)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN (ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) - ABS(td.TaxAmount)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN (ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) - ABS(td.TaxAmount)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4",
+        "running query 2 of 4"
+      ],
+      "error": null,
+      "evaluation": {
+        "status": "pass",
+        "kind": "clarify",
+        "notes": [],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-048",
+      "session": "s-metric-items-sold",
+      "turn": 1,
+      "question": "أكثر صنف مبيعاً بيوليو 2025",
+      "company_id": 1,
+      "lang": "ar-msa",
+      "expects": {
+        "type": "label",
+        "phrases": [
+          "صنف",
+          "item"
+        ]
+      },
+      "client": "105",
+      "elapsed_s": 106.3,
+      "answer": "**أكثر صنف مبيعاً في يوليو 2025 (حسب قيمة مبيعات فواتير المبيعات، شاملة الضريبة وبدون خصم المرتجعات) هو الصنف `P1` — Item 1، بإجمالي 2.10.**\n\nيليه الصنف `BBB1` بقيمة 1.05 في الشهر نفسه. الاعتماد هنا على فواتير المبيعات غير الملغاة (`TransactionTypeID = 1`) ضمن الفترة من 2025-07-01 إلى 2025-08-01، وبمقياس **قيمة المبيعات المحصّلة** وليس كمية الوحدات المباعة.\n\n| ItemCode | ItemName | قيمة المبيعات |\n|----------|----------|---------------|\n| P1 | Item 1 | 2.10 |\n| BBB1 | BBB1 | 1.05 |\n\nإذا كان المطلوب الترتيب **حسب الكمية المباعة** أو بعد **خصم المرتجعات**، يمكن تحديد ذلك عند الطلب.",
+      "answer_sql": "SELECT td.ItemCode, i.Name AS ItemName, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo INNER JOIN t.Items i ON i.ItemCode = td.ItemCode AND i.CompanyID = td.CompanyID WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 1 AND td.CompanyID = 1 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01' GROUP BY td.ItemCode, i.Name",
+      "needs_ask": null,
+      "sources": [
+        "Items",
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4"
+      ],
+      "error": null,
+      "evaluation": {
+        "status": "pass",
+        "kind": "label",
+        "notes": [],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-052",
+      "session": "s-chain-doc-metric",
+      "turn": 3,
+      "question": "منيح العدد؟",
+      "company_id": 1,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "opinion",
+        "must_not_invent_target": true
+      },
+      "client": "105",
+      "elapsed_s": 156.2,
+      "answer": "**لا — هذا المستوى لا يُعدّ نشاطاً تشغيلياً طبيعياً لشهر كامل.**\n\nفي **يوليو 2025** (مبيعات فواتير، شامل الضريبة، قبل خصم المرتجعات) المسجّل **3.15** فقط، موزّعة على **يومين** (8 و9 يوليو) وبما يعادل **فاتورتين** (1.05 ثم 2.10). لا توجد مرتجعات في الشهر، والأصناف P1 وBBB1 تغطيان كامل المبلغ — وهذا نمط يشبه **اختبار النظام أو تسجيلاً تجريبياً** أكثر من دورة مبيعات شهرية.\n\nللمقارنة ضمن **2025** على نفس الشركة: أشهر مثل **يناير** و**أبريل** و**مايو** تسجّل عشرات إلى مئات في أيام نشطة، بينما **يوليو** يقتصر على هاتين العمليتين فقط دون أي يوم آخر في الشهر. حتى أيام أخرى «ضعيفة» في السنة غالباً تتجاوز 3.15 أو تتضمن عدداً أكبر من الحركات.\n\n**خلاصة إدارية:** الرقم **صحيح وفق السجل**، لكنه **منخفض جداً** ولا يصلح مؤشراً لأداء تجاري أو لاتخاذ قرار؛ يُفضّل التحقق من أن الفواتير ليست تجريبية، ومن تغطية التسجيل لبقية أيام يوليو، ومن وجود مبيعات عبر **طلبات** (Orders) إن كان نموذج العمل يعتمد الطلب وليس الفاتورة المباشرة.\n\nإذا رغبت في مقارنة يوليو بشهر محدد أو بمتوسط أشهر 2025، يمكن تحديد الشهر المطلوب.\nتنبيه: العدد المذكور كفواتير هو عدد البنود، وليس عدد رؤوس الفواتير.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 1 AND td.CompanyID = 1 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'; SELECT th.TransactionDate AS sale_day, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 1 AND td.CompanyID = 1 AND th.TransactionDate >= '2025-01-01' AND th.TransactionDate < '2026-01-01' GROUP BY th.TransactionDate",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4",
+        "running query 2 of 4"
+      ],
+      "error": null,
+      "evaluation": {
+        "status": "pass",
+        "kind": "opinion",
+        "notes": [
+          "opinion without invented target"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-056",
+      "session": "s-clarify-period",
+      "turn": 1,
+      "question": "قديش المبيعات؟",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "clarify",
+        "asks_period": true
+      },
+      "client": "105",
+      "elapsed_s": 119.4,
+      "answer": "**إجمالي مبيعات فواتير المبيعات للشركة المحددة (شامل الضريبة، دون خصم المرتجعات، وعلى كامل الفترات المسجلة) يبلغ 89,185.60.**\n\nيستند هذا الرقم إلى **99** فاتورة مبيعات غير ملغاة (`TransactionTypeID = 1`). وُجدت **17** فاتورة مرتجع بقيمة **13,290.84**؛ فإذا رغبت في الصافي بعد المرتجعات يكون **75,894.76** (شامل الضريبة).\n\nلم يُحدَّد في السؤال شهر أو سنة؛ النتيجة تشمل كل الفواتير المسجلة في الشركة الحالية. يمكن التحديد إذا كان المطلوب مبيعات شهر محدد، المبلغ قبل الضريبة، أو قيمة الطلبات المحجوزة (وليس الفواتير فقط).\nتنبيه: العدد المذكور كفواتير هو عدد البنود، وليس عدد رؤوس الفواتير.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4"
+      ],
+      "error": null,
+      "evaluation": {
+        "status": "weak",
+        "kind": "clarify",
+        "notes": [],
+        "flags": [
+          "did_not_ask_period"
+        ]
+      }
+    }
+  ],
+  "promote_verified_query": false
+}

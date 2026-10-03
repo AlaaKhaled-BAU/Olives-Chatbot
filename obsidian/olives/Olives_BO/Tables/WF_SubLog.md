@@ -73,7 +73,9 @@ last_verified: 2026-07-05
 
 ## Business Purpose
 
-Workflow configuration or log table for approval process management.
+Per-step workflow log for tablet **approval requests** (one row per approver position / engine step). Pair with [[WF_MasterLog]] on `ReqID`.
+
+**Code columns** (`Action`, `ActionNeed`) and supervisor inbox filters: [[Workflow_Approval_Codes]]. Pending on you: `Action IS NULL` and `ActionNeed = N'AR'` (see [[WF_GetPositionWFData]]).
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

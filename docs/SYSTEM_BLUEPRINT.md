@@ -64,7 +64,7 @@ with its executed query, row count, and data-freshness stamp instead of a bare a
 | Need | Example (ar) | Served by |
 |---|---|---|
 | Daily KPI counts | كم عدد الزبائن النشطين؟ | fast-count path → metric pack / master terms, gear `f0` |
-| Net sales for a period | صافي مبيعات يوليو 2025؟ | NL→SQL via `net_sales` metric / certified report template, gear `t1/t2` |
+| Charged sales for a period | صافي مبيعات يوليو 2025؟ | `net_sales`: line `Price` after discounts, tax already inside `Price`. قبل الضريبة and بعد المرتجعات are playbook readings on `run_select`, not extra metrics. |
 | Salesman performance | مبيعات كل مندوب هذا الشهر | `net_sales_by_salesperson` metric + report template |
 | Returns control | نسبة المرتجعات إلى المبيعات غير الملغاة؟ | returns-ratio NL→SQL (+ `analyze` for arithmetic) |
 | Collections & receipts | سداديات عميل خلال فترة | receipt-collection report templates |

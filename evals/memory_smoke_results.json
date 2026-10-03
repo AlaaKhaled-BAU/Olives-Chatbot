@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "company_switch_clears_card",
+      "pass": true,
+      "evidence": {
+        "thread_head": null,
+        "history": [],
+        "transcript": []
+      }
+    },
+    {
+      "name": "record_session_persists_thread_head",
+      "pass": true,
+      "evidence": {
+        "tax": "excl",
+        "returns": "net",
+        "metric": "sales"
+      }
+    },
+    {
+      "name": "basis_followup_card_in_prompt",
+      "pass": true,
+      "evidence": "Thread card"
+    }
+  ],
+  "all_pass": true
+}

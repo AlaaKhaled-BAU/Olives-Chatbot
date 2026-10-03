@@ -1,0 +1,145 @@
+{
+  "run_at": "2026-08-29T14:29:32Z",
+  "elapsed_s": 273.0,
+  "summary": {
+    "PASS": 7,
+    "WARN": 0,
+    "FAIL": 0,
+    "SKIP": 0,
+    "INFO": 1
+  },
+  "by_category": {
+    "transcript_index": {
+      "PASS": 2,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "tools_ms": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "morphology": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "docs_gap": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "break": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "session": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "rate_limit": {
+      "PASS": 0,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 1
+    }
+  },
+  "findings": [
+    {
+      "test": "history_amnesia_after_8",
+      "category": "transcript_index",
+      "verdict": "PASS",
+      "denies_memory": false,
+      "has_correct_fact": true,
+      "answer_snip": "أنا أعتذر، لكن لا أملك في سياق المحادثة الحالية أي معلومات عن «سؤالك الأول عن خيار النظام» وقيمته الرقمية.\n\nبداية هذه الجلسة كانت أسئلة عن:\n1. خيار النظام رقم **157**\n2. خيار النظام رقم **211**\n3. إسناد الزبائن للمندوب\n4. الفرق بين الطلب والفاتورة\n5. عدد المسارات\n6. عدد سندات القبض\n7. معنى IsSuspended\n\nلكن «سؤالك الأول» في فهرس المحادثة مُدرَج فقط كعنوان («ما هو خيار النظام رقم 157؟») من دون الجوا"
+    },
+    {
+      "test": "index_second_question_211",
+      "category": "transcript_index",
+      "verdict": "PASS",
+      "denies_memory": false,
+      "has_211": true,
+      "answer_snip": "خيار النظام رقم **211**:\n\n- **الوصف:** «No GPS Check For Non Route Customers» — «عدم التحقق من GPS للزبائن غير الموجودين في المسار».\n- **القيمة:** `0` = معطّل (Off) — أي يتحقق النظام من موقع GPS حتى للزبون غير الموجود ضمن مسار المندوب.\n- **الفائدة:** عند تفعيله يسمح للمندوب بزيارة زبون غير مضمّن في خطة المسار من دون أن يطلب النظام موقعه الجغرافي/يمنع العملية.\n\nالمصدر: نظام الخيارات › دليل استكشاف "
+    },
+    {
+      "test": "tools_ms_in_sse",
+      "category": "tools_ms",
+      "verdict": "PASS",
+      "tools_ms": {
+        "search_docs": 17
+      },
+      "keys": [
+        "answer",
+        "answer_chunk",
+        "answer_sql",
+        "chart",
+        "confidence",
+        "followups",
+        "report_name",
+        "sources",
+        "step",
+        "table",
+        "tools_ms",
+        "turn_id"
+      ]
+    },
+    {
+      "test": "morphology_invoice_create_tablet",
+      "category": "morphology",
+      "verdict": "PASS",
+      "tablet_hits": 5,
+      "sources_count": 4,
+      "answer_snip": "إليك خطوات إنشاء فاتورة مبيعات جديدة:\n\n- **أين تُنشأ؟** فاتورة المبيعات الجديدة تُنشأ من **تابلت المندوب** (شاشة View Customers)، وليس من شاشة الباك أوفيس. شاشة الباك أوفيس «Transactions → Sales Invoice» مخصّصة للعرض والاعتماد فقط.\n- **الخطوة 1:** يضغط المندوب أيقونة **New Invoice** (فاتورة جديدة) فيظهر قائمة الأصناف.\n- **الخطوة 2:** يختار الفئة ال"
+    },
+    {
+      "test": "missing_corpus_create_invoice",
+      "category": "docs_gap",
+      "verdict": "PASS",
+      "admits_gap": false,
+      "honest_routing": true,
+      "sources": 11,
+      "answer_snip": "المصادر لا تشرح خطوات إنشاء فاتورة مبيعات \"من الصفر\" داخل الباك أوفيس، لأن فاتورة المبيعات **لا تُنشأ من الباك أوفيس** بل من تابلت المندوب. إليك ما يوضحه الدليل:\n\n- **أين تُنشأ؟** فاتورة المبيعات الجديدة تُنشأ من **تابلت المندوب** (شاشة View Customers → زر New Invoice، القسم §1.5.4)، وليس من شاشة ال"
+    },
+    {
+      "test": "whitespace_no_transcript_growth",
+      "category": "break",
+      "verdict": "PASS",
+      "transcript_before": 0,
+      "transcript_after": 0
+    },
+    {
+      "test": "company_switch_no_index_leak",
+      "category": "session",
+      "verdict": "PASS",
+      "transcript_cleared_on_switch": true,
+      "transcript_after_recall": 1,
+      "leaked_prior_question": false,
+      "answer_snip": "لا يوجد سؤال سابق في هذه الجلسة — هذا هو أول تفاعل لنا. سلّني أي سؤال عن بيانات الشركة وسأجيبك."
+    },
+    {
+      "test": "rate_limit_30_per_min",
+      "category": "rate_limit",
+      "verdict": "INFO",
+      "status_counts": {
+        "200": 35
+      },
+      "transcript_len": 35,
+      "note": "429s mean transcript stops growing even if user keeps typing"
+    }
+  ]
+}

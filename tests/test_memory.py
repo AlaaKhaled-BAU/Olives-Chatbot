@@ -17,6 +17,12 @@ def test_cache_key_changes_with_schema_version():
     assert k1 != k2
 
 
+def test_cache_key_changes_with_semantic_version():
+    k1 = memory.cache_key("morec", 1, "manager", "chatbot", "q", schema_version="v1", semantic_version="1")
+    k2 = memory.cache_key("morec", 1, "manager", "chatbot", "q", schema_version="v1", semantic_version="2")
+    assert k1 != k2
+
+
 def test_cache_key_default_schema_version_is_stable():
     """Callers with no schema_version yet (schema_version="") must still
     get a deterministic key -- worst case is an unnecessary miss, never an

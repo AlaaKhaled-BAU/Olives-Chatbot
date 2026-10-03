@@ -1,0 +1,67 @@
+{
+  "client": "morec",
+  "sections": {
+    "adversarial_pytest": {
+      "exit_code": 0,
+      "output_tail": [
+        "  /home/alaa/.local/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.",
+        "    from starlette.testclient import TestClient as TestClient  # noqa",
+        "",
+        "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html",
+        "30 passed, 1 warning in 2.15s"
+      ]
+    },
+    "morphology_probes": {
+      "pass": 5,
+      "total": 5,
+      "details": [
+        {
+          "probe": "inv-sg→pl-query",
+          "query": "الفواتير",
+          "locale": "ar",
+          "hits": 1,
+          "expect_hit": true,
+          "pass": true
+        },
+        {
+          "probe": "visit-pl→sg-query",
+          "query": "زيارة",
+          "locale": "ar",
+          "hits": 1,
+          "expect_hit": true,
+          "pass": true
+        },
+        {
+          "probe": "order-bare→prefixed",
+          "query": "طلب",
+          "locale": "ar",
+          "hits": 1,
+          "expect_hit": true,
+          "pass": true
+        },
+        {
+          "probe": "no-locale-plural",
+          "query": "الفواتير",
+          "locale": null,
+          "hits": 1,
+          "expect_hit": true,
+          "pass": true
+        },
+        {
+          "probe": "english-gps-negative",
+          "query": "فاتورة",
+          "locale": "ar",
+          "hits": 0,
+          "expect_hit": false,
+          "pass": true
+        }
+      ]
+    }
+  },
+  "known_holes": [
+    "Headingless chunks with body < 20 chars: FTS matches but search() drops them (_is_noise_chunk)",
+    "Morphology alias tokens may appear at end of indexed excerpt text",
+    "Empty turn_id falls back to last_turn (legacy); omit key instead for explicit behavior",
+    "Visit battery not a deterministic regression gate (LLM variance)"
+  ]
+}

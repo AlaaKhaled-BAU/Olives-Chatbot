@@ -196,6 +196,7 @@ def _set_session_company(session: dict, conv: dict, cid: int) -> None:
         session["history"] = []
         session["transcript"] = []
         session.pop("last_turn", None)
+        session.pop("thread_head", None)
 
 
 def _ensure_session_company(session: dict, client: str, company_id: int | None = None) -> None:
@@ -433,6 +434,7 @@ async def ask(request: Request, req: AskRequest):
                                           subject=subject,
                                           history=session.get("history") or [],
                                           transcript=session.get("transcript") or [],
+                                          thread_head=session.get("thread_head"),
                                           cancel=cancel):
                 if event["type"] == "step":
                     yield f"data: {json.dumps({'step': event['step']})}\n\n"
@@ -486,6 +488,8 @@ async def ask(request: Request, req: AskRequest):
                 'confidence': result.get('confidence'),
                 'turn_id': turn_id,
                 'tools_ms': result.get('tools_ms') or {},
+                'hold_stream': bool(result.get('hold_stream')),
+                'thread_head': result.get('thread_head'),
             }, default=str)}\n\n"
         yield "data: [DONE]\n\n"
         _persist_session(req.session_id, session)

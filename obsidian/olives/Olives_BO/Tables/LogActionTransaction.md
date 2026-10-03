@@ -186,7 +186,11 @@ last_verified: 2026-08-28
 
 ## ActionID codebook
 
-Live `LogActions` (use `lookup_hot` / `t.LogActions`). Visit-related: 0 CustEntry, 3 CustLeave, 8 NoSaleExit, 14/15 prospective, 21 will-not-visit, 31 postpone. Journey: 10 Start, 11 End. Documents: 4 invoice, 5 order, 9 return invoice, 12 payment, 13 return order, 16 quotation. 7 SystemLogin is app login, not a customer visit.
+Decode `ActionID` via [[LogActions]] (`lookup_hot("LogActions")` or `lookup_hot("LogActionTransaction")` — same codebook). Full id list + visit vs login rules: [[LogActions]].
+
+**Workflow approvals** (موافقة تابلت، رفض، معلّق) are **not** `ActionID` — they live in [[WF_MasterLog]] / [[WF_SubLog]]; see [[Workflow_Approval_Codes]].
+
+Visit-related: 0 CustEntry, 3 CustLeave, 8 NoSaleExit, 14/15 prospective, 21 will-not-visit, 31 postpone, 38 no-visit reason import. Journey: 10 Start, 11 End. Documents: 4 invoice, 5 order, 9 return invoice, 12 payment. **7 SystemLogin = app login, not a customer visit.**
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

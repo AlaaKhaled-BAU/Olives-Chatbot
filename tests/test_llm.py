@@ -148,8 +148,41 @@ def test_auth_error_is_fatal_and_never_retried(monkeypatch):
 
 def test_missing_key_fails_fast(monkeypatch):
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("CHATBOT_LLM_API_KEY", raising=False)
     with pytest.raises(RuntimeError):
         llm.complete([{"role": "user", "content": "hi"}])
+
+
+def test_alternate_provider_uses_fast_model_and_no_thinking(monkeypatch):
+    monkeypatch.setenv("CHATBOT_LLM_BASE_URL", "https://api.cursor.com/v1")
+    monkeypatch.setenv("CHATBOT_MODEL_FAST", "composer-2.5")
+    assert llm.alternate_provider() is True
+    cfg = llm.resolve_gear("t2")
+    assert cfg["model"] == "composer-2.5"
+    assert cfg["thinking"] is False
+    kwargs = llm.stream_create_kwargs(cfg, [{"role": "user", "content": "q"}])
+    assert "extra_body" not in kwargs or "thinking" not in kwargs.get("extra_body", {})
+
+
+def test_alternate_provider_complete_omits_thinking_extra_body(monkeypatch):
+    monkeypatch.setenv("CHATBOT_LLM_BASE_URL", "https://api.cursor.com/v1")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    captured = {}
+
+    def _create(**kwargs):
+        captured.update(kwargs)
+        import types as _t
+        return _t.SimpleNamespace(
+            choices=[_t.SimpleNamespace(message=_t.SimpleNamespace(content="ok"))],
+            usage=_t.SimpleNamespace(prompt_tokens=1, completion_tokens=1),
+        )
+
+    with patch.object(llm._client.chat.completions, "create", side_effect=_create):
+        llm.complete([{"role": "user", "content": "hi"}], gear="t1")
+    assert captured["model"] == llm.resolve_gear("t1")["model"]
+    eb = captured.get("extra_body") or {}
+    assert "thinking" not in eb
+    assert "reasoning_effort" not in eb
 
 
 def test_old_alias_still_importable():

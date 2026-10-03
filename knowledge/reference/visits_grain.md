@@ -6,7 +6,7 @@ Use this when the user asks about زيارات المندوب / salesman visits.
 
 **Source:** `LogActionTransaction` ← `OT_ImportActionLog` ← OSFA `OT_ActionLog`.
 
-Query `t.LogActionTransaction`. Decode ActionID via `lookup_hot` (`LogActions`).
+Query `t.LogActionTransaction`. Decode ActionID via `lookup_hot` (`LogActions`) — not WF approval codes (`WF_SubLog.Action` / `LastStatus`; see `workflow_approval_status.md`).
 
 | Rule | Detail |
 |------|--------|

@@ -227,7 +227,13 @@ def test_record_session_turn_six_turns_caps_history_not_transcript():
 
 
 def test_company_switch_clears_transcript():
-    session = {"conversation": {"CompanyID": 1}, "history": [{"q": "x"}], "transcript": [{"id": "t1"}]}
+    session = {
+        "conversation": {"CompanyID": 1},
+        "history": [{"q": "x"}],
+        "transcript": [{"id": "t1"}],
+        "thread_head": {"tax": "incl"},
+    }
     server._set_session_company(session, session["conversation"], 2)
     assert session["transcript"] == []
     assert session["history"] == []
+    assert "thread_head" not in session

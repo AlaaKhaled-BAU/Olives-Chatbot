@@ -53,6 +53,33 @@ def test_conversation_block_contains_turns_and_caps():
     assert "س5؟" in block and "س0؟" not in block
 
 
+def test_ask_stream_injects_thread_card_after_prefix(monkeypatch, tmp_path):
+    monkeypatch.setattr(agent.memory, "DB_PATH", tmp_path / "cache.sqlite")
+    captured = {}
+
+    def fake_complete(messages, **kwargs):
+        if kwargs.get("stream"):
+            captured.setdefault("messages", messages)
+            return iter([_chunk("ok.")])
+        return _plain('{"followups": [], "confidence": null, "refusal": false}')
+
+    monkeypatch.setattr(agent.llm, "complete", fake_complete)
+    card = {
+        "metric": "sales", "tax": "incl", "returns": "gross",
+        "period_label": "2025-07-01 .. 2025-08-01", "as_of": "2025-07-15",
+    }
+    list(agent.ask_stream(
+        "morec", "كم؟", conversation={"CompanyID": 1}, thread_head=card,
+    ))
+    blob = json.dumps(captured["messages"], ensure_ascii=False)
+    assert "Thread card" in blob
+    assert "2025-07-01" in blob
+    idx_schema = next(i for i, m in enumerate(captured["messages"])
+                      if "Full schema of queryable tenant views" in m.get("content", ""))
+    idx_card = next(i for i, m in enumerate(captured["messages"]) if "Thread card" in m.get("content", ""))
+    assert idx_card > idx_schema
+
+
 def test_ask_stream_injects_history_block_before_user_message(monkeypatch, tmp_path):
     monkeypatch.setattr(agent.memory, "DB_PATH", tmp_path / "cache.sqlite")
     captured = {}
@@ -244,8 +271,8 @@ def test_normalize_rows_handles_arabic_indic_digits_as_strings():
 
 def test_rows_equal_tolerates_extra_candidate_columns():
     from evals.golden_rows import rows_equal
-    gold = [{"gross_amount": 432.58}]
-    cand = [{"invoice_count": 2, "gross_amount": 432.5833}]
+    gold = [{"gross_amount": 100.0}]
+    cand = [{"invoice_count": 2, "gross_amount": 100.003}]
     assert rows_equal(gold, cand)
 
 

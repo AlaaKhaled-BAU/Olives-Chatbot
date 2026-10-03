@@ -87,6 +87,8 @@ def record_session_turn(
         "sql": sql_full[:200],
     })
     del hist[:-max_history]
+    if result.get("thread_head"):
+        session["thread_head"] = result["thread_head"]
     return turn_id
 
 

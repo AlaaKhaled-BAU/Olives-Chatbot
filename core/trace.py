@@ -8,12 +8,33 @@ built. Added the other three here, kept as the sole owner of Prometheus
 wiring -- core/agent.py calls these functions, never touches a Counter/
 Histogram object directly, same encapsulation as log_event()."""
 import json
+import subprocess
 import time
 from pathlib import Path
 
 from prometheus_client import Counter, Histogram
 
 TRACE_PATH = Path(__file__).resolve().parent.parent / "work" / "trace.jsonl"
+_REPO = TRACE_PATH.parent.parent
+_PREFIX_HASHES: dict[str, str] = {}
+
+
+def _git_sha() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=_REPO, text=True, stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+
+
+GIT_SHA = _git_sha()
+
+
+def note_prefix_hash(client: str, prefix_hash: str) -> None:
+    """Last stable-prefix hash built for this client in this process.
+    log_event stamps it on every later line for that client."""
+    _PREFIX_HASHES[client] = prefix_hash
 
 REQUESTS = Counter("chatbot_requests_total", "Total agent turns", ["client", "event"])
 TURN_LATENCY = Histogram("chatbot_turn_latency_seconds", "Agent turn latency", ["client"])
@@ -56,7 +77,10 @@ def log_event(client: str, question: str, event: str, subject: str | None = None
     TRACE_PATH.parent.mkdir(parents=True, exist_ok=True)
     record = {
         "ts": time.time(), "client": client, "subject": subject,
-        "question": question, "event": event, **fields,
+        "question": question, "event": event,
+        "git_sha": GIT_SHA,
+        "prefix_hash": _PREFIX_HASHES.get(client),
+        **fields,
     }
     with TRACE_PATH.open("a") as f:
         f.write(json.dumps(record, default=str) + "\n")

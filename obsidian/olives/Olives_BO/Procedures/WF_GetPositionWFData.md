@@ -24,7 +24,14 @@ last_verified: 2026-07-05
 
 
 ## Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+
+Returns the **workflow inbox** dataset for a back-office `PositionID` (supervisor approvals from the tablet).
+
+**Pending rows for this position** (same filter used throughout the proc body): `WF_SubLog.PositionID = @PositionID` AND `WF_SubLog.Action IS NULL` AND `WF_SubLog.ActionNeed = N'AR'`. Join [[WF_MasterLog]] / [[WF_Functions]] for request type and dates.
+
+Status code meanings (`Action`, `ActionNeed`, `LastStatus`): [[Workflow_Approval_Codes]].
+
+> [!note] AUTO-GENERATED dependency list below — inbox filter verified from live proc definition 2026-10.
 Automatically documented procedure in the Olives_BO database. Reads ClientsActive, CompanyBranches, Customer, OrdersHeaders, PromotionsHeaders, RequestToApprovePromotionDetails, SalesPersons, WF_Functions, WF_MasterLog, WF_SubLog. See Tables Read/Written and Callers/Callees below for the full dependency map.
 ## Parameters
 - @CompanyID smallint =1

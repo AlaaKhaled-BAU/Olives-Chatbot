@@ -30,8 +30,10 @@ def _fake_llm(final_text, contract_json='{"followups": [], "confidence": null, "
 
 def _seed_plan(client, company_id, question, queries):
     cache = agent._schema_cache(client)
-    key = agent.memory.cache_key(client, company_id, "manager", agent.MODEL_ALIAS,
-                                 question, agent._schema_version(cache))
+    key = agent.memory.cache_key(
+        client, company_id, "manager", agent.MODEL_ALIAS,
+        question, agent._schema_version(cache), agent.PLAN_SEMANTIC_VERSION,
+    )
     agent.memory.set_plan(key, client, {"queries": queries})
 
 

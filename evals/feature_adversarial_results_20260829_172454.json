@@ -1,0 +1,342 @@
+{
+  "run_at": "2026-08-29T14:24:54Z",
+  "summary": {
+    "PASS": 23,
+    "FAIL": 1
+  },
+  "by_category": {
+    "transcript": {
+      "PASS": 4,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "transcript_index": {
+      "PASS": 2,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "feedback": {
+      "PASS": 2,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "session": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 1,
+      "SKIP": 0
+    },
+    "morphology": {
+      "PASS": 7,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "docs_gap": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "tools_ms": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "break": {
+      "PASS": 4,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0
+    },
+    "conversation": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0
+    }
+  },
+  "results": [
+    {
+      "id": "T1-single-transcript",
+      "category": "transcript",
+      "difficulty": "easy",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 0.0,
+      "turn_id": "b5f9d0de4b924b16befc17f4c98e9094",
+      "answer_len": 331,
+      "transcript_a_len": 331
+    },
+    {
+      "id": "T2-plumbing-six-transcript",
+      "category": "transcript",
+      "difficulty": "medium",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 0.0,
+      "transcript_len": 6,
+      "turn_ids": 6
+    },
+    {
+      "id": "T2-memory-first-question-157",
+      "category": "transcript",
+      "difficulty": "medium",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 0.0,
+      "transcript_len": 6,
+      "followup_answer": "أهلاً بك. سؤالك الأول كان عن **«خيار النظام رقم 157»** — أي أن رقم الخيار هو **157**.\n\nأعدت إليك ملخص الإجابة السابقة كما وردت في سياق جلسة العمل:\n\n- الخيار ذو الرقم **157** تم سؤالك عنه في بداية جلسة هذه الأسئلة، وأجبناك عنه بناءً على ما ورد في الدليل. إن أردت إعادة عرض تفصيل الخيار 157 نفسه، قل لي",
+      "followup_elapsed": 5.85,
+      "has_denial": false,
+      "has_157": true
+    },
+    {
+      "id": "T3-long-answer-full-transcript",
+      "category": "transcript",
+      "difficulty": "hard",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 0.0,
+      "answer_len": 941,
+      "transcript_len": 941
+    },
+    {
+      "id": "TI1-index-first-question-ar",
+      "category": "transcript_index",
+      "difficulty": "hard",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 5.73,
+      "transcript_len": 8,
+      "followup_answer": "سؤالك الأول كان: **«ما هو خيار النظام رقم 157؟»**\n\nهذا سؤال وصفي عن دليل المستخدم، وليس سؤالًا عن بيانات الشركة. إذا أردت، يمكنني إعادة إجابة هذا السؤال أو الانتقال إلى أي سؤال آخر عن مبيعاتك أو طلباتك أو مساراتك.",
+      "has_denial": false,
+      "has_157": true
+    },
+    {
+      "id": "TI2-index-second-question-211",
+      "category": "transcript_index",
+      "difficulty": "hard",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 9.26,
+      "followup_answer": "سؤالك الثاني كان عن **خيار النظام رقم 211**:\n\n- **رقم الخيار:** 211\n- **الاسم:** **No GPS Check For Non Route Customers** (التجاوز عن فحص GPS للعملاء غير الموجودين في المسار)\n- **الوظيفة:** عند تفعيله (1=On)، لا يُلزم النظام بالتحقق من موقع GPS عندما يسجّل المندوب زيارةً لزبون غير مدرج في مساره؛ وعند كونه (0=Off)، يكون فحص الموقع إلزاميًا حتى للزيا",
+      "has_denial": false,
+      "has_211": true
+    },
+    {
+      "id": "F1-feedback-turn-id",
+      "category": "feedback",
+      "difficulty": "medium",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 0.0,
+      "first_turn_q": "كم عدد المسارات المسجلة؟",
+      "second_turn_q": "كم عدد سندات القبض غير الملغاة؟",
+      "last_sql_snip": "SELECT TransactionTypeID, COUNT(*) AS cnt FROM t.Receipts GROUP BY TransactionTypeID; SELECT COUNT(*) AS non_void_receip"
+    },
+    {
+      "id": "F2-feedback-middle-turn-promote",
+      "category": "feedback",
+      "difficulty": "hard",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 0.0,
+      "middle_turn_q": "كم عدد العملاء في الشركة؟ (8178b6-b)",
+      "middle_sql_snip": "SELECT COUNT(*) AS CustomerCount FROM t.Customers",
+      "promoted": true
+    },
+    {
+      "id": "C1-company-clears-transcript",
+      "category": "session",
+      "difficulty": "medium",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 0.0,
+      "before_len": 2,
+      "after_len": 0
+    },
+    {
+      "id": "C2-company-switch-no-index-leak",
+      "category": "session",
+      "difficulty": "hard",
+      "verdict": "FAIL",
+      "reasons": [
+        "answered_recall_without_admitting_empty_session"
+      ],
+      "elapsed_s": 0.0,
+      "recall_answer": "هذا هو أول سؤال في هذه المحادثة — لم يسبق أن سألتني أي شيء قبل هذا. سؤالك الأول هنا هو بالضبط: «ما كان سؤالي الأول في هذه المحادثة؟»\n\nكيف أستطيع مساعدتك الآن؟",
+      "admits_empty": false
+    },
+    {
+      "id": "M1-invoice-create-tablet",
+      "category": "morphology",
+      "difficulty": "easy",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 10.61,
+      "question": "كيف أنشئ فاتورة مبيعات؟",
+      "answer_preview": "- تُنشأ **فاتورة المبيعات الجديدة** من **تابلت المندوب** (Front Office / شاشة View Customers)، وليس من الباك أوفيس.\n- يضغط المندوب زر **New Invoice (فاتورة جديدة)** على صفحة الزبون، فتظهر فئات الأصناف.\n- يختار فئة فرعية ويُدخل الكمية المطلوبة بالوحدات المسعّرة المتاحة.\n- يفتح نموذج تفاصيل الفاتورة (الأيقونة الزرقاء) لمراجعة نوع الفاتورة ونوع الدفع ونوع المستند.\n- يمكن استخدام أداة **Preview** من ا",
+      "sources_count": 4,
+      "needle_hits": 6
+    },
+    {
+      "id": "M1b-invoice-plural",
+      "category": "morphology",
+      "difficulty": "easy",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 11.11,
+      "question": "كيف أنشئ فاتورة مبيعات جديدة؟",
+      "answer_preview": "تُنشأ **فاتورة المبيعات الجديدة من تابلت المندوب (Front Office)** وليس من الباك أوفيس:\n\n- من شاشة **View Customers** يضغط المندوب زر **New Invoice** (فاتورة جديدة) فيظهر له فئات الأصناف.\n- يختار فئة فرعية ويدخل الكمية المطلوبة من الوحدات المسعّرة المتاحة.\n- يفتح نموذج تفاصيل الفاتورة (الأيقونة الزرقاء) لمراجعة **نوع الفاتورة (Invoice type)** و**نوع الدفع (Payment Type)** و**نوع المستند (doc. type)",
+      "sources_count": 4,
+      "needle_hits": 6
+    },
+    {
+      "id": "M2-invoice-def-plural",
+      "category": "morphology",
+      "difficulty": "medium",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 9.5,
+      "question": "أين أجد شاشة الفواتير في الباك أوفيس؟",
+      "answer_preview": "حسب دليل الباك أوفيس، إدارة الفواتير تقع تحت قسم **Transactions**:\n\n- **Sales Invoice Void (7.3.3)** — لاعتماد إلغاء (إبطال) فواتير البيع ومنع تحويلها لنظام ERP.\n- **Sales Invoices Payments (7.3.4)** — لعرض المدفوعات المستلمة تغطي الفواتير، جزئيًا أو كليًا.\n- وتبقى **قسم Delivery (13.x)** منفصلًا لإدارة تسليم الفواتير وتخصيص مندوب التوصيل، وليس لعرض الفواتير ذاتها.\n\nالمصدر: back-office/transaction",
+      "sources_count": 5,
+      "needle_hits": 5
+    },
+    {
+      "id": "M3-visit-singular",
+      "category": "morphology",
+      "difficulty": "medium",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 13.56,
+      "question": "كيف أسجل زيارة مندوب على التابلت؟",
+      "answer_preview": "The documentation retrieved focuses on sales invoices rather than specifically how a salesman logs a visit on the tablet. The visit mechanics (CustEntry/CustLeave actions in LogActionTransaction) are about how the system records a visit, not a step-by-step tablet screen guide for entering a visit. Let me note what's available.\n\nالمستندات التي استرجعتها تتناول إنشاء فاتورة المبيعات وليس شاشة تسجيل ",
+      "sources_count": 5,
+      "needle_hits": 5
+    },
+    {
+      "id": "M4-visit-plural",
+      "category": "morphology",
+      "difficulty": "hard",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 15.84,
+      "question": "أين أرى الزيارات المسجلة للمندوب؟",
+      "answer_preview": "بناءً على ما توفر في دليل المستخدم، لا يوجد شاشة مخصّصة باسم «سجل زيارات المندوب» في الدليل المسترجع، لكن يمكنك رؤية بيانات الزيارات في هذه الأماكن:\n\n- **Dashboard Sales Analysis (12.1)**: بعد اختيار التاريخ والضغط على زر التحديث، تعرض نتائج المندوبين بما فيها **Salesman General daily visits Score** و **Salesman Visits Verification** و **Route Score by salesman** و **Salesman Journey Performance**",
+      "sources_count": 9,
+      "needle_hits": 4
+    },
+    {
+      "id": "M5-order-forms",
+      "category": "morphology",
+      "difficulty": "hard",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 10.95,
+      "question": "ما الفرق بين الطلبات والفواتير عند الاعتماد؟",
+      "answer_preview": "حسب دليل الباك أوفيس، الفرق في **مسار الاعتماد** بين الطلبات والفواتير كالتالي:\n\n- **طلبات البيع (Sales Orders):** تمر باعتماد **على مرحلتين** — أولاً شاشة «Sales Orders Approval» (7.1.3)، ثم عند تفعيل خاصية الاعتماد النهائي تُعتمد من شاشة «Sales Order Final Approval» (7.1.5) ليتم نقل الطلب إلى نظام ERP.\n- **فواتير البيع (Sales Invoices):** يُعتمد من شاشة «Sales Invoice Approval» (7.3.2) — اعتماد ",
+      "sources_count": 8,
+      "needle_hits": 5
+    },
+    {
+      "id": "M6-typo-invoice",
+      "category": "morphology",
+      "difficulty": "hard",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 11.55,
+      "question": "كيف اصدر فاتوره مبيعات؟",
+      "answer_preview": "حسب دليل المستخدم، إصدار فاتورة مبيعات يتم على مرحلتين:\n\n- **إنشاء الفاتورة (على التابلت/الفرونت أوفيس):** فاتورة المبيعات الجديدة تنشأ من تابلت المندوب عبر شاشة **View Customers** (الخيار **New Invoice** — القسم 1.5.4)، وليست من شاشة الباك أوفيس.\n- **اعتماد الفاتورة (في الباك أوفيس):** من قسم **Transactions ← Sales Invoice Approval (7.3.2)** — حدّد الفاتورة بعلامة الصح على يسار السجل ثم اضغط **Ap",
+      "sources_count": 5,
+      "needle_hits": 4
+    },
+    {
+      "id": "docs_create_invoice_gap",
+      "category": "docs_gap",
+      "difficulty": "medium",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 13.8,
+      "question": "اشرح خطوة بخطوة كيف أنشئ فاتورة مبيعات من الصفر في الباك أوفيس",
+      "admits_gap": true,
+      "honest_routing": false,
+      "answer_preview": "لا يوجد في دليل المستخدم خطوات إنشاء فاتورة مبيعات «من الصفر» في الباك أوفيس بشكل صريح. ما يغطيه الدليل في شاشة **Transactions** مرتبط فقط بمراحل ما بعد الفاتورة:\n\n- **Sales Invoice Void** — إلغاء/تفييد فواتير البيع (تحديد الفواتير والضغط على Void).\n- **Sales Invoices Payments** — عرض المدفوعات المرتبطة بفواتير محددة (بالسنة ورقم الفاتورة أو رقم السند).\n- **Sales/Return Sales Line Manager Approval",
+      "sources_count": 11
+    },
+    {
+      "id": "TM2-tools-ms-sse",
+      "category": "tools_ms",
+      "difficulty": "medium",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 11.7,
+      "tools_ms": {
+        "search_docs": 16
+      },
+      "has_sources": true
+    },
+    {
+      "id": "B1-no-session-id",
+      "category": "break",
+      "difficulty": "easy",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 0.0,
+      "has_answer": true
+    },
+    {
+      "id": "B2-whitespace-question",
+      "category": "break",
+      "difficulty": "medium",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 0.0,
+      "transcript_before": 0,
+      "transcript_after": 0
+    },
+    {
+      "id": "B3-rapid-fire",
+      "category": "break",
+      "difficulty": "medium",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 0.0
+    },
+    {
+      "id": "B4-context-no-session",
+      "category": "break",
+      "difficulty": "easy",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 0.0
+    },
+    {
+      "id": "U1-real-user-session",
+      "category": "conversation",
+      "difficulty": "hard",
+      "verdict": "PASS",
+      "reasons": [],
+      "elapsed_s": 0.0,
+      "transcript_lens": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "questions": [
+        "مرحبا، أنا جديد على النظام",
+        "كيف أُسند الزبائن للمندوب؟",
+        "طيب وكيف أعتمد الطلبات؟",
+        "كم عدد فواتير المبيعات في يونيو 2025 غير",
+        "هل هذا العدد يشمل الطلبات أم الفواتير فق"
+      ]
+    }
+  ]
+}

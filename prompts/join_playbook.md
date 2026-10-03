@@ -9,6 +9,16 @@ Use these patterns when writing `SELECT` on `t.` views. Orders and invoices are 
   - Return invoices: typically `TransactionTypeID = 2` — separate grain from sales.
   - `COUNT(*)` on all headers **without** a type filter mixes sales + returns + other types; never equate that total with “sales invoices”.
 - Exclude voids: `ISNULL(TransactionsHeaders.IsVoid, 0) = 0` (never bare `IsVoid = 0` — NULL must count as not void).
+- **Line money.** `TransactionsDetails.Price` is the line total and already includes tax. Do not multiply `Price` by `Quantity`. Do not add `TaxAmount` on top of `Price`. `TaxAmount1` and `TaxAmount2` stay unused.
+  - Charged total (default, what `run_metric` `net_sales` returns): `ABS(Price) - ABS(DiscountAmount) - ABS(VoucherDiscount) - ABS(ISNULL(CustomerDiscountAmount,0))`, type 1, not void.
+  - Before tax, only when the user says قبل الضريبة / بدون ضريبة / before tax: charged total minus `ABS(TaxAmount)`.
+  - After returns, only when the user says بعد المرتجعات / net of returns: type 1 charged minus the same expression on type 2.
+  - «صافي» alone means the charged total, not "minus returns".
+- **run_metric `sales` (preferred for مبيعات):** pass `filters.tax` and `filters.returns`:
+  - «مبيعات» / general sales → `tax=incl`, `returns=gross`.
+  - «صافي» / «بعد المرتجعات» / net of credit notes → `tax=incl`, `returns=net`.
+  - «قبل الضريبة» / before tax → `tax=excl` (keep the same `returns` mode unless the user changes it).
+  - Invoice **count** = `COUNT(*)` on `t.TransactionsHeaders` only (type 1, non-void). `COUNT(*)` on the join to `t.TransactionsDetails` counts **lines**, not invoice headers.
 - Customer: `TransactionsHeaders.CustomerID` → `Customers.ID`.
 - Salesperson **on the invoice document**: `TransactionsHeaders.SalesPersonID` → `SalesPersons.ID` (who issued the invoice).
 - Salesperson **territory assignment** (which customers belong to whom): via `CustomersFinancialDetails` / `Positions` — not `cfd.CustomerID = sp.ID`.

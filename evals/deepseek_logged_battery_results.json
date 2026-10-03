@@ -1,0 +1,2457 @@
+{
+  "run_at": "2026-10-03T11:38:55.197251+00:00",
+  "provider": "deepseek",
+  "llm_base_url": "https://api.deepseek.com",
+  "client": "105",
+  "cases_file": "deepseek_battery_subset.jsonl",
+  "min_balance_usd_floor": 0.5,
+  "balance_usd": {
+    "start": 1.35,
+    "end": 1.32
+  },
+  "totals": {
+    "turns_completed": 19,
+    "elapsed_s": 198.31,
+    "wall_elapsed_s": 198.31,
+    "prompt_tokens": 2673109,
+    "completion_tokens": 21432,
+    "cache_hit_tokens": 1120128,
+    "cache_miss_tokens": 1552981,
+    "llm_calls": 60,
+    "estimated_cost_usd": 0.3636
+  },
+  "status_counts": {
+    "context_only": 3,
+    "pass": 7,
+    "weak": 2,
+    "skipped_pending_gold": 7
+  },
+  "path_summary": {
+    "sql_path": 16,
+    "docs_fts": 3,
+    "vault_notes": 0,
+    "plan_cache": 3,
+    "hot_lookup": 0
+  },
+  "note_mcp": "Runtime uses core/vault.py (local Obsidian vault files), not stdio obsidian-mcp-server. search_docs uses FTS on knowledge corpus; join rules live in prompts/join_playbook.md prefix.",
+  "results": [
+    {
+      "id": "ah-050",
+      "session": "s-chain-doc-metric",
+      "turn": 1,
+      "question": "كيف بسند الزبائن على المندوب؟",
+      "company_id": 1,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "howto",
+        "phrases": [
+          "Position",
+          "Update",
+          "مندوب"
+        ]
+      },
+      "score": false,
+      "client": "105",
+      "elapsed_s": 8.39,
+      "answer": "**الإسناد يتم من نافذة «إسناد الزبائن للمندوب» في الباك أوفيس، وهو شرط إلزامي لظهور الزبون على تابلت المندوب.**\n\n- تختار أولاً **موقع/وظيفة المندوب (Position)**، ثم تُعلّم مربع الاختيار أمام كل زبون مطلوب، ثم تضغط **Update** لحفظ الإسناد.\n- بدون هذا الإسناد **لا يظهر الزبون على جهاز المندوب**، وبالتالي لا يستطيع تنفيذ أي حركة عليه (فاتورة، تحصيل، طلب… إلخ).\n- للنقل أو النسخ بين مندوبين: نافذة **نقل الزبائن (Transfer Customers)** — تختار مندوب المصدر (بالموقع أو بالمسار)، تضغط **Preview** لعرض زبائنه المُسندين، ثم تحدّد **Move** للنقل (ويُلغى إسنادهم عن المندوب الأول) أو **Copy** للنسخ، ثم Move.\n- يوجد مسار مخصص لزبائن **المسارات**: نافذة **نقل زبائن المندوبين حسب المسارات** — تعمل فقط مع مندوبين لديهم مسارات، وتتيح التصفية بمندوب المصدر + المسار ثم Preview ثم Move/Copy.\n- إلى جانب إسناد الزبون، يمكن تقييد **الأصناف** المسموح بيعها لزبون بعينه عبر نافذة **إسناد أصناف الزبون**.\n\nالمصدر: back-office/customers.md › 4.8 Customers - Assign Customers for Salesman\n\nهل ترغب في بيان عدد زبائن أحد المندوبين الحاليين المسجلين في النظام؟",
+      "answer_sql": "",
+      "needs_ask": null,
+      "sources": [
+        "back-office/customers.md › 4.8 Customers - Assign Customers for Salesman",
+        "back-office/salespersons.md › 3.3.14 Salespersons-Salespersons Management-Transfer Customers",
+        "back-office/customers.md › 4.12 Customers - Customers Item Assignment",
+        "back-office/salespersons.md › 3.3.5 Sales Persons -Salespersons Management-Assign Item for salesman",
+        "back-office/salespersons.md › 3.3.15 Salespersons-Salespersons Management-Move Salesperson Customers Per",
+        "user_guide.md › 4.8 Customers - Assign Customers for Salesman",
+        "visits_grain.md › Salesman visits — three questions, three grains",
+        "create_sales_invoice.md › إنشاء فاتورة مبيعات جديدة — Create Sales Invoice › أين تُنشأ فاتورة المبيعات؟ › على التابلت (View Customers — §1.5.4 New Invoice)",
+        "create_sales_invoice.md › إنشاء فاتورة مبيعات جديدة — Create Sales Invoice › أين تُنشأ فاتورة المبيعات؟"
+      ],
+      "steps": [
+        "searching documentation",
+        "searching documentation"
+      ],
+      "error": null,
+      "tools_ms": {
+        "search_docs": 233
+      },
+      "llm_calls": 3,
+      "prompt_tokens": 129215,
+      "completion_tokens": 1005,
+      "cache_hit_tokens": 63104,
+      "cache_miss_tokens": 66111,
+      "vault_search_count": 0,
+      "doc_search_count": 2,
+      "thread_head": null,
+      "usage": {
+        "llm_calls": 3,
+        "prompt_tokens": 129215,
+        "completion_tokens": 1005,
+        "cache_hit_tokens": 63104,
+        "cache_miss_tokens": 66111,
+        "estimated_cost_usd": 0.015649
+      },
+      "path_checks": {
+        "used_sql_path": false,
+        "used_docs_fts": true,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht1,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "howto_ok": true
+      },
+      "trace": {
+        "ts": 1791027346.0347638,
+        "client": "105",
+        "subject": "6a577cf593aa",
+        "question": "كيف بسند الزبائن على المندوب؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 0,
+        "result_rows": 0,
+        "path": "fc0,ht1,rp0,an0",
+        "latency_ms": 8390,
+        "ttft_ms": 2156,
+        "llm_calls": 3,
+        "prompt_tokens": 129215,
+        "completion_tokens": 1005,
+        "cache_hit_tokens": 63104,
+        "cache_miss_tokens": 66111,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 63035,
+            "completion": 112,
+            "cache_hit": 0,
+            "cache_miss": 63035,
+            "ms": 1.4
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 65636,
+            "completion": 400,
+            "cache_hit": 63104,
+            "cache_miss": 2532,
+            "ms": 2.2
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 544,
+            "completion": 493,
+            "cache_hit": 0,
+            "cache_miss": 544,
+            "ms": 2.4
+          }
+        ],
+        "company_id": 1,
+        "tools_ms": {
+          "search_docs": 233
+        }
+      },
+      "evaluation": {
+        "status": "context_only",
+        "kind": "howto",
+        "notes": [
+          "setup turn for same-chat continuity"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-051",
+      "session": "s-chain-doc-metric",
+      "turn": 2,
+      "question": "تمام، قديش زبون عندنا هسا؟",
+      "company_id": 1,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "number",
+        "gold": "pending",
+        "gold_int": true
+      },
+      "score": false,
+      "client": "105",
+      "elapsed_s": 10.88,
+      "answer": "**إجمالي الزبائن المسجلين في النظام: 10,372 زبوناً، منهم 10,122 زبوناً غير موقوف.**\n\nالتفصيل:\n- **المسجلون الكلي:** 10,372 زبوناً.\n- **غير الموقوفين (النشطون):** 10,122 زبوناً.\n- **الموقوفون:** 250 زبوناً (`IsSuspended = 1`).\n\nالرقم أعلاه يمثل كافة الزبائن المقيدين في سجلات الشركة، بغضّ النظر عن نشاطهم الشرائي. يمكنك طلب الإحصاء حسب المنطقة أو المندوب في حال رغبت بتفصيل أدق.\n\n```sql\nSELECT COUNT(*) AS TotalCustomers,\n       SUM(CASE WHEN ISNULL(IsSuspended,0)=0 THEN 1 ELSE 0 END) AS ActiveCustomers\nFROM t.Customers\n```\n\nهل ترغب في استثناء الموقوفين واحتساب النشطين فقط، أو تصنيف العدد بحسب المنطقة/المندوب؟",
+      "answer_sql": "SELECT COUNT(*) AS TotalCustomers,\n       SUM(CASE WHEN ISNULL(IsSuspended,0)=0 THEN 1 ELSE 0 END) AS ActiveCustomers\nFROM t.Customers",
+      "needs_ask": null,
+      "sources": [
+        "Customers"
+      ],
+      "steps": [
+        "running query 1 of 4"
+      ],
+      "error": null,
+      "tools_ms": {
+        "run_select": 120
+      },
+      "llm_calls": 3,
+      "prompt_tokens": 129282,
+      "completion_tokens": 798,
+      "cache_hit_tokens": 8704,
+      "cache_miss_tokens": 120578,
+      "vault_search_count": 0,
+      "doc_search_count": 0,
+      "thread_head": null,
+      "usage": {
+        "llm_calls": 3,
+        "prompt_tokens": 129282,
+        "completion_tokens": 798,
+        "cache_hit_tokens": 8704,
+        "cache_miss_tokens": 120578,
+        "estimated_cost_usd": 0.027115
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "data_ok": true
+      },
+      "trace": {
+        "ts": 1791027358.6487665,
+        "client": "105",
+        "subject": "6a577cf593aa",
+        "question": "تمام، قديش زبون عندنا هسا؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 1,
+        "result_rows": 1,
+        "path": "fc0,ht0,rp0,an0",
+        "latency_ms": 10877,
+        "ttft_ms": 2722,
+        "llm_calls": 3,
+        "prompt_tokens": 129282,
+        "completion_tokens": 798,
+        "cache_hit_tokens": 8704,
+        "cache_miss_tokens": 120578,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 64391,
+            "completion": 191,
+            "cache_hit": 0,
+            "cache_miss": 64391,
+            "ms": 1.8
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 64500,
+            "completion": 266,
+            "cache_hit": 8704,
+            "cache_miss": 55796,
+            "ms": 2.3
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 391,
+            "completion": 341,
+            "cache_hit": 0,
+            "cache_miss": 391,
+            "ms": 2.1
+          }
+        ],
+        "company_id": 1,
+        "tools_ms": {
+          "run_select": 120
+        }
+      },
+      "evaluation": {
+        "status": "context_only",
+        "kind": "number",
+        "notes": [
+          "setup turn for same-chat continuity"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-052",
+      "session": "s-chain-doc-metric",
+      "turn": 3,
+      "question": "منيح العدد؟",
+      "company_id": 1,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "opinion",
+        "must_not_invent_target": true
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 4.85,
+      "answer": "العدد المطلوب هو **2** فاتورة مبيعات، بإجمالي مبيعات 3.15، والمردودات صفر — وعليه فإن الصافي بعد المرتجعات = 3.15.\n\n**افتراض الحساب:** احتُسبت فواتير المبيعات فقط (النوع 1، غير الملغاة)، دون المرتجعات؛ وهو العدد النهائي للفواتير المؤهلة.\n\n| البيان | القيمة |\n|---|---|\n| عدد فواتير المبيعات | 2 |\n| إجمالي المبيعات | 3.15 |\n| المرتجعات | 0 |\n| الصافي بعد المرتجعات | 3.15 |\n\nإذا كان المطلوب عدداً مختلفاً من حيث النطاق (مثلاً عدد الفواتير خلال الشهر الحالي أو عملاء منطقة معينة)، يمكن التحديد بدقة أكبر.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 1 AND td.CompanyID = 1 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'; SELECT th.TransactionDate AS sale_day, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 1 AND td.CompanyID = 1 AND th.TransactionDate >= '2025-01-01' AND th.TransactionDate < '2026-01-01' GROUP BY th.TransactionDate",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [],
+      "error": null,
+      "tools_ms": {},
+      "llm_calls": 2,
+      "prompt_tokens": 65766,
+      "completion_tokens": 476,
+      "cache_hit_tokens": 6912,
+      "cache_miss_tokens": 58854,
+      "vault_search_count": null,
+      "doc_search_count": 0,
+      "thread_head": null,
+      "usage": {
+        "llm_calls": 2,
+        "prompt_tokens": 65766,
+        "completion_tokens": 476,
+        "cache_hit_tokens": 6912,
+        "cache_miss_tokens": 58854,
+        "estimated_cost_usd": 0.01331
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": true,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "path_ok": true
+      },
+      "trace": {
+        "ts": 1791027364.2858942,
+        "client": "105",
+        "subject": "6a577cf593aa",
+        "question": "منيح العدد؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "company_id": 1,
+        "source": "plan_cache",
+        "path": "fc0,ht0,rp0,an0",
+        "queries": 2,
+        "result_rows": 47,
+        "latency_ms": 4844,
+        "ttft_ms": 2330,
+        "llm_calls": 2,
+        "prompt_tokens": 65766,
+        "completion_tokens": 476,
+        "cache_hit_tokens": 6912,
+        "cache_miss_tokens": 58854,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 65432,
+            "completion": 196,
+            "cache_hit": 6912,
+            "cache_miss": 58520,
+            "ms": 2.2
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 334,
+            "completion": 280,
+            "cache_hit": 0,
+            "cache_miss": 334,
+            "ms": 1.6
+          }
+        ]
+      },
+      "evaluation": {
+        "status": "pass",
+        "kind": "opinion",
+        "notes": [
+          "opinion without invented target"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-056",
+      "session": "s-clarify-period",
+      "turn": 1,
+      "question": "قديش المبيعات؟",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "clarify",
+        "asks_period": true
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 3.97,
+      "answer": "إجمالي المبيعات 89,185.60 (شاملاً الضريبة ودون خصم المرتجعات)، وصافي المبيعات بعد المرتجعات 75,894.76، موزّعاً على 99 فاتورة مبيعات و17 مرتجعاً بقيمة 13,290.84.\n\nالافتراض المعتمد: احتُسبت المبيعات شاملة الضريبة وقبل خصم المرتجعات.\n\nيمكن التحديد في حال كان المطلوب صافي المبيعات فقط، أو المبيعات قبل الضريبة، أو نطاقاً زمنياً مختلفاً.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [],
+      "error": null,
+      "tools_ms": {},
+      "llm_calls": 2,
+      "prompt_tokens": 62599,
+      "completion_tokens": 342,
+      "cache_hit_tokens": 0,
+      "cache_miss_tokens": 62599,
+      "vault_search_count": null,
+      "doc_search_count": 0,
+      "thread_head": null,
+      "usage": {
+        "llm_calls": 2,
+        "prompt_tokens": 62599,
+        "completion_tokens": 342,
+        "cache_hit_tokens": 0,
+        "cache_miss_tokens": 62599,
+        "estimated_cost_usd": 0.013998
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": true,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "path_ok": true
+      },
+      "trace": {
+        "ts": 1791027369.0437932,
+        "client": "105",
+        "subject": "40adc099a989",
+        "question": "قديش المبيعات؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "company_id": 2,
+        "source": "plan_cache",
+        "path": "fc0,ht0,rp0,an0",
+        "queries": 1,
+        "result_rows": 1,
+        "latency_ms": 3968,
+        "ttft_ms": 1963,
+        "llm_calls": 2,
+        "prompt_tokens": 62599,
+        "completion_tokens": 342,
+        "cache_hit_tokens": 0,
+        "cache_miss_tokens": 62599,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 62322,
+            "completion": 138,
+            "cache_hit": 0,
+            "cache_miss": 62322,
+            "ms": 1.7
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 277,
+            "completion": 204,
+            "cache_hit": 0,
+            "cache_miss": 277,
+            "ms": 1.3
+          }
+        ]
+      },
+      "evaluation": {
+        "status": "weak",
+        "kind": "clarify",
+        "notes": [],
+        "flags": [
+          "did_not_ask_period"
+        ]
+      }
+    },
+    {
+      "id": "ah-019",
+      "session": "s-howto-assign",
+      "turn": 1,
+      "question": "كيف بربط الزبائن على المندوب من الباك أوفيس؟ مش فاهم الشاشة",
+      "company_id": 1,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "howto",
+        "phrases": [
+          "Position",
+          "Update",
+          "مندوب",
+          "زبون",
+          "assign"
+        ]
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 10.81,
+      "answer": "شاشة الربط في الباك أوفيس هي **«تعيين العملاء للمندوب» (Assign Customers for Salesman)**، وتعمل كالتالي:\n\n- **اختيار الموقع الوظيفي للمندوب** (Position) وليس اسمه مباشرة — الربط يجري على مستوى الـ Position الخاص بالمندوب.\n- ثم **تحديد مربع الاختيار بجانب كل عميل** مطلوب ربطه، والضغط على زر **«تحديث / Update»** لتثبيت الربط.\n- الأهم: **بدون هذا التعيين لن يظهر العميل على جهاز المندوب (التابلت)، وبالتالي لا يستطيع المندوب تنفيذ أي حركة معه.**\n- إن أردت نقل عملاء من مندوب إلى آخر دون إعادة التعيين يدوياً، فهناك شاشة **«Transfer Customers»**: تختار المندوب المصدر (حسب الموقع أو حسب المسار)، تضغط Preview لعرض عملائه، ثم Move أو Copy إلى المندوب الهدف.\n- وترتيب زيارة العملاء داخل المسار يُضبط لاحقاً من شاشة **«Route Sort»** (سحب وإفلات العميل ثم Update).\n\nبهذا التسلسل: تعيين العميل للمندوب ← ضبط المسار ← ترتيب الزيارة.\n\nالمصدر: back-office/customers.md › 4.8 Customers - Assign Customers for Salesman\n\nإن كان المطلوب معرفة عدد العملاء المرتبطين بمندوب معيّن حالياً، يمكنني استخراجه من البيانات.",
+      "answer_sql": "",
+      "needs_ask": null,
+      "sources": [
+        "back-office/customers.md › 4.8 Customers - Assign Customers for Salesman",
+        "back-office/salespersons.md › 3.3.5 Sales Persons -Salespersons Management-Assign Item for salesman",
+        "back-office/salespersons.md › 3.3.14 Salespersons-Salespersons Management-Transfer Customers",
+        "user_guide.md › 4.8 Customers - Assign Customers for Salesman",
+        "visits_grain.md › Salesman visits — three questions, three grains",
+        "back-office/routes.md › 5.4 Routes - Route Sort",
+        "back-office/routes.md › 5.6 Routes - Show Route in Map",
+        "back-office/routes.md › 5.5 Routes - Sales Person Additional Route",
+        "back-office/routes.md › 5.7 Routes - Show Multi Route in Map",
+        "back-office/routes.md › 5.0 Routes"
+      ],
+      "steps": [
+        "searching documentation",
+        "searching documentation"
+      ],
+      "error": null,
+      "tools_ms": {
+        "search_docs": 217
+      },
+      "llm_calls": 3,
+      "prompt_tokens": 128728,
+      "completion_tokens": 975,
+      "cache_hit_tokens": 63232,
+      "cache_miss_tokens": 65496,
+      "vault_search_count": 0,
+      "doc_search_count": 2,
+      "thread_head": null,
+      "usage": {
+        "llm_calls": 3,
+        "prompt_tokens": 128728,
+        "completion_tokens": 975,
+        "cache_hit_tokens": 63232,
+        "cache_miss_tokens": 65496,
+        "estimated_cost_usd": 0.015495
+      },
+      "path_checks": {
+        "used_sql_path": false,
+        "used_docs_fts": true,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht1,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "howto_ok": true
+      },
+      "trace": {
+        "ts": 1791027380.5623345,
+        "client": "105",
+        "subject": "1849819cc95c",
+        "question": "كيف بربط الزبائن على المندوب من الباك أوفيس؟ مش فاهم الشاشة",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 0,
+        "result_rows": 0,
+        "path": "fc0,ht1,rp0,an0",
+        "latency_ms": 10808,
+        "ttft_ms": 1863,
+        "llm_calls": 3,
+        "prompt_tokens": 128728,
+        "completion_tokens": 975,
+        "cache_hit_tokens": 63232,
+        "cache_miss_tokens": 65496,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 63130,
+            "completion": 160,
+            "cache_hit": 0,
+            "cache_miss": 63130,
+            "ms": 1.8
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 65087,
+            "completion": 354,
+            "cache_hit": 63232,
+            "cache_miss": 1855,
+            "ms": 2.2
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 511,
+            "completion": 461,
+            "cache_hit": 0,
+            "cache_miss": 511,
+            "ms": 2.2
+          }
+        ],
+        "company_id": 1,
+        "tools_ms": {
+          "search_docs": 217
+        }
+      },
+      "evaluation": {
+        "status": "pass",
+        "kind": "howto",
+        "notes": [
+          "howto cues 4/5"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-020",
+      "session": "s-howto-cust-types",
+      "turn": 1,
+      "question": "وين بضيف نوع زبون جديد؟",
+      "company_id": 1,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "howto",
+        "phrases": [
+          "نوع",
+          "type",
+          "customer",
+          "زبون"
+        ]
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 10.29,
+      "answer": "لا يوجد في دليل المستخدم قسم يشرح شاشة إضافة/تعريف نوع زبون جديد (Customers Types). البنود التي ظهرت تتعلق بتعيين الزبائن للمندوب، وربط الأصناف بالزبون، ومنح خصم حسب نوع الزبون، وعرض مواقع الزبائن على الخريطة — وليس بإنشاء نوع جديد.\n\nيمكن الاعتماد على أن أنواع الزبائن تُعرَّف على مستوى الجدول المرجعي `CustomersTypes` (`CompanyID`, `ID`, `Name`) المرتبط بحقل `Customers.TypeID`، غير أن خطوات الشاشة نفسها غير موثّقة في الدليل المتاح.\n\n- Citation: back-office/customers.md › 4.23 Customers — Add Discount by Customers type\n\nهل ترغب في أن أستعرض أنواع الزبائن المعرّفة حالياً في النظام أو عدد الزبائن لكل نوع؟",
+      "answer_sql": "",
+      "needs_ask": null,
+      "sources": [
+        "back-office/customers.md › 4.8 Customers - Assign Customers for Salesman",
+        "back-office/customers.md › 4.12 Customers - Customers Item Assignment",
+        "back-office/delivery.md › 13.4 Delivery-Assign Salesman Delivery with Assistant",
+        "user_guide.md › 4.8 Customers - Assign Customers for Salesman",
+        "create_sales_invoice.md › إنشاء فاتورة مبيعات جديدة — Create Sales Invoice › أين تُنشأ فاتورة المبيعات؟ › على التابلت (View Customers — §1.5.4 New Invoice)",
+        "back-office/customers.md › 4.23 Customers - Add Discount by Customers type",
+        "back-office/customers.md › 4.24 Customers - Customers in Map",
+        "back-office/customers.md › 4.22 Customers - New Customers Locations"
+      ],
+      "steps": [
+        "searching documentation",
+        "searching documentation"
+      ],
+      "error": null,
+      "tools_ms": {
+        "search_docs": 18
+      },
+      "llm_calls": 4,
+      "prompt_tokens": 195973,
+      "completion_tokens": 719,
+      "cache_hit_tokens": 72704,
+      "cache_miss_tokens": 123269,
+      "vault_search_count": 0,
+      "doc_search_count": 2,
+      "thread_head": null,
+      "usage": {
+        "llm_calls": 4,
+        "prompt_tokens": 195973,
+        "completion_tokens": 719,
+        "cache_hit_tokens": 72704,
+        "cache_miss_tokens": 123269,
+        "estimated_cost_usd": 0.028103
+      },
+      "path_checks": {
+        "used_sql_path": false,
+        "used_docs_fts": true,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "howto_ok": true
+      },
+      "trace": {
+        "ts": 1791027393.6325006,
+        "client": "105",
+        "subject": "0ab404f5e92c",
+        "question": "وين بضيف نوع زبون جديد؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 0,
+        "result_rows": 0,
+        "path": "fc0,ht0,rp0,an0",
+        "latency_ms": 10289,
+        "ttft_ms": 2210,
+        "llm_calls": 4,
+        "prompt_tokens": 195973,
+        "completion_tokens": 719,
+        "cache_hit_tokens": 72704,
+        "cache_miss_tokens": 123269,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 64197,
+            "completion": 75,
+            "cache_hit": 0,
+            "cache_miss": 64197,
+            "ms": 1.3
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 65479,
+            "completion": 74,
+            "cache_hit": 7168,
+            "cache_miss": 58311,
+            "ms": 1.5
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 65950,
+            "completion": 271,
+            "cache_hit": 65536,
+            "cache_miss": 414,
+            "ms": 1.6
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 347,
+            "completion": 299,
+            "cache_hit": 0,
+            "cache_miss": 347,
+            "ms": 1.9
+          }
+        ],
+        "company_id": 1,
+        "tools_ms": {
+          "search_docs": 18
+        }
+      },
+      "evaluation": {
+        "status": "pass",
+        "kind": "howto",
+        "notes": [
+          "howto cues 4/4"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-001",
+      "session": "s-july-sales",
+      "turn": 1,
+      "question": "مرحبا، بدي أعرف صافي مبيعات يوليو 2025 — قدّيش طلع معنا؟",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 16.11,
+      "answer": "**صافي مبيعات يوليو 2025 بلغ 520.84، موزّعاً على فاتورتي مبيعات صادرتين خلال الشهر.**\n\nالتفاصيل:\n- **الفواتير المباشرة (TransactionsHeaders، النوع 1، غير ملغاة):** 520.84 عبر فاتورتين، مع صفر مرتجعات مسجّلة خلال الفترة — لذا فإن القيمة قبل المرتجعات وبعدها متطابقة.\n- **طلبات البيع المحجوزة (OrdersHeaders، غير ملغاة):** 276.08 عبر طلبين — أُدرجها احتياطاً في حال كان جزء من نشاط الشركة يعمل بنمط حجز الطلبيات (Pre-Sales) لا البيع المباشر.\n\nملاحظة: يوليو 2025 هو **آخر فترة ترحيل** في السجلات، وحجم العمليات خلاله محدود كما يتضح من عدد المستندات أعلاه.\n\nهل ترغب في تحديد الرقم على أساس عدد الفواتير فقط أو استبعاد الطلبات نهائياً؟ كما يمكنني إعادة الاحتساب **قبل الضريبة** أو **بعد خصم المرتجعات** عند الحاجة.\nتنبيه: العدد المذكور كفواتير هو عدد البنود، وليس عدد رؤوس الفواتير.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'; SELECT TOP 5 TransactionYear, MONTH(TransactionDate) AS M, COUNT(*) AS inv_cnt FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid,0)=0 GROUP BY TransactionYear, MONTH(TransactionDate) ORDER BY TransactionYear DESC, M DESC; SELECT COUNT(*) AS order_cnt, ISNULL(SUM(od.Price - ISNULL(od.DiscountAmount,0) - ISNULL(od.VoucherDiscount,0) - ISNULL(od.CustomerDiscountAmount,0)),0) AS order_amount FROM t.OrdersHeaders oh INNER JOIN t.OrdersDetails od ON oh.CompanyID=od.CompanyID AND oh.OrderYear=od.OrderYear AND oh.OrderNo=od.OrderNo WHERE ISNULL(oh.IsVoid,0)=0 AND oh.OrderDate >= '2025-07-01' AND oh.OrderDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "OrdersDetails",
+        "OrdersHeaders",
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4",
+        "running query 2 of 4",
+        "running query 3 of 4"
+      ],
+      "error": null,
+      "tools_ms": {
+        "run_metric": 71,
+        "run_select": 328
+      },
+      "llm_calls": 5,
+      "prompt_tokens": 264026,
+      "completion_tokens": 1907,
+      "cache_hit_tokens": 141184,
+      "cache_miss_tokens": 122842,
+      "vault_search_count": 0,
+      "doc_search_count": 0,
+      "thread_head": {
+        "tool": "run_metric",
+        "metric": "sales",
+        "tax": "incl",
+        "returns": "gross",
+        "period_label": "2025-07-01 .. 2025-08-01",
+        "primary_measure": "gross_sales",
+        "values": {
+          "gross_sales": 520.84,
+          "returns": 0.0,
+          "net_of_returns": 520.84,
+          "invoice_count": 2,
+          "return_count": 0
+        },
+        "as_of": "2026-10-03"
+      },
+      "usage": {
+        "llm_calls": 5,
+        "prompt_tokens": 264026,
+        "completion_tokens": 1907,
+        "cache_hit_tokens": 141184,
+        "cache_miss_tokens": 122842,
+        "estimated_cost_usd": 0.029272
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "data_ok": true
+      },
+      "trace": {
+        "ts": 1791027410.4539616,
+        "client": "105",
+        "subject": "898cd216b76c",
+        "question": "مرحبا، بدي أعرف صافي مبيعات يوليو 2025 — قدّيش طلع معنا؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 3,
+        "result_rows": 5,
+        "path": "fc0,ht0,rp0,an0",
+        "latency_ms": 16111,
+        "ttft_ms": 2722,
+        "llm_calls": 5,
+        "prompt_tokens": 264026,
+        "completion_tokens": 1907,
+        "cache_hit_tokens": 141184,
+        "cache_miss_tokens": 122842,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 64965,
+            "completion": 392,
+            "cache_hit": 0,
+            "cache_miss": 64965,
+            "ms": 2.5
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 65804,
+            "completion": 274,
+            "cache_hit": 8704,
+            "cache_miss": 57100,
+            "ms": 2.4
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 66195,
+            "completion": 356,
+            "cache_hit": 66048,
+            "cache_miss": 147,
+            "ms": 1.8
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 66598,
+            "completion": 479,
+            "cache_hit": 66432,
+            "cache_miss": 166,
+            "ms": 3.3
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 464,
+            "completion": 406,
+            "cache_hit": 0,
+            "cache_miss": 464,
+            "ms": 2.0
+          }
+        ],
+        "company_id": 2,
+        "tools_ms": {
+          "run_metric": 71,
+          "run_select": 328
+        }
+      },
+      "evaluation": {
+        "status": "skipped_pending_gold",
+        "kind": "number",
+        "notes": [
+          "gold pending — human must fill from read-only SQL"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-002",
+      "session": "s-july-sales",
+      "turn": 2,
+      "question": "طيب وإذا قبل الضريبة؟",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 7.16,
+      "answer": "**صافي مبيعات يوليو 2025 قبل الضريبة بلغ 449.00، موزّعاً على فاتورتي مبيعات صادرتين خلال الشهر، دون أي مرتجعات.**\n\nللمقارنة: المبلغ المحتسب بعد الضريبة (القيمة المحصّلة) كان 520.84، أي أن الضريبة المضمّنة تقارب 71.84.\n\n- الأساس: فواتير المبيعات المباشرة (النوع 1، غير ملغاة)، بطرح الخصومات والخصم النقدي، مع استبعاد الضريبة.\n- عدد الفواتير: فاتورتان، ولا توجد مرتجعات.\n\nيمكن تحديد النتيجة بعد المرتجعات (صافي بعد المرتجعات) عند طلب ذلك.\nتنبيه: العدد المذكور كفواتير هو عدد البنود، وليس عدد رؤوس الفواتير.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN (ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) - ABS(td.TaxAmount)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN (ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) - ABS(td.TaxAmount)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN (ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) - ABS(td.TaxAmount)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN (ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) - ABS(td.TaxAmount)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4"
+      ],
+      "error": null,
+      "tools_ms": {
+        "run_metric": 105
+      },
+      "llm_calls": 3,
+      "prompt_tokens": 130226,
+      "completion_tokens": 847,
+      "cache_hit_tokens": 127872,
+      "cache_miss_tokens": 2354,
+      "vault_search_count": 0,
+      "doc_search_count": 0,
+      "thread_head": {
+        "tool": "run_metric",
+        "metric": "sales",
+        "tax": "excl",
+        "returns": "gross",
+        "period_label": "2025-07-01 .. 2025-08-01",
+        "primary_measure": "gross_sales",
+        "values": {
+          "gross_sales": 449.0,
+          "returns": 0.0,
+          "net_of_returns": 449.0,
+          "invoice_count": 2,
+          "return_count": 0
+        },
+        "as_of": "2026-10-03"
+      },
+      "usage": {
+        "llm_calls": 3,
+        "prompt_tokens": 130226,
+        "completion_tokens": 847,
+        "cache_hit_tokens": 127872,
+        "cache_miss_tokens": 2354,
+        "estimated_cost_usd": 0.001972
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "data_ok": true
+      },
+      "trace": {
+        "ts": 1791027418.3901734,
+        "client": "105",
+        "subject": "898cd216b76c",
+        "question": "طيب وإذا قبل الضريبة؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 1,
+        "result_rows": 1,
+        "path": "fc0,ht0,rp0,an0",
+        "latency_ms": 7157,
+        "ttft_ms": 2626,
+        "llm_calls": 3,
+        "prompt_tokens": 130226,
+        "completion_tokens": 847,
+        "cache_hit_tokens": 127872,
+        "cache_miss_tokens": 2354,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 64527,
+            "completion": 341,
+            "cache_hit": 64000,
+            "cache_miss": 527,
+            "ms": 2.0
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 65352,
+            "completion": 209,
+            "cache_hit": 63872,
+            "cache_miss": 1480,
+            "ms": 1.2
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 347,
+            "completion": 297,
+            "cache_hit": 0,
+            "cache_miss": 347,
+            "ms": 1.9
+          }
+        ],
+        "company_id": 2,
+        "tools_ms": {
+          "run_metric": 105
+        }
+      },
+      "evaluation": {
+        "status": "skipped_pending_gold",
+        "kind": "number",
+        "notes": [
+          "gold pending — human must fill from read-only SQL"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-003",
+      "session": "s-july-sales",
+      "turn": 3,
+      "question": "وبعد ما نخصم المرتجعات؟",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 6.57,
+      "answer": "**صافي المبيعات بعد خصم المرتجعات ليومية يوليو 2025 لم يتغير: 520.84**، إذ لم تُسجَّل أي مرتجعات (فواتير النوع 2) خلال الشهر؛ إجمالي المبيعات المحتسب 520.84 والمرتجعات 0.00، موزّعاً على فاتورتي مبيعات صادرتين.\n\n| البند | القيمة |\n|---|---|\n| إجمالي المبيعات (النوع 1) | 520.84 |\n| المرتجعات (النوع 2) | 0.00 |\n| **الصافي بعد المرتجعات** | **520.84** |\n| عدد فواتير المبيعات | 2 |\n| عدد المرتجعات | 0 |\n\nعملياً، بما أنه لا توجد مرتجعات مسجّلة في هذه الفترة، فإن قيمة «بعد المرتجعات» تطابق القيمة المحصّلة (قبل/بعد الضريبة تعتمد على المطلوب الخاص بالضريبة). إذا كان المطلوب صافيًا **قبل الضريبة وبعد المرتجعات** معًا، يمكن احتساب ذلك مباشرة.\nتنبيه: العدد المذكور كفواتير هو عدد البنود، وليس عدد رؤوس الفواتير.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4"
+      ],
+      "error": null,
+      "tools_ms": {
+        "run_metric": 25
+      },
+      "llm_calls": 3,
+      "prompt_tokens": 130844,
+      "completion_tokens": 857,
+      "cache_hit_tokens": 128000,
+      "cache_miss_tokens": 2844,
+      "vault_search_count": 0,
+      "doc_search_count": 0,
+      "thread_head": {
+        "tool": "run_metric",
+        "metric": "sales",
+        "tax": "incl",
+        "returns": "net",
+        "period_label": "2025-07-01 .. 2025-08-01",
+        "primary_measure": "net_of_returns",
+        "values": {
+          "gross_sales": 520.84,
+          "returns": 0.0,
+          "net_of_returns": 520.84,
+          "invoice_count": 2,
+          "return_count": 0
+        },
+        "as_of": "2026-10-03"
+      },
+      "usage": {
+        "llm_calls": 3,
+        "prompt_tokens": 130844,
+        "completion_tokens": 857,
+        "cache_hit_tokens": 128000,
+        "cache_miss_tokens": 2844,
+        "estimated_cost_usd": 0.002087
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "data_ok": true
+      },
+      "trace": {
+        "ts": 1791027425.7362866,
+        "client": "105",
+        "subject": "898cd216b76c",
+        "question": "وبعد ما نخصم المرتجعات؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 1,
+        "result_rows": 1,
+        "path": "fc0,ht0,rp0,an0",
+        "latency_ms": 6563,
+        "ttft_ms": 2027,
+        "llm_calls": 3,
+        "prompt_tokens": 130844,
+        "completion_tokens": 857,
+        "cache_hit_tokens": 128000,
+        "cache_miss_tokens": 2844,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 64905,
+            "completion": 147,
+            "cache_hit": 64000,
+            "cache_miss": 905,
+            "ms": 1.1
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 65498,
+            "completion": 290,
+            "cache_hit": 64000,
+            "cache_miss": 1498,
+            "ms": 1.8
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 441,
+            "completion": 420,
+            "cache_hit": 0,
+            "cache_miss": 441,
+            "ms": 1.8
+          }
+        ],
+        "company_id": 2,
+        "tools_ms": {
+          "run_metric": 25
+        }
+      },
+      "evaluation": {
+        "status": "skipped_pending_gold",
+        "kind": "number",
+        "notes": [
+          "gold pending — human must fill from read-only SQL"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-004",
+      "session": "s-july-sales",
+      "turn": 4,
+      "question": "منيح هيك ولا في شي غلط؟",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "opinion",
+        "must_not_invent_target": true
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 8.84,
+      "answer": "الأرقام سليمة ومتطابقة، ولا يوجد خطأ في ما سبق.\n\n- **إجمالي المبيعات (بعد الضريبة):** 520.84 — فاتورتا مبيعات (النوع 1، غير ملغاة).\n- **قبل الضريبة:** 449.00، أي أن الضريبة المضمّنة تقارب 71.84.\n- **المرتجعات خلال يوليو 2025:** صفر — لا توجد أي فاتورة مرتجع (النوع 2) مسجّلة.\n- لذلك **صافي المبيعات بعد خصم المرتجعات = 520.84**، وهو مطابق للمبلغ المحصّل قبل الخصم لعدم وجود مرتجعات في الشهر.\n\nيمكن التحديد في حال كان المطلوب عدد الفواتير أو عملاء المنطقة.\nتنبيه: العدد المذكور كفواتير هو عدد البنود، وليس عدد رؤوس الفواتير.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'; SELECT COUNT(*) AS return_count FROM t.TransactionsHeaders th WHERE th.TransactionTypeID = 2 AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate <= '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4",
+        "running query 2 of 4"
+      ],
+      "error": null,
+      "tools_ms": {
+        "run_metric": 110
+      },
+      "llm_calls": 3,
+      "prompt_tokens": 131155,
+      "completion_tokens": 1409,
+      "cache_hit_tokens": 128384,
+      "cache_miss_tokens": 2771,
+      "vault_search_count": 0,
+      "doc_search_count": 0,
+      "thread_head": {
+        "tool": "run_metric",
+        "metric": "sales",
+        "tax": "incl",
+        "returns": "net",
+        "period_label": "2025-07-01 .. 2025-08-01",
+        "primary_measure": "net_of_returns",
+        "values": {
+          "gross_sales": 520.84,
+          "returns": 0.0,
+          "net_of_returns": 520.84,
+          "invoice_count": 2,
+          "return_count": 0
+        },
+        "as_of": "2026-10-03"
+      },
+      "usage": {
+        "llm_calls": 3,
+        "prompt_tokens": 131155,
+        "completion_tokens": 1409,
+        "cache_hit_tokens": 128384,
+        "cache_miss_tokens": 2771,
+        "estimated_cost_usd": 0.002438
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "path_ok": true
+      },
+      "trace": {
+        "ts": 1791027435.3757706,
+        "client": "105",
+        "subject": "898cd216b76c",
+        "question": "منيح هيك ولا في شي غلط؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 2,
+        "result_rows": 1,
+        "path": "fc0,ht0,rp0,an0",
+        "latency_ms": 8837,
+        "ttft_ms": 4579,
+        "llm_calls": 3,
+        "prompt_tokens": 131155,
+        "completion_tokens": 1409,
+        "cache_hit_tokens": 128384,
+        "cache_miss_tokens": 2771,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 64710,
+            "completion": 825,
+            "cache_hit": 64256,
+            "cache_miss": 454,
+            "ms": 3.6
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 66082,
+            "completion": 275,
+            "cache_hit": 64128,
+            "cache_miss": 1954,
+            "ms": 1.4
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 363,
+            "completion": 309,
+            "cache_hit": 0,
+            "cache_miss": 363,
+            "ms": 1.7
+          }
+        ],
+        "company_id": 2,
+        "tools_ms": {
+          "run_metric": 110
+        }
+      },
+      "evaluation": {
+        "status": "pass",
+        "kind": "opinion",
+        "notes": [
+          "opinion without invented target"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-039",
+      "session": "s-label-tax",
+      "turn": 1,
+      "question": "مبيعات يوليو 2025 — بديها شامل الضريبة ولا قبلها؟",
+      "company_id": 2,
+      "lang": "ar-msa",
+      "expects": {
+        "type": "clarify",
+        "asks_basis_or_period": true
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 10.16,
+      "answer": "إجمالي مبيعات يوليو 2025 شاملة الضريبة: **520.84** موزعة على **فاتورتَي مبيعات**، دون أي مرتجعات مسجلة في الفترة.\n\nبيان الافتراض: احتُسب المبلغ على أساس الإجمالي بعد الضريبة (المسجّل في بنود الفواتير من نوع المبيعات) قبل خصم المرتجعات، وهو الافتراضي المعتمد.\n\nالاستعلام المنفّذ:\n```sql\nSELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales,\n       ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns,\n       ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count\nFROM t.TransactionsHeaders th\nINNER JOIN t.TransactionsDetails td\n  ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID\n AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo\nWHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0\n  AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01';\n```\n\nيمكن التحديد في حال كان المطلوب:\n- **قبل الضريبة** (بدون ضريبة).\n- **بعد المرتجعات** (صافي المبيعات).\n- أو تفصيل آخر مثل عدد الفواتير أو مبيعات مندوب بعينه.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4"
+      ],
+      "error": null,
+      "tools_ms": {
+        "run_metric": 25
+      },
+      "llm_calls": 3,
+      "prompt_tokens": 131541,
+      "completion_tokens": 1615,
+      "cache_hit_tokens": 8704,
+      "cache_miss_tokens": 122837,
+      "vault_search_count": 0,
+      "doc_search_count": 0,
+      "thread_head": {
+        "tool": "run_metric",
+        "metric": "sales",
+        "tax": "incl",
+        "returns": "gross",
+        "period_label": "2025-07-01 .. 2025-08-01",
+        "primary_measure": "gross_sales",
+        "values": {
+          "gross_sales": 520.84,
+          "returns": 0.0,
+          "net_of_returns": 520.84,
+          "invoice_count": 2,
+          "return_count": 0
+        },
+        "as_of": "2026-10-03"
+      },
+      "usage": {
+        "llm_calls": 3,
+        "prompt_tokens": 131541,
+        "completion_tokens": 1615,
+        "cache_hit_tokens": 8704,
+        "cache_miss_tokens": 122837,
+        "estimated_cost_usd": 0.028151
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "path_ok": true
+      },
+      "trace": {
+        "ts": 1791027446.2248483,
+        "client": "105",
+        "subject": "5dfa393ffb99",
+        "question": "مبيعات يوليو 2025 — بديها شامل الضريبة ولا قبلها؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 1,
+        "result_rows": 1,
+        "path": "fc0,ht0,rp0,an0",
+        "latency_ms": 10156,
+        "ttft_ms": 3783,
+        "llm_calls": 3,
+        "prompt_tokens": 131541,
+        "completion_tokens": 1615,
+        "cache_hit_tokens": 8704,
+        "cache_miss_tokens": 122837,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 64958,
+            "completion": 567,
+            "cache_hit": 0,
+            "cache_miss": 64958,
+            "ms": 3.3
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 65972,
+            "completion": 489,
+            "cache_hit": 8704,
+            "cache_miss": 57268,
+            "ms": 2.7
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 611,
+            "completion": 559,
+            "cache_hit": 0,
+            "cache_miss": 611,
+            "ms": 2.2
+          }
+        ],
+        "company_id": 2,
+        "tools_ms": {
+          "run_metric": 25
+        }
+      },
+      "evaluation": {
+        "status": "pass",
+        "kind": "clarify",
+        "notes": [],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-048",
+      "session": "s-metric-items-sold",
+      "turn": 1,
+      "question": "مين أكثر صنف مبيعاً بيوليو 2025؟",
+      "company_id": 1,
+      "lang": "ar-msa",
+      "expects": {
+        "type": "label",
+        "phrases": [
+          "صنف",
+          "item"
+        ]
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 20.75,
+      "answer": "شهر يوليو 2025 شبه خالٍ من الفواتير المفوترة — إذ لم يُسجَّل خلاله سوى فاتورتَي مبيعات فقط بقيمة إجمالية لا تتجاوز ~3.15 ريال — ولذلك لا يعكس ترتيبه أي نمط بيعي حقيقي.\n\nالأصناف الوحيدة المسجلة في تلك الفترة:\n\n| الصنف | الاسم | المبيعات (شامل الضريبة) |\n|---|---|---|\n| P1 | Item 1 | 2.10 |\n| BBB1 | BBB1 | 1.05 |\n\nوبما أن أحدث تاريخ ترحيل فعلي في النظام هو 2026-07-12، فالفترة الزمنية المناظرة (يوليو 2026) هي الفترة الأخيرة المكتملة والمُحمَّلة بالبيانات.\n\nهل ترغب في احتساب الصنف الأكثر مبيعاً لشهر يوليو 2026 (آخر فترة مُرحَّلة)؟ يمكن تحديده أيضاً بحسب الكمية المباعة أو عدد الفواتير إن كان المطلوب مختلفاً عن قيمة المبيعات.\n\n```sql\nSELECT td.ItemCode, i.Name AS ItemName,\n       SUM(CASE WHEN th.TransactionTypeID = 1\n                THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0))\n                ELSE 0 END) AS gross_sales\nFROM t.TransactionsHeaders th\nJOIN t.TransactionsDetails td\n  ON th.CompanyID = td.CompanyID\n AND th.TransactionTypeID = td.TransactionTypeID\n AND th.TransactionYear = td.TransactionYear\n AND th.TransactionNo = td.TransactionNo\nJOIN t.Items i ON i.ItemCode = td.ItemCode AND i.CompanyID = td.CompanyID\nWHERE th.TransactionTypeID IN (1,2)\n  AND ISNULL(th.IsVoid,0) = 0\n  AND th.TransactionDate >= '2025-07-01'\n  AND th.TransactionDate <  '2025-08-01'\nGROUP BY td.ItemCode, i.Name;\n```\nتنبيه: العدد المذكور كفواتير هو عدد البنود، وليس عدد رؤوس الفواتير.",
+      "answer_sql": "SELECT td.ItemCode, i.Name AS ItemName, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo INNER JOIN t.Items i ON i.ItemCode = td.ItemCode AND i.CompanyID = td.CompanyID WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 1 AND td.CompanyID = 1 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01' GROUP BY td.ItemCode, i.Name; SELECT MIN(TransactionDate) AS min_dt, MAX(TransactionDate) AS max_dt, COUNT(*) AS cnt FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid,0)=0; SELECT COUNT(*) AS inv_cnt, SUM(ABS(td.Price)) AS tot FROM t.TransactionsHeaders th JOIN t.TransactionsDetails td ON th.CompanyID=td.CompanyID AND th.TransactionTypeID=td.TransactionTypeID AND th.TransactionYear=td.TransactionYear AND th.TransactionNo=td.TransactionNo WHERE th.TransactionTypeID=1 AND ISNULL(th.IsVoid,0)=0 AND th.TransactionDate>='2025-07-01' AND th.TransactionDate<'2025-08-01'; SELECT COUNT(*) AS inv_cnt FROM t.TransactionsHeaders WHERE TransactionTypeID = 1 AND ISNULL(IsVoid,0)=0 AND TransactionDate >= '2025-07-01' AND TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "Items",
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4",
+        "running query 2 of 4",
+        "running query 3 of 4",
+        "running query 4 of 4"
+      ],
+      "error": null,
+      "tools_ms": {
+        "run_metric": 74,
+        "run_select": 338
+      },
+      "llm_calls": 6,
+      "prompt_tokens": 325155,
+      "completion_tokens": 2550,
+      "cache_hit_tokens": 81024,
+      "cache_miss_tokens": 244131,
+      "vault_search_count": 0,
+      "doc_search_count": 0,
+      "thread_head": null,
+      "usage": {
+        "llm_calls": 6,
+        "prompt_tokens": 325155,
+        "completion_tokens": 2550,
+        "cache_hit_tokens": 81024,
+        "cache_miss_tokens": 244131,
+        "estimated_cost_usd": 0.055959
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "data_ok": true
+      },
+      "trace": {
+        "ts": 1791027467.6933916,
+        "client": "105",
+        "subject": "438046c77bf7",
+        "question": "مين أكثر صنف مبيعاً بيوليو 2025؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 4,
+        "result_rows": 2,
+        "path": "fc0,ht0,rp0,an0",
+        "latency_ms": 20747,
+        "ttft_ms": 3534,
+        "llm_calls": 6,
+        "prompt_tokens": 325155,
+        "completion_tokens": 2550,
+        "cache_hit_tokens": 81024,
+        "cache_miss_tokens": 244131,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 64202,
+            "completion": 408,
+            "cache_hit": 0,
+            "cache_miss": 64202,
+            "ms": 2.9
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 65176,
+            "completion": 340,
+            "cache_hit": 8704,
+            "cache_miss": 56472,
+            "ms": 2.2
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 65573,
+            "completion": 280,
+            "cache_hit": 65408,
+            "cache_miss": 165,
+            "ms": 1.4
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t2",
+            "prompt": 65916,
+            "completion": 178,
+            "cache_hit": 0,
+            "cache_miss": 65916,
+            "ms": 1.6
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t2",
+            "prompt": 63625,
+            "completion": 724,
+            "cache_hit": 6912,
+            "cache_miss": 56713,
+            "ms": 4.4
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 663,
+            "completion": 620,
+            "cache_hit": 0,
+            "cache_miss": 663,
+            "ms": 2.9
+          }
+        ],
+        "company_id": 1,
+        "tools_ms": {
+          "run_metric": 74,
+          "run_select": 338
+        }
+      },
+      "evaluation": {
+        "status": "pass",
+        "kind": "label",
+        "notes": [],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-005",
+      "session": "s-net-en",
+      "turn": 1,
+      "question": "Hi — for July 2025, what's our gross sales total with tax included?",
+      "company_id": 2,
+      "lang": "en",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 7.87,
+      "answer": "إجمالي المبيعات لشهر يوليو 2025 بلغ **520.84** (شاملاً الضريبة وقبل خصم المرتجعات)، موزعاً على **فاتورتَي مبيعات** فقط، دون أي مرتجعات مسجّلة خلال الفترة.\n\n| البند | القيمة |\n|---|---|\n| المبيعات (شامل الضريبة) | 520.84 |\n| المرتجعات | 0.00 |\n| الصافي بعد المرتجعات | 520.84 |\n| عدد فواتير المبيعات | 2 |\n\nملاحظة: الرقم منخفض نسبياً لأن الفترة تضم فاتورتين فقط؛ إن كان المطلوب نطاقاً أوسع أو شمل الطلبات (Orders) بدلاً من الفواتير، يمكن التحديد. كما يمكن إخراج المبيعات **قبل الضريبة** أو **بعد المرتجعات** عند الطلب.\nتنبيه: العدد المذكور كفواتير هو عدد البنود، وليس عدد رؤوس الفواتير.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4"
+      ],
+      "error": null,
+      "tools_ms": {
+        "run_metric": 81
+      },
+      "llm_calls": 3,
+      "prompt_tokens": 131091,
+      "completion_tokens": 862,
+      "cache_hit_tokens": 8704,
+      "cache_miss_tokens": 122387,
+      "vault_search_count": 0,
+      "doc_search_count": 0,
+      "thread_head": {
+        "tool": "run_metric",
+        "metric": "sales",
+        "tax": "incl",
+        "returns": "gross",
+        "period_label": "2025-07-01 .. 2025-08-01",
+        "primary_measure": "gross_sales",
+        "values": {
+          "gross_sales": 520.84,
+          "returns": 0.0,
+          "net_of_returns": 520.84,
+          "invoice_count": 2,
+          "return_count": 0
+        },
+        "as_of": "2026-10-03"
+      },
+      "usage": {
+        "llm_calls": 3,
+        "prompt_tokens": 131091,
+        "completion_tokens": 862,
+        "cache_hit_tokens": 8704,
+        "cache_miss_tokens": 122387,
+        "estimated_cost_usd": 0.027555
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "data_ok": true
+      },
+      "trace": {
+        "ts": 1791027476.3071423,
+        "client": "105",
+        "subject": "a0a37e5d891d",
+        "question": "Hi — for July 2025, what's our gross sales total with tax included?",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 1,
+        "result_rows": 1,
+        "path": "fc0,ht0,rp0,an0",
+        "latency_ms": 7868,
+        "ttft_ms": 2546,
+        "llm_calls": 3,
+        "prompt_tokens": 131091,
+        "completion_tokens": 862,
+        "cache_hit_tokens": 8704,
+        "cache_miss_tokens": 122387,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 65004,
+            "completion": 245,
+            "cache_hit": 0,
+            "cache_miss": 65004,
+            "ms": 2.0
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 65696,
+            "completion": 269,
+            "cache_hit": 8704,
+            "cache_miss": 56992,
+            "ms": 2.0
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 391,
+            "completion": 348,
+            "cache_hit": 0,
+            "cache_miss": 391,
+            "ms": 1.8
+          }
+        ],
+        "company_id": 2,
+        "tools_ms": {
+          "run_metric": 81
+        }
+      },
+      "evaluation": {
+        "status": "skipped_pending_gold",
+        "kind": "number",
+        "notes": [
+          "gold pending — human must fill from read-only SQL"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-006",
+      "session": "s-net-en",
+      "turn": 2,
+      "question": "Same month but net of credit notes please",
+      "company_id": 2,
+      "lang": "en-mixed",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 6.13,
+      "answer": "صافي المبيعات لشهر يوليو 2025 بعد خصم المرتجعات بلغ **520.84**، وهو مطابق لإجمالي المبيعات المسجّل.\n\n| البند | القيمة |\n|---|---|\n| المبيعات (شامل الضريبة) | 520.84 |\n| المرتجعات (إشعارات دائنة) | 0.00 |\n| **الصافي بعد المرتجعات** | **520.84** |\n\nلم تُسجَّل أي مرتجعات خلال الفترة، لذا لم يتغيّر الرقم عن الإجمالي الذي عرضناه سابقاً. وقد اقتصرت الحركة على فاتورتَي مبيعات غير ملغاة.\n\nإذا كان المطلوب استبعاد ضريبة القيمة المضافة أيضاً أو الاحتساب على أساس عدد الفواتير أو عملاء المنطقة، يمكن تحديد ذلك.\nتنبيه: العدد المذكور كفواتير هو عدد البنود، وليس عدد رؤوس الفواتير.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4"
+      ],
+      "error": null,
+      "tools_ms": {
+        "run_metric": 28
+      },
+      "llm_calls": 3,
+      "prompt_tokens": 130679,
+      "completion_tokens": 664,
+      "cache_hit_tokens": 127872,
+      "cache_miss_tokens": 2807,
+      "vault_search_count": 0,
+      "doc_search_count": 0,
+      "thread_head": {
+        "tool": "run_metric",
+        "metric": "sales",
+        "tax": "incl",
+        "returns": "net",
+        "period_label": "2025-07-01 .. 2025-08-01",
+        "primary_measure": "net_of_returns",
+        "values": {
+          "gross_sales": 520.84,
+          "returns": 0.0,
+          "net_of_returns": 520.84,
+          "invoice_count": 2,
+          "return_count": 0
+        },
+        "as_of": "2026-10-03"
+      },
+      "usage": {
+        "llm_calls": 3,
+        "prompt_tokens": 130679,
+        "completion_tokens": 664,
+        "cache_hit_tokens": 127872,
+        "cache_miss_tokens": 2807,
+        "estimated_cost_usd": 0.001951
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "data_ok": true
+      },
+      "trace": {
+        "ts": 1791027483.118496,
+        "client": "105",
+        "subject": "a0a37e5d891d",
+        "question": "Same month but net of credit notes please",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 1,
+        "result_rows": 1,
+        "path": "fc0,ht0,rp0,an0",
+        "latency_ms": 6128,
+        "ttft_ms": 1633,
+        "llm_calls": 3,
+        "prompt_tokens": 130679,
+        "completion_tokens": 664,
+        "cache_hit_tokens": 127872,
+        "cache_miss_tokens": 2807,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 64872,
+            "completion": 124,
+            "cache_hit": 64000,
+            "cache_miss": 872,
+            "ms": 0.7
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 65442,
+            "completion": 212,
+            "cache_hit": 63872,
+            "cache_miss": 1570,
+            "ms": 1.5
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 365,
+            "completion": 328,
+            "cache_hit": 0,
+            "cache_miss": 365,
+            "ms": 2.0
+          }
+        ],
+        "company_id": 2,
+        "tools_ms": {
+          "run_metric": 28
+        }
+      },
+      "evaluation": {
+        "status": "skipped_pending_gold",
+        "kind": "number",
+        "notes": [
+          "gold pending — human must fill from read-only SQL"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-013",
+      "session": "s-nextday",
+      "turn": 1,
+      "question": "صباح الخير، قديش مبيعات أمس؟",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "score": false,
+      "client": "105",
+      "elapsed_s": 10.57,
+      "answer": "المبيعات المسجلة ليوم أمس (2026-10-02) تساوي صفراً؛ إذ لا توجد أي فواتير مرحّلة بعد آخر تاريخ ترحيل متاح في النظام وهو **2025-07-15**.\n\nبعبارة أخرى، فترة الأمس تقع خارج نطاق البيانات المرحّلة حالياً، وأحدث فترة ترحيل فعلية تنتهي في **يوليو 2025**. هل ترغب في أن أحتسب لك مبيعات آخر فترة ترحيل المتاحة (حتى 2025-07-15) أو مبيعات يوم محدد ضمنها؟",
+      "answer_sql": "SELECT CAST(GETDATE() AS date) AS server_today, MAX(th.TransactionDate) AS max_invoice_date FROM t.TransactionsHeaders th WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid,0) = 0",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4"
+      ],
+      "error": null,
+      "tools_ms": {
+        "run_select": 92
+      },
+      "llm_calls": 3,
+      "prompt_tokens": 130113,
+      "completion_tokens": 1217,
+      "cache_hit_tokens": 8704,
+      "cache_miss_tokens": 121409,
+      "vault_search_count": 0,
+      "doc_search_count": 0,
+      "thread_head": null,
+      "usage": {
+        "llm_calls": 3,
+        "prompt_tokens": 130113,
+        "completion_tokens": 1217,
+        "cache_hit_tokens": 8704,
+        "cache_miss_tokens": 121409,
+        "estimated_cost_usd": 0.027574
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "data_ok": true
+      },
+      "trace": {
+        "ts": 1791027494.3759966,
+        "client": "105",
+        "subject": "62a7c9b354a8",
+        "question": "صباح الخير، قديش مبيعات أمس؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 1,
+        "result_rows": 1,
+        "path": "fc0,ht0,rp0,an0",
+        "latency_ms": 10571,
+        "ttft_ms": 3940,
+        "llm_calls": 3,
+        "prompt_tokens": 130113,
+        "completion_tokens": 1217,
+        "cache_hit_tokens": 8704,
+        "cache_miss_tokens": 121409,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 64687,
+            "completion": 519,
+            "cache_hit": 0,
+            "cache_miss": 64687,
+            "ms": 3.6
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 65142,
+            "completion": 468,
+            "cache_hit": 8704,
+            "cache_miss": 56438,
+            "ms": 3.0
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 284,
+            "completion": 230,
+            "cache_hit": 0,
+            "cache_miss": 284,
+            "ms": 2.0
+          }
+        ],
+        "company_id": 2,
+        "tools_ms": {
+          "run_select": 92
+        }
+      },
+      "evaluation": {
+        "status": "context_only",
+        "kind": "number",
+        "notes": [
+          "setup turn for same-chat continuity"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-014",
+      "session": "s-nextday",
+      "turn": 2,
+      "question": "نفس الرقم",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "clarify",
+        "must_not_reuse_yesterday": true,
+        "asks_period": true
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 3.85,
+      "answer": "بلغ مجموع المبيعات 520.84 (شامل الضريبة) عن فاتورتين، مع عدم وجود مرتجعات، وبذلك يكون الصافي بعد المرتجعات 520.84.\n\n- اللبنة: مبيعات إجمالية شاملة الضريبة، نوع الحركة 1، غير ملغاة.\n- المصدر: نتائج الاستعلام المنفّذ (TransactionsHeaders/TransactionsDetails).\n\nإن كان المطلوب صافي المبيعات قبل الضريبة أو عدد الفواتير بشكل منفصل، فيرجى التحديد لإعادة الاحتساب.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [],
+      "error": null,
+      "tools_ms": {},
+      "llm_calls": 2,
+      "prompt_tokens": 62577,
+      "completion_tokens": 335,
+      "cache_hit_tokens": 0,
+      "cache_miss_tokens": 62577,
+      "vault_search_count": null,
+      "doc_search_count": 0,
+      "thread_head": null,
+      "usage": {
+        "llm_calls": 2,
+        "prompt_tokens": 62577,
+        "completion_tokens": 335,
+        "cache_hit_tokens": 0,
+        "cache_miss_tokens": 62577,
+        "estimated_cost_usd": 0.013988
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": true,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "path_ok": true
+      },
+      "trace": {
+        "ts": 1791027498.9066763,
+        "client": "105",
+        "subject": "62a7c9b354a8",
+        "question": "نفس الرقم",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "company_id": 2,
+        "source": "plan_cache",
+        "path": "fc0,ht0,rp0,an0",
+        "queries": 1,
+        "result_rows": 1,
+        "latency_ms": 3850,
+        "ttft_ms": 1695,
+        "llm_calls": 2,
+        "prompt_tokens": 62577,
+        "completion_tokens": 335,
+        "cache_hit_tokens": 0,
+        "cache_miss_tokens": 62577,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 62311,
+            "completion": 129,
+            "cache_hit": 0,
+            "cache_miss": 62311,
+            "ms": 1.5
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 266,
+            "completion": 206,
+            "cache_hit": 0,
+            "cache_miss": 266,
+            "ms": 1.4
+          }
+        ]
+      },
+      "evaluation": {
+        "status": "weak",
+        "kind": "clarify",
+        "notes": [],
+        "flags": [
+          "did_not_ask_period"
+        ]
+      }
+    },
+    {
+      "id": "ah-008",
+      "session": "s-paraphrase-returns",
+      "turn": 1,
+      "question": "كم طلعلنا مبيعات تموز 2025؟",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 6.65,
+      "answer": "إجمالي مبيعات تموز 2025 بلغ **520.84** (شامل الضريبة)، موزعة على **فاتورتي مبيعات** فقط، دون أي مرتجعات مسجلة خلال الشهر.\n\n- الفواتير: 2 (نوع 1، غير ملغاة)\n- المرتجعات: 0\n- الصافي بعد المرتجعات: 520.84 (مطابق للإجمالي لعدم وجود مرتجعات)\n\nيمكن التحديد في حال كان المطلوب عدد الفواتير أو عملاء المنطقة، أو احتساب المبيعات قبل الضريبة أو بعد المرتجعات.\nتنبيه: العدد المذكور كفواتير هو عدد البنود، وليس عدد رؤوس الفواتير.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4"
+      ],
+      "error": null,
+      "tools_ms": {
+        "run_metric": 24
+      },
+      "llm_calls": 3,
+      "prompt_tokens": 129733,
+      "completion_tokens": 564,
+      "cache_hit_tokens": 8320,
+      "cache_miss_tokens": 121413,
+      "vault_search_count": 0,
+      "doc_search_count": 0,
+      "thread_head": {
+        "tool": "run_metric",
+        "metric": "sales",
+        "tax": "incl",
+        "returns": "gross",
+        "period_label": "2025-07-01 .. 2025-08-01",
+        "primary_measure": "gross_sales",
+        "values": {
+          "gross_sales": 520.84,
+          "returns": 0.0,
+          "net_of_returns": 520.84,
+          "invoice_count": 2,
+          "return_count": 0
+        },
+        "as_of": "2026-10-03"
+      },
+      "usage": {
+        "llm_calls": 3,
+        "prompt_tokens": 129733,
+        "completion_tokens": 564,
+        "cache_hit_tokens": 8320,
+        "cache_miss_tokens": 121413,
+        "estimated_cost_usd": 0.027141
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc1,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "data_ok": true
+      },
+      "trace": {
+        "ts": 1791027506.2471943,
+        "client": "105",
+        "subject": "d39ea8ea1982",
+        "question": "كم طلعلنا مبيعات تموز 2025؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 1,
+        "result_rows": 1,
+        "path": "fc1,ht0,rp0,an0",
+        "latency_ms": 6644,
+        "ttft_ms": 2029,
+        "llm_calls": 3,
+        "prompt_tokens": 129733,
+        "completion_tokens": 564,
+        "cache_hit_tokens": 8320,
+        "cache_miss_tokens": 121413,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 64412,
+            "completion": 141,
+            "cache_hit": 0,
+            "cache_miss": 64412,
+            "ms": 1.7
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 65000,
+            "completion": 143,
+            "cache_hit": 8320,
+            "cache_miss": 56680,
+            "ms": 1.6
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 321,
+            "completion": 280,
+            "cache_hit": 0,
+            "cache_miss": 321,
+            "ms": 1.5
+          }
+        ],
+        "company_id": 2,
+        "tools_ms": {
+          "run_metric": 24
+        }
+      },
+      "evaluation": {
+        "status": "skipped_pending_gold",
+        "kind": "number",
+        "notes": [
+          "gold pending — human must fill from read-only SQL"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-009",
+      "session": "s-paraphrase-returns",
+      "turn": 2,
+      "question": "بدون المرتجعات يعني",
+      "company_id": 2,
+      "lang": "ar-jo",
+      "expects": {
+        "type": "number",
+        "gold": "pending"
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 10.77,
+      "answer": "القيمة المبيعات لمبيعات تموز 2025 دون أي خصم للمرتجعات هي **520.84** (شامل الضريبة).\n\nالتفصيل:\n- إجمالي فواتير المبيعات (نوع 1، غير ملغاة): **520.84** عبر فاتورتين.\n- المرتجعات خلال الشهر: **0**.\n- لذلك فإن الناتج بعد المرتجعات مطابق تماماً للإجمالي: **520.84**.\n\nبعبارة أخرى، لا أثر رقمياً للفرق بين «الإجمالي» و«بعد المرتجعات» لشهر تموز 2025، إذ لم تُسجّل أي مرتجعات خلاله.\n\nإن كان المقصود رقم المبيعات قبل الضريبة بدلاً من ذلك، يمكنني إعادة الاحتساب عليه.\nتنبيه: العدد المذكور كفواتير هو عدد البنود، وليس عدد رؤوس الفواتير.",
+      "answer_sql": "SELECT ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS gross_sales, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS returns, ISNULL(SUM(CASE WHEN th.TransactionTypeID = 1 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) - ISNULL(SUM(CASE WHEN th.TransactionTypeID = 2 THEN ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0)) ELSE 0 END), 0) AS net_of_returns, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END), 0) AS invoice_count, ISNULL(COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN th.TransactionNo END), 0) AS return_count FROM t.TransactionsHeaders th INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo WHERE th.TransactionTypeID IN (1, 2) AND ISNULL(th.IsVoid, 0) = 0 AND th.CompanyID = 2 AND td.CompanyID = 2 AND th.TransactionDate >= '2025-07-01' AND th.TransactionDate < '2025-08-01'",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4"
+      ],
+      "error": null,
+      "tools_ms": {
+        "run_metric": 25
+      },
+      "llm_calls": 3,
+      "prompt_tokens": 130995,
+      "completion_tokens": 1296,
+      "cache_hit_tokens": 8704,
+      "cache_miss_tokens": 122291,
+      "vault_search_count": 0,
+      "doc_search_count": 0,
+      "thread_head": {
+        "tool": "run_metric",
+        "metric": "sales",
+        "tax": "incl",
+        "returns": "gross",
+        "period_label": "2025-07-01 .. 2025-08-01",
+        "primary_measure": "gross_sales",
+        "values": {
+          "gross_sales": 520.84,
+          "returns": 0.0,
+          "net_of_returns": 520.84,
+          "invoice_count": 2,
+          "return_count": 0
+        },
+        "as_of": "2026-10-03"
+      },
+      "usage": {
+        "llm_calls": 3,
+        "prompt_tokens": 130995,
+        "completion_tokens": 1296,
+        "cache_hit_tokens": 8704,
+        "cache_miss_tokens": 122291,
+        "estimated_cost_usd": 0.02782
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "data_ok": true
+      },
+      "trace": {
+        "ts": 1791027517.7899098,
+        "client": "105",
+        "subject": "d39ea8ea1982",
+        "question": "بدون المرتجعات يعني",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 1,
+        "result_rows": 1,
+        "path": "fc0,ht0,rp0,an0",
+        "latency_ms": 10763,
+        "ttft_ms": 5255,
+        "llm_calls": 3,
+        "prompt_tokens": 130995,
+        "completion_tokens": 1296,
+        "cache_hit_tokens": 8704,
+        "cache_miss_tokens": 122291,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 64731,
+            "completion": 728,
+            "cache_hit": 0,
+            "cache_miss": 64731,
+            "ms": 4.3
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 65906,
+            "completion": 252,
+            "cache_hit": 8704,
+            "cache_miss": 57202,
+            "ms": 2.5
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 358,
+            "completion": 316,
+            "cache_hit": 0,
+            "cache_miss": 358,
+            "ms": 2.0
+          }
+        ],
+        "company_id": 2,
+        "tools_ms": {
+          "run_metric": 25
+        }
+      },
+      "evaluation": {
+        "status": "skipped_pending_gold",
+        "kind": "number",
+        "notes": [
+          "gold pending — human must fill from read-only SQL"
+        ],
+        "flags": []
+      }
+    },
+    {
+      "id": "ah-010",
+      "session": "s-paraphrase-returns",
+      "turn": 3,
+      "question": "شو رأيك نركز على مين من المندوبين هالشهر؟",
+      "company_id": 2,
+      "lang": "ar-msa",
+      "expects": {
+        "type": "opinion",
+        "must_not_invent_target": true
+      },
+      "score": true,
+      "client": "105",
+      "elapsed_s": 16.04,
+      "answer": "**لا توجد مبيعات مسجّلة خلال الشهر الجاري (تشرين الأول/أكتوبر 2026)، لذا لا يمكن بناء توصية على بيانات هذا الشهر.**\n\n- آخر تاريخ فاتورة مُرحّلة في النظام هو **2025-07-15**؛ أي أن الشهر الحالي والشهور التي تليه **فارغة** من الفواتير المُرحّلة.\n- بالتالي أي ترتيب أو توصية «لهذا الشهر» سيكون بلا أساس رقمي.\n\nهل ترغب في أن أعتمد **آخر فترة ترحيل فعلية (تموز/يوليو 2025)** لأقدّم لك ترتيب المندوبين حسب صافي المبيعات، مع مؤشر عن الاتجاه (الأعلى تحصيلاً مقابل الأضعف استحقاقاً للتركيز)؟ ويمكن بعد ذلك تحديد المعيار: أعلى مبيعات، أم عدد الفواتير، أم عدد العملاء المُغطّين.\n\nيلزم تأكيدك على اعتماد فترة تموز 2025 قبل أن أعرض أي أرقام بديلة.",
+      "answer_sql": "SELECT CAST(GETDATE() AS date) AS Today,\n       MAX(th.TransactionDate) AS MaxInvDate,\n       YEAR(th.TransactionDate) AS Yr,\n       MONTH(th.TransactionDate) AS Mn,\n       SUM(ABS(td.Price) - ABS(td.DiscountAmount) - ABS(td.VoucherDiscount) - ABS(ISNULL(td.CustomerDiscountAmount,0))) AS SalesAmount\nFROM t.TransactionsHeaders th\nJOIN t.TransactionsDetails td\n  ON td.TransactionTypeID = th.TransactionTypeID\n AND td.TransactionYear = th.TransactionYear\n AND td.TransactionNo = th.TransactionNo\nWHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid,0) = 0\nGROUP BY YEAR(th.TransactionDate), MONTH(th.TransactionDate)\nORDER BY Yr, Mn;",
+      "needs_ask": null,
+      "sources": [
+        "TransactionsDetails",
+        "TransactionsHeaders"
+      ],
+      "steps": [
+        "running query 1 of 4"
+      ],
+      "error": null,
+      "tools_ms": {
+        "run_select": 111
+      },
+      "llm_calls": 3,
+      "prompt_tokens": 133411,
+      "completion_tokens": 2994,
+      "cache_hit_tokens": 128000,
+      "cache_miss_tokens": 5411,
+      "vault_search_count": 0,
+      "doc_search_count": 0,
+      "thread_head": null,
+      "usage": {
+        "llm_calls": 3,
+        "prompt_tokens": 133411,
+        "completion_tokens": 2994,
+        "cache_hit_tokens": 128000,
+        "cache_miss_tokens": 5411,
+        "estimated_cost_usd": 0.004062
+      },
+      "path_checks": {
+        "used_sql_path": true,
+        "used_docs_fts": false,
+        "used_vault_notes": false,
+        "used_hot_lookup": false,
+        "plan_cache_shortcut": false,
+        "trace_path_flags": "fc0,ht0,rp0,an0",
+        "prefix_hash": "9098264a6e16882e",
+        "playbook_in_prefix": true,
+        "vault_cards_in_prefix": true,
+        "path_ok": true
+      },
+      "trace": {
+        "ts": 1791027534.5076203,
+        "client": "105",
+        "subject": "d39ea8ea1982",
+        "question": "شو رأيك نركز على مين من المندوبين هالشهر؟",
+        "event": "answer",
+        "git_sha": "033fbc44afdae14f1d92e70525df592979113b87",
+        "prefix_hash": "9098264a6e16882e",
+        "queries": 1,
+        "result_rows": 40,
+        "path": "fc0,ht0,rp0,an0",
+        "latency_ms": 16035,
+        "ttft_ms": 7668,
+        "llm_calls": 3,
+        "prompt_tokens": 133411,
+        "completion_tokens": 2994,
+        "cache_hit_tokens": 128000,
+        "cache_miss_tokens": 5411,
+        "calls": [
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 64689,
+            "completion": 1560,
+            "cache_hit": 64000,
+            "cache_miss": 689,
+            "ms": 6.8
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "t1",
+            "prompt": 68329,
+            "completion": 1095,
+            "cache_hit": 64000,
+            "cache_miss": 4329,
+            "ms": 5.3
+          },
+          {
+            "model": "deepseek-v4-flash",
+            "gear": "f0",
+            "prompt": 393,
+            "completion": 339,
+            "cache_hit": 0,
+            "cache_miss": 393,
+            "ms": 2.0
+          }
+        ],
+        "company_id": 2,
+        "tools_ms": {
+          "run_select": 111
+        }
+      },
+      "evaluation": {
+        "status": "pass",
+        "kind": "opinion",
+        "notes": [
+          "opinion without invented target"
+        ],
+        "flags": []
+      }
+    }
+  ]
+}

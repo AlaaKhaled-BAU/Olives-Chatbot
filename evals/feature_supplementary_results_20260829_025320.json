@@ -1,0 +1,145 @@
+{
+  "run_at": "2026-08-28T23:53:20Z",
+  "elapsed_s": 181.4,
+  "summary": {
+    "PASS": 6,
+    "WARN": 0,
+    "FAIL": 1,
+    "SKIP": 0,
+    "INFO": 1
+  },
+  "by_category": {
+    "transcript_index": {
+      "PASS": 2,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "tools_ms": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "morphology": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "docs_gap": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "break": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "session": {
+      "PASS": 0,
+      "WARN": 0,
+      "FAIL": 1,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "rate_limit": {
+      "PASS": 0,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 1
+    }
+  },
+  "findings": [
+    {
+      "test": "history_amnesia_after_8",
+      "category": "transcript_index",
+      "verdict": "PASS",
+      "denies_memory": false,
+      "has_correct_fact": true,
+      "answer_snip": "الخيار **157** من دليل خيارات النظام: **Cust LogOut GPS Check**، تحت قسم GPS / Geofencing / Map.\n\n- وظيفته: التحقق من موقع GPS عند خروج الزبون من النظام (تسجيل الخروج من زيارة الزبون).\n- خياراته: `0 = Off` (التحقق معطّل) — وهي القيمة الوحيدة الموثقة لهذا الرقم في المقال.\n\nالمصدر: نظام Options Guide › System Options Troubleshooting Guide › GPS / Geofencing / Map"
+    },
+    {
+      "test": "index_second_question_211",
+      "category": "transcript_index",
+      "verdict": "PASS",
+      "denies_memory": false,
+      "has_211": true,
+      "answer_snip": "خيار النظام **211**:\n\n- **الوصف:** **No GPS Check For Non Route Customers** (عدم التحقق من GPS للزبائن غير المدرجين في المسار)\n- **القيمة الافتراضية:** 0 = Off (التحقق مفعّل)\n- **القسم:** GPS / Geofencing / Map\n\n**الوظيفة:** يتحكم في التحقق من موقع GPS للزبائن الذين ليسوا ضمن مسار المندوب — عندما يُفعَّل (1)، يتخطى النظام فحص الموقع الجغرافي لهؤلاء الزبائن.\n\n**المصدر:** System Options Troubleshoot"
+    },
+    {
+      "test": "tools_ms_in_sse",
+      "category": "tools_ms",
+      "verdict": "PASS",
+      "tools_ms": {
+        "search_docs": 12
+      },
+      "keys": [
+        "answer",
+        "answer_chunk",
+        "answer_sql",
+        "chart",
+        "confidence",
+        "followups",
+        "report_name",
+        "sources",
+        "step",
+        "table",
+        "tools_ms",
+        "turn_id"
+      ]
+    },
+    {
+      "test": "morphology_invoice_create_tablet",
+      "category": "morphology",
+      "verdict": "PASS",
+      "tablet_hits": 5,
+      "sources_count": 4,
+      "answer_snip": "إنشاء فاتورة مبيعات يتم من **تابلت المندوب** (وليس من الباك أوفيس):\n\n- من شاشة **View Customers** يضغط المندوب أيقونة **New Invoice** (فاتورة جديدة) ليفتح قائمة الأصناف.\n- يختار الفئة الفرعية ويدخل الكمية من الوحدات المسعّرة المتاحة.\n- يفتح نموذج تفاصيل الفاتورة (الأيقونة الزرقاء) لمراجعة **نوع الفاتورة** و**نوع الدفع** و**نوع المستند**.\n- يمكن است"
+    },
+    {
+      "test": "missing_corpus_create_invoice",
+      "category": "docs_gap",
+      "verdict": "PASS",
+      "admits_gap": false,
+      "honest_routing": true,
+      "sources": 12,
+      "answer_snip": "الباك أوفيس **لا ينشئ فاتورة مبيعات من الصفر** — الفواتير تُنشأ من **تابلت المندوب**، ودور الباك أوفيس فيها هو **الاعتماد والإدارة** فقط. حسب دليل المستخدم:\n\n- **الإنشاء نفسه** يتم من التابلت (شاشة View Customers ← New Invoice)، وليس من الباك أوفيس.\n- **اعتماد/موافقة** الفاتورة: شاشة **Sales Invoice"
+    },
+    {
+      "test": "whitespace_no_transcript_growth",
+      "category": "break",
+      "verdict": "PASS",
+      "transcript_before": 0,
+      "transcript_after": 0
+    },
+    {
+      "test": "company_switch_no_index_leak",
+      "category": "session",
+      "verdict": "FAIL",
+      "transcript_after_switch": 1,
+      "leaked_prior_question": false,
+      "answer_snip": "لم يرد أي سؤال سابق في هذه الجلسة — هذا أول تفاعل لدينا. اسألني عن أي بيانات للشركة (مبيعات، مندوبين، زبائن، طلبات، رصيد سيارة، زيارات…) وسأجيبك."
+    },
+    {
+      "test": "rate_limit_30_per_min",
+      "category": "rate_limit",
+      "verdict": "INFO",
+      "status_counts": {
+        "200": 12,
+        "429": 23
+      },
+      "transcript_len": 12,
+      "note": "429s mean transcript stops growing even if user keeps typing"
+    }
+  ]
+}

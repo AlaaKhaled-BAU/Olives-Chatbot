@@ -1,0 +1,145 @@
+{
+  "run_at": "2026-08-28T23:53:18Z",
+  "elapsed_s": 245.3,
+  "summary": {
+    "PASS": 5,
+    "WARN": 0,
+    "FAIL": 2,
+    "SKIP": 0,
+    "INFO": 1
+  },
+  "by_category": {
+    "transcript_index": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 1,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "tools_ms": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "morphology": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "docs_gap": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "break": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "session": {
+      "PASS": 0,
+      "WARN": 0,
+      "FAIL": 1,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "rate_limit": {
+      "PASS": 0,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 1
+    }
+  },
+  "findings": [
+    {
+      "test": "history_amnesia_after_8",
+      "category": "transcript_index",
+      "verdict": "FAIL",
+      "denies_memory": false,
+      "has_correct_fact": false,
+      "answer_snip": ""
+    },
+    {
+      "test": "index_second_question_211",
+      "category": "transcript_index",
+      "verdict": "PASS",
+      "denies_memory": false,
+      "has_211": true,
+      "answer_snip": "سؤالك الثاني كان عن **خيار النظام رقم 211**:\n\n- **211 = No GPS Check For Non Route Customers** (عدم فحص GPS للزبائن خارج المسار).\n- عندما تكون القيمة **0 = Off**، فهذا يعني أن النظام **سيفحص** موقع GPS للزبائن غير الموجودين ضمن مسار المندوب قبل السماح بتنفيذ زيارة/معاملة لهم.\n- أما إذا فُعِّل الخيار، يُلغى هذا الفحص، فيُسمح بزيارة الزبائن خارج المسار دون التحقق من الموقع.\n- الإعداد يقع ضمن فئة **G"
+    },
+    {
+      "test": "tools_ms_in_sse",
+      "category": "tools_ms",
+      "verdict": "PASS",
+      "tools_ms": {
+        "search_docs": 8
+      },
+      "keys": [
+        "answer",
+        "answer_chunk",
+        "answer_sql",
+        "chart",
+        "confidence",
+        "followups",
+        "report_name",
+        "sources",
+        "step",
+        "table",
+        "tools_ms",
+        "turn_id"
+      ]
+    },
+    {
+      "test": "morphology_invoice_create_tablet",
+      "category": "morphology",
+      "verdict": "PASS",
+      "tablet_hits": 5,
+      "sources_count": 4,
+      "answer_snip": "لإنشاء فاتورة مبيعات جديدة:\n\n- **الفاتورة تُنشأ من تابلت المندوب** (شاشة View Customers)، وليس من الباك أوفيس.\n- من شاشة الزبون اضغط أيقونة **New Invoice** (فاتورة جديدة) لتظهر قائمة الأصناف.\n- اختر الفئة الفرعية وأدخل الكمية المطلوبة من الوحدات المسعّرة المتاحة.\n- افتح نموذج تفاصيل الفاتورة (الأيقونة الزرقاء) لمراجعة **نوع الفاتورة** (Invoice type"
+    },
+    {
+      "test": "missing_corpus_create_invoice",
+      "category": "docs_gap",
+      "verdict": "PASS",
+      "admits_gap": false,
+      "honest_routing": true,
+      "sources": 11,
+      "answer_snip": "بناءً على دليل المستخدم، **فواتير المبيعات الجديدة لا تُنشأ من الباك أوفيس نفسه** — بل تُنشأ من **تابلت المندوب** (Front Office / شاشة View Customers). الباك أوفيس هو المكان الذي تظهر فيه الفواتير لاحقاً للمراجعة والاعتماد والتحويل إلى الـ ERP. إليك ما يغطيه الدليل:\n\n- **مكان الإنشاء:** فاتورة المبي"
+    },
+    {
+      "test": "whitespace_no_transcript_growth",
+      "category": "break",
+      "verdict": "PASS",
+      "transcript_before": 0,
+      "transcript_after": 0
+    },
+    {
+      "test": "company_switch_no_index_leak",
+      "category": "session",
+      "verdict": "FAIL",
+      "transcript_after_switch": 1,
+      "leaked_prior_question": false,
+      "answer_snip": "لا يوجد سؤال سابق في هذه المحادثة — هذا هو أول تفاعل، لذا ليس لديّ أي سجل لسؤال أول لك.\n\nإذا كان لديك سؤال عن بيانات الشركة (مبيعات، طلبات، زيارات، عملاء، أرصدة…) أو عن طريقة عمل شاشة/خيار معين في أوليفز، أخبرني به وسأجيبك."
+    },
+    {
+      "test": "rate_limit_30_per_min",
+      "category": "rate_limit",
+      "verdict": "INFO",
+      "status_counts": {
+        "200": 25,
+        "429": 10
+      },
+      "transcript_len": 25,
+      "note": "429s mean transcript stops growing even if user keeps typing"
+    }
+  ]
+}

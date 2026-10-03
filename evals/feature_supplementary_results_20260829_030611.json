@@ -1,0 +1,142 @@
+{
+  "run_at": "2026-08-29T00:06:11Z",
+  "elapsed_s": 269.9,
+  "summary": {
+    "PASS": 6,
+    "WARN": 0,
+    "FAIL": 1,
+    "SKIP": 0,
+    "INFO": 1
+  },
+  "by_category": {
+    "transcript_index": {
+      "PASS": 2,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "tools_ms": {
+      "PASS": 0,
+      "WARN": 0,
+      "FAIL": 1,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "morphology": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "docs_gap": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "break": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "session": {
+      "PASS": 1,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 0
+    },
+    "rate_limit": {
+      "PASS": 0,
+      "WARN": 0,
+      "FAIL": 0,
+      "SKIP": 0,
+      "INFO": 1
+    }
+  },
+  "findings": [
+    {
+      "test": "history_amnesia_after_8",
+      "category": "transcript_index",
+      "verdict": "PASS",
+      "denies_memory": false,
+      "has_correct_fact": true,
+      "answer_snip": "الخيار رقم **157** في هذه الجلسة:\n\n- **رقم الخيار:** `157`\n- **الوظيفة:** **Cust LogOut GPS Check** — فحص GPS عند تسجيل خروج الزبون من مندوب.\n- **القيمة الافتراضية:** `0` = معطّل (Off).\n\n**المصدر:** دليل استكشاف خيارات النظام › GPS / Geofencing / Map (جدول خيار `157`)."
+    },
+    {
+      "test": "index_second_question_211",
+      "category": "transcript_index",
+      "verdict": "PASS",
+      "denies_memory": false,
+      "has_211": true,
+      "answer_snip": "إليك معلومات خيار النظام رقم **211**:\n\n- **رقم الخيار:** `211`\n- **الوظيفة:** **No GPS Check For Non Route Customers** — لا يتم إجراء فحص GPS للزبائن غير الموجودين ضمن المسار.\n- **المجموعة:** GPS / Geofencing / Map\n- **القيمة الافتراضية:** `0` = معطّل (Off)\n\n**باختصار:** عند تفعيل هذا الخيار (`1`)، لن يُطلب من المندوب التحقق من موقع GPS عندما يزور زبوناً غير مدرج في مساره؛ وعند تعطيله (`0`) يبقى ف"
+    },
+    {
+      "test": "tools_ms_in_sse",
+      "category": "tools_ms",
+      "verdict": "FAIL",
+      "tools_ms": {},
+      "keys": [
+        "answer",
+        "answer_chunk",
+        "answer_sql",
+        "chart",
+        "confidence",
+        "followups",
+        "report_name",
+        "sources",
+        "table",
+        "tools_ms",
+        "turn_id"
+      ]
+    },
+    {
+      "test": "morphology_invoice_create_tablet",
+      "category": "morphology",
+      "verdict": "PASS",
+      "tablet_hits": 5,
+      "sources_count": 3,
+      "answer_snip": "فاتورة المبيعات الجديدة تُنشأ من **تابلت المندوب (Front Office / View Customers)** وليس من الباك أوفيس:\n\n- **New Invoice** — يضغط المندوب أيقونة «فاتورة جديدة» (New Invoice) لبدء فاتورة زبون.\n- **اختيار الأصناف** — تظهر فئات الأصناف، فيختار فئة فرعية ويُدخل الكمية المطلوبة من الوحدات المسعّرة المتاحة.\n- **تفاصيل الفاتورة** — يُفتح نموذج التفاصيل (ا"
+    },
+    {
+      "test": "missing_corpus_create_invoice",
+      "category": "docs_gap",
+      "verdict": "PASS",
+      "admits_gap": false,
+      "honest_routing": true,
+      "sources": 9,
+      "answer_snip": "بناءً على دليل المستخدم، **لا تُنشأ فاتورة مبيعات «من الصفر» من الباك أوفيس** — الفواتير تُحرَّر على **تابلت المندوب**، ودور الباك أوفيس هو استقبالها ومعالجتها والموافقة عليها:\n\n- **الإنشاء الفعلي** يتم على التابلت عبر «View Customers» ثم زر **New Invoice** (فاتورة جديدة) من شاشة الزبون.\n- في **البا"
+    },
+    {
+      "test": "whitespace_no_transcript_growth",
+      "category": "break",
+      "verdict": "PASS",
+      "transcript_before": 0,
+      "transcript_after": 0
+    },
+    {
+      "test": "company_switch_no_index_leak",
+      "category": "session",
+      "verdict": "PASS",
+      "transcript_cleared_on_switch": true,
+      "transcript_after_recall": 1,
+      "leaked_prior_question": false,
+      "answer_snip": "لا يوجد سؤال سابق في هذه المحادثة — هذا هو أول سؤال هنا.\n\nاسألني عن بيانات أعمال العميل (مبيعات، طلبات، مرتجعات، زيارات المندوب، رصيد السيارة، عملاء المندوب، تقارير، أو طريقة استخدام شاشة/خيار) وسأجيب بناءً على بيانات الشركة المثبّتة."
+    },
+    {
+      "test": "rate_limit_30_per_min",
+      "category": "rate_limit",
+      "verdict": "INFO",
+      "status_counts": {
+        "200": 35
+      },
+      "transcript_len": 35,
+      "note": "429s mean transcript stops growing even if user keeps typing"
+    }
+  ]
+}

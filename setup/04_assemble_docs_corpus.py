@@ -14,6 +14,7 @@ FILES = {
     "user_guide.md": REPO_ROOT / "knowledge" / "guide-headed" / "user_guide.md",
     "sql_documentation.md": REPO_ROOT / "knowledge" / "reference" / "Olives SQL_Documentation.md",
     "visits_grain.md": REPO_ROOT / "knowledge" / "reference" / "visits_grain.md",
+    "workflow_approval_status.md": REPO_ROOT / "knowledge" / "reference" / "workflow_approval_status.md",
     "create_sales_invoice.md": REPO_ROOT / "knowledge" / "reference" / "create_sales_invoice.md",
     "tables_summary.md": REPO_ROOT / "knowledge" / "reference" / "tables summary.md",
     # C5: support-agent/system_options_guide.md over the repo-root "system

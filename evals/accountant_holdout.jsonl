@@ -1,0 +1,67 @@
+{"id": "ah-001", "session": "s-july-sales", "turn": 1, "question": "قديش صافي مبيعات يوليو 2025؟", "company_id": 2, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-002", "session": "s-july-sales", "turn": 2, "question": "طيب قبل الضريبة", "company_id": 2, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-003", "session": "s-july-sales", "turn": 3, "question": "وبعد المرتجعات", "company_id": 2, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-004", "session": "s-july-sales", "turn": 4, "question": "منيح هيك؟", "company_id": 2, "lang": "ar-jo", "expects": {"type": "opinion", "must_not_invent_target": true}}
+{"id": "ah-005", "session": "s-net-en", "turn": 1, "question": "July 2025 gross sales including tax — what's the total?", "company_id": 2, "lang": "en", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-006", "session": "s-net-en", "turn": 2, "question": "Same period net of credit notes", "company_id": 2, "lang": "en-mixed", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-007", "session": "s-net-en", "turn": 3, "question": "Does that look reasonable to you?", "company_id": 2, "lang": "en", "expects": {"type": "opinion", "must_not_invent_target": true}}
+{"id": "ah-008", "session": "s-paraphrase-returns", "turn": 1, "question": "كم طلعلنا مبيعات شهر 7 سنة 2025؟", "company_id": 2, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-009", "session": "s-paraphrase-returns", "turn": 2, "question": "بدون المرتجعات", "company_id": 2, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-010", "session": "s-paraphrase-returns", "turn": 3, "question": "شو رأيك نركز على مين من المندوبين؟", "company_id": 2, "lang": "ar-msa", "expects": {"type": "opinion", "must_not_invent_target": true}}
+{"id": "ah-011", "session": "s-basis-excl", "turn": 1, "question": "إجمالي مبيعات يوليو 2025 مش ملغية", "company_id": 2, "lang": "ar-msa", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-012", "session": "s-basis-excl", "turn": 2, "question": "قبل الضريبة بنفس الفترة", "company_id": 2, "lang": "ar-msa", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-013", "session": "s-nextday", "turn": 1, "question": "قديش مبيعات أمس؟", "company_id": 2, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-014", "session": "s-nextday", "turn": 2, "question": "نفس الرقم", "company_id": 2, "lang": "ar-jo", "expects": {"type": "clarify", "must_not_reuse_yesterday": true, "asks_period": true}}
+{"id": "ah-015", "session": "s-salesperson-split", "turn": 1, "question": "مبيعات كل مندوب في يوليو 2025", "company_id": 2, "lang": "ar-msa", "expects": {"type": "number", "gold": "pending", "no_single_headline_total": true}}
+{"id": "ah-016", "session": "s-salesperson-split", "turn": 2, "question": "كم فاتورة بيع غير ملغاة بنفس الشهر؟", "company_id": 2, "lang": "ar-msa", "expects": {"type": "number", "gold": "pending", "gold_int": true}}
+{"id": "ah-017", "session": "s-mixed-metric", "turn": 1, "question": "How many non-void sales invoices in July 2025?", "company_id": 2, "lang": "en", "expects": {"type": "number", "gold": "pending", "gold_int": true}}
+{"id": "ah-018", "session": "s-mixed-metric", "turn": 2, "question": "وبالدينار شامل الضريبة كم؟", "company_id": 2, "lang": "ar-en", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-019", "session": "s-howto-assign", "turn": 1, "question": "كيف بسند الزبائن على المندوب بالباك أوفيس؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["Position", "Update", "مندوب", "زبون", "assign"]}}
+{"id": "ah-020", "session": "s-howto-cust-types", "turn": 1, "question": "وين بضيف نوع زبون جديد؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["نوع", "type", "customer", "زبون"]}}
+{"id": "ah-021", "session": "s-howto-items", "turn": 1, "question": "كيف بضيف صنف جديد بالنظام؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["صنف", "item", "add", "إضافة"]}}
+{"id": "ah-022", "session": "s-howto-sp", "turn": 1, "question": "شو شاشة المناديب بتسمحلي أعمل؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["مندوب", "salesman", "sales person"]}}
+{"id": "ah-023", "session": "s-howto-routes", "turn": 1, "question": "كيف بجهّز مسار توزيع للمندوب؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["مسار", "route", "delivery"]}}
+{"id": "ah-024", "session": "s-howto-delivery", "turn": 1, "question": "شو علاقة التسليم بالمسار؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["تسليم", "delivery", "route"]}}
+{"id": "ah-025", "session": "s-howto-orders", "turn": 1, "question": "شو الفرق بين طلب المبيعات والفاتورة؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["طلب", "order", "فاتورة", "invoice"]}}
+{"id": "ah-026", "session": "s-howto-approve", "turn": 1, "question": "كيف بعتمد طلب مبيعات من الباك أوفيس؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["approve", "اعتماد", "طلب", "order"]}}
+{"id": "ah-027", "session": "s-howto-receipt", "turn": 1, "question": "وين بسجل سند قبض؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["قبض", "receipt", "تحصيل"]}}
+{"id": "ah-028", "session": "s-howto-return", "turn": 1, "question": "كيف بتابع مرتجعات المبيعات؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["مرتجع", "return"]}}
+{"id": "ah-029", "session": "s-howto-promo", "turn": 1, "question": "كيف بفعّل عرض ترويجي؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["عرض", "promotion", "ترويج"]}}
+{"id": "ah-030", "session": "s-howto-users", "turn": 1, "question": "كيف بضيف مستخدم باك أوفيس؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["user", "مستخدم", "permission"]}}
+{"id": "ah-031", "session": "s-howto-settings", "turn": 1, "question": "وين بغيّر إعدادات الشركة؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["settings", "إعداد", "company"]}}
+{"id": "ah-032", "session": "s-howto-agreements", "turn": 1, "question": "شو اتفاقيات الأسعار مع الزبائن؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["agreement", "اتفاق", "price"]}}
+{"id": "ah-033", "session": "s-howto-competitive", "turn": 1, "question": "شو الأصناف التنافسية؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["competitive", "تنافس"]}}
+{"id": "ah-034", "session": "s-howto-dashboard", "turn": 1, "question": "شو بعرضلو داشبورد الباك أوفيس؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["dashboard", "لوحة"]}}
+{"id": "ah-035", "session": "s-howto-workflow", "turn": 1, "question": "كيف شغل الموافقات على المعاملات؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["workflow", "موافق", "approval"]}}
+{"id": "ah-036", "session": "s-howto-reports-menu", "turn": 1, "question": "وين بلاقي تقارير المسار للمندوب؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["route", "report", "مسار", "مندوب"]}}
+{"id": "ah-037", "session": "s-howto-trans-view", "turn": 1, "question": "كيف بفلتر الفواتير حسب التاريخ بالباك أوفيس؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["transaction", "فاتورة", "date", "تاريخ"]}}
+{"id": "ah-038", "session": "s-howto-tablet", "turn": 1, "question": "كيف المندوب بعمل فاتورة على التابلت؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["tablet", "تابلت", "New Invoice", "invoice", "مندوب"]}}
+{"id": "ah-039", "session": "s-label-tax", "turn": 1, "question": "مبيعات يوليو 2025 — شامل الضريبة ولا قبلها؟", "company_id": 2, "lang": "ar-msa", "expects": {"type": "clarify", "asks_basis_or_period": true}}
+{"id": "ah-040", "session": "s-label-returns", "turn": 1, "question": "بدي الرقم بعد خصم المرتجعات لآخر شهر", "company_id": 2, "lang": "ar-jo", "expects": {"type": "clarify", "asks_period": true}}
+{"id": "ah-041", "session": "s-report-route", "turn": 1, "question": "بدي تقرير ملخص المسار للمندوب ليوم 2025-01-15", "company_id": 1, "lang": "ar-msa", "expects": {"type": "clarify", "needs_salesman_or_report": true}}
+{"id": "ah-042", "session": "s-report-route", "turn": 2, "question": "طيب قديش زيارة مسجلة آخر أسبوع؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-043", "session": "s-metric-counts", "turn": 1, "question": "قديش عميل مسجل بالشركة؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending", "gold_int": true}}
+{"id": "ah-044", "session": "s-metric-counts", "turn": 2, "question": "قديش صنف؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending", "gold_int": true}}
+{"id": "ah-045", "session": "s-metric-routes", "turn": 1, "question": "How many delivery routes are configured?", "company_id": 1, "lang": "en", "expects": {"type": "number", "gold": "pending", "gold_int": true}}
+{"id": "ah-046", "session": "s-metric-receipts", "turn": 1, "question": "قديش سند قبض بيوليو 2025؟", "company_id": 1, "lang": "ar-msa", "expects": {"type": "number", "gold": "pending", "gold_int": true}}
+{"id": "ah-047", "session": "s-metric-orders", "turn": 1, "question": "قديش طلب مبيعات بيوليو 2025؟", "company_id": 1, "lang": "ar-msa", "expects": {"type": "number", "gold": "pending", "gold_int": true}}
+{"id": "ah-048", "session": "s-metric-items-sold", "turn": 1, "question": "أكثر صنف مبيعاً بيوليو 2025", "company_id": 1, "lang": "ar-msa", "expects": {"type": "label", "phrases": ["صنف", "item"]}}
+{"id": "ah-049", "session": "s-metric-sp", "turn": 1, "question": "كم مندوب مبيعات active؟", "company_id": 1, "lang": "ar-en", "expects": {"type": "number", "gold": "pending", "gold_int": true}}
+{"id": "ah-050", "session": "s-chain-doc-metric", "turn": 1, "question": "كيف بسند الزبائن على المندوب؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["Position", "Update", "مندوب"]}}
+{"id": "ah-051", "session": "s-chain-doc-metric", "turn": 2, "question": "قديش زبون عندنا؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending", "gold_int": true}}
+{"id": "ah-052", "session": "s-chain-doc-metric", "turn": 3, "question": "منيح العدد؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "opinion", "must_not_invent_target": true}}
+{"id": "ah-053", "session": "s-chain-july-howto", "turn": 1, "question": "صافي مبيعات يوليو 2025", "company_id": 2, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-054", "session": "s-chain-july-howto", "turn": 2, "question": "كيف بعمل فاتورة من التابلت؟", "company_id": 2, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["tablet", "تابلت", "invoice", "فاتورة"]}}
+{"id": "ah-055", "session": "s-chain-july-howto", "turn": 3, "question": "ونفس الشهر قبل الضريبة", "company_id": 2, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending"}}
+{"id": "ah-056", "session": "s-clarify-period", "turn": 1, "question": "قديش المبيعات؟", "company_id": 2, "lang": "ar-jo", "expects": {"type": "clarify", "asks_period": true}}
+{"id": "ah-057", "session": "s-clarify-company", "turn": 1, "question": "Total sales last month", "company_id": 1, "lang": "en", "expects": {"type": "clarify", "asks_period": true}}
+{"id": "ah-058", "session": "s-opinion-solo", "turn": 1, "question": "هل 520 دينار مبيعات شهر جيد؟", "company_id": 2, "lang": "ar-msa", "expects": {"type": "opinion", "must_not_invent_target": true}}
+{"id": "ah-059", "session": "s-opinion-focus", "turn": 1, "question": "Should we focus on Osman Al-Qudsi or Imad?", "company_id": 2, "lang": "en", "expects": {"type": "opinion", "must_not_invent_target": true}}
+{"id": "ah-060", "session": "s-solo-inv", "turn": 1, "question": "قديش فاتورة مش ملغية؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending", "gold_int": true}}
+{"id": "ah-061", "session": "s-solo-void", "turn": 1, "question": "كم معاملة ملغاة بيوليو 2025؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "number", "gold": "pending", "gold_int": true}}
+{"id": "ah-062", "session": "s-solo-pay", "turn": 1, "question": "شو طرق الدفع بالفواتير؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["زبون", "مندوب", "فاتورة"]}}
+{"id": "ah-063", "session": "s-solo-gps", "turn": 1, "question": "ليش بنجمع GPS للزبون؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["زبون", "مندوب", "فاتورة"]}}
+{"id": "ah-064", "session": "s-solo-suspend", "turn": 1, "question": "IsSuspended على الزبون يعني شو؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["زبون", "مندوب", "فاتورة"]}}
+{"id": "ah-065", "session": "s-solo-promo-list", "turn": 1, "question": "وين المندوب يشوف العروض؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["زبون", "مندوب", "فاتورة"]}}
+{"id": "ah-066", "session": "s-solo-reprint", "turn": 1, "question": "كيف بعيد طباعة فاتورة من التابلت؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["زبون", "مندوب", "فاتورة"]}}
+{"id": "ah-067", "session": "s-solo-stock", "turn": 1, "question": "كيف المندوب يشوف رصيد صنف؟", "company_id": 1, "lang": "ar-jo", "expects": {"type": "howto", "phrases": ["زبون", "مندوب", "فاتورة"]}}
