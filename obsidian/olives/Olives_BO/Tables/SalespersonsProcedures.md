@@ -7,7 +7,6 @@ tags: [#backoffice, #sales]
 foreign_keys:
   - [[Companies]]
   - [[Customers]]
-  - [[DailyProcedures]]
   - [[Positions]]
 referenced_by:
   - [[OT_ImportSalesmanDoneProcedures]]

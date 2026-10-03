@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #legal]
 foreign_keys:
 referenced_by:
-  - [[Pro_ZatcaIntegrationApi]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -59,7 +58,6 @@ TransactionNo
 _None_
 
 **Writes (1):**
-- [[Pro_ZatcaIntegrationApi]]
 
 ## Estimated Size / Volatility
 Typical business table
@@ -77,10 +75,8 @@ Typical business table
 - [[JoTaxResult]]
 - [[CustomersItemsLog]]
 - [[CatalogMedia]]
-- [[MMS_TaxType]]
 - [[JOTaxSettings]]
 
 - [[ZatcaMode]]
 - [[ZatcaCustomer]]
 - [[ZatcaCompany]]
-- [[Glossary]]

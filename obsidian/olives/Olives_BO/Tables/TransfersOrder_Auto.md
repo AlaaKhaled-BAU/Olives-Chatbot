@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #order]
 foreign_keys:
 referenced_by:
-  - [[Defaf_Integration]]
   - [[Pro_TransfersOrders_Auto]]
   - [[Rpt_TransfersOrders]]
 support_relevance: high
@@ -49,7 +48,6 @@ UnitID
 - [[Rpt_TransfersOrders]]
 
 **Writes (2):**
-- [[Defaf_Integration]]
 - [[Pro_TransfersOrders_Auto]]
 
 ## Estimated Size / Volatility

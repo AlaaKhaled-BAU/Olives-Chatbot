@@ -11,54 +11,19 @@ foreign_keys:
   - [[TransactionsHeaders]]
   - [[TransactionsTypes]]
 referenced_by:
-  - [[ABS_Integ_SendInvoices]]
-  - [[ABS_Integ_SendInvoices_Jebrene]]
-  - [[ABS_Integ_SendReturnInvoices_Jebrene]]
-  - [[Acback_Integ_SendInvoices]]
-  - [[Acback_Integ_SendReturnInvoices]]
-  - [[AccPack_Integ_SendSalesInvoices]]
-  - [[AccPack_Integ_SendSalesInvoices_LuxuryItems]]
-  - [[AlAmeen_Integ]]
-  - [[Alpha_Integ_SendSalesInvoices]]
   - [[BO_Online_RptCustomerSalesTargetDetails]]
   - [[BaladInsertrtLoadDetailsintoTransactionstyp6]]
-  - [[BlueDiamond_Equations]]
-  - [[Bonanza_Integ_SendSalesInvoices_SmokingCenter]]
-  - [[Bonanza_Integ_SendSalesInvoices_Yasmeen]]
-  - [[CL_Integ_SendAllTransactions]]
   - [[CalcItemBalance]]
   - [[DA_SalesTarget]]
   - [[Da_ProductPerformance]]
   - [[Da_SalesGrowth]]
   - [[Da_SalesperRep]]
   - [[Da_YearlyCompanyTargetAndSales]]
-  - [[Defaf_Integration]]
-  - [[Defaf_Rpt_WareHouse_Item_Balance]]
-  - [[Ejabi_Integ_SendInvoices]]
-  - [[Ejabi_Integ_SendReturnInvoices]]
-  - [[GP_Integ_SendRetSalesInvoices]]
-  - [[GP_Integ_SendReturn_Zumot]]
-  - [[GP_Integ_SendReturn_Zumot_Aqaba]]
-  - [[GP_Integ_SendSalesInvoices]]
-  - [[GP_Integ_SendSalesInvoices_Wadi]]
-  - [[GP_Integ_SendSalesInvoices_Zumot]]
-  - [[GP_Integ_SendSalesInvoices_Zumot_Aqaba]]
-  - [[Galaxy_Integ_SendSalesInvoices]]
-  - [[Integ_SendSalesInvoices_CB]]
-  - [[IscoJordan_Integ_SendInvoices]]
-  - [[IscoJordan_Integ_SendReturnInvoices]]
-  - [[IscoJordan_Integ_SendTransferOrder]]
-  - [[Motakaml_Integ_GetItemBalance]]
-  - [[Motakaml_Integ_SendTransactions]]
   - [[OT_ImportReplacement]]
   - [[OT_ImportSalesInvoices]]
   - [[OT_Online_GetSalesmanSalesByMonths]]
   - [[OT_Online_RptSalesAndReturnPercByCustomer_Supervisor]]
   - [[OT_Online_RptSalesAndReturnPerc_Supervisor]]
-  - [[Phenix_Sukhtian_Integ_SendInvoiceAndReturn]]
-  - [[PrestoSoft_Integ_SendTransactions]]
-  - [[ProTech_Integration_SendReturnInvoice]]
-  - [[ProTech_Integration_SendSalesInvoice]]
   - [[Pro_CalcSalespersonItemBalance]]
   - [[Pro_CheckItemsInvoiceBarcode]]
   - [[Pro_ConvertLoadOrderToTransaction]]
@@ -78,7 +43,6 @@ referenced_by:
   - [[Pro_TransactionsDetails]]
   - [[Pro_TransfersOrdersHeaders]]
   - [[Pro_TransfersOrdersQtyValidation]]
-  - [[Pro_ZatcaIntegrationApi]]
   - [[RPT_CUSTOMERSALESDETAILSBYITEMANDSALESPERSONNAME]]
   - [[RPT_SALESDETAILSCUSTOMERSBYVALUE]]
   - [[RPT_SUMMARYSALESAND]]
@@ -117,7 +81,6 @@ referenced_by:
   - [[Rpt_CustomerSalesByUnit]]
   - [[Rpt_CustomerSalesSummary]]
   - [[Rpt_CustomerSalesSummary_BySelection]]
-  - [[Rpt_CustomerSalesTablet]]
   - [[Rpt_CustomerTypeSalesByItems]]
   - [[Rpt_CustomersAvgPerClass]]
   - [[Rpt_CustomersCountVisitByWeek]]
@@ -170,7 +133,6 @@ referenced_by:
   - [[Rpt_ReceiptsBySalesman]]
   - [[Rpt_ReturnSalesAmount]]
   - [[Rpt_RoutePerformanceAnalysis]]
-  - [[Rpt_RoutePerformanceAnalysis_Spartan]]
   - [[Rpt_RouteSummaryBySalesmanByCustomerClass]]
   - [[Rpt_RouteSummaryDeatils]]
   - [[Rpt_SalesAmountWithDiscountByCategories]]
@@ -188,7 +150,6 @@ referenced_by:
   - [[Rpt_SalesPerRoute]]
   - [[Rpt_SalesPerRouteWithSalesman]]
   - [[Rpt_SalesPersonItemBonusTarget]]
-  - [[Rpt_SalesPersonItemBonusTarget_Tablet]]
   - [[Rpt_SalesPersonSpecialTargets]]
   - [[Rpt_SalesPersonTarget]]
   - [[Rpt_SalesTransactionByDocumentsTypes]]
@@ -213,7 +174,6 @@ referenced_by:
   - [[Rpt_SalesmanJourneyPerformance]]
   - [[Rpt_SalesmanOrdersSummary]]
   - [[Rpt_SalesmanRouteAvg]]
-  - [[Rpt_SalesmanRouteEfficiency_Zoumt]]
   - [[Rpt_SalesmanRoutePerformance]]
   - [[Rpt_SalesmanRouteSummary]]
   - [[Rpt_SalesmanSalesByCategory]]
@@ -283,23 +243,6 @@ referenced_by:
   - [[Rpt_WithdrawalVoucher_Report]]
   - [[Rpt_WorkFlowAnalysis]]
   - [[Rpt_Workflow_ChangePrice]]
-  - [[SAP_Tyconz_Integ_SendInvoiceAndReturn]]
-  - [[SMS_Almobhiron]]
-  - [[SMS_AnwarMakka]]
-  - [[SMS_Bostangy]]
-  - [[SMS_Lamis]]
-  - [[SMS_SpartenNew]]
-  - [[SMS_Tahona]]
-  - [[SMS_Wales]]
-  - [[SMS_YAN]]
-  - [[SMS_Zaidan]]
-  - [[SN_Integ_SendTransactions]]
-  - [[Shamel_Integ_SendSalesInvoices]]
-  - [[Spartan_SAP_Integ_draft]]
-  - [[Tahona_Integ_SendSalesInvoice]]
-  - [[Tax_Integration]]
-  - [[Wings_Integ_SendReturnSales]]
-  - [[Wings_Integ_SendSalesInvoice]]
 support_relevance: high
 last_verified: 2026-07-05
 related_workflows:
@@ -309,8 +252,43 @@ related_workflows:
 
 
 ## Business Purpose
+Line-item detail for posted sales invoices and return transactions (`TransactionsHeaders`). Records the exact billed items, units, quantities, bonus/promotional items, prices, discounts, and line taxes.
+- **Transaction Types**: Governed by `TransactionTypeID`:
+  - `1` = Sales Invoice line (فاتورة مبيعات).
+  - `2` = Return Sales Invoice line (مرتجع مبيعات).
+- **Header Link**: Pairs with `TransactionsHeaders` on `TransactionTypeID`, `TransactionYear`, and `TransactionNo`.
+- **Net Sales Calculation**: Line net before tax is `(Quantity * Price) - DiscountAmount - VoucherDiscount`. Line net after tax includes `TaxAmount`.
 
-Line-item details for financial transactions — items, quantities, prices, and discounts per transaction.
+## Chatbot semantics
+(Query `t.TransactionsDetails` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| بنود الفاتورة / أصناف المبيعات | `ItemCode`, `Quantity`, `Bonus`, `Price` | Join `t.TransactionsHeaders h ON d.TransactionTypeID = h.TransactionTypeID AND d.TransactionYear = h.TransactionYear AND d.TransactionNo = h.TransactionNo WHERE d.TransactionTypeID = 1` |
+| بنود مرتجع المبيعات | `ItemCode`, `Quantity`, `Price`, `ReturnReason` | `d.TransactionTypeID = 2` |
+| الكمية المباعة الفعلية | `Quantity` | `Quantity > 0` |
+| البونص الممنوح | `Bonus`, `QtyAsBonus` | أصناف مجانية ممنوحة مع الفاتورة |
+| صافي قيمة الصنف | Calculated | `(d.Quantity * d.Price) - ISNULL(d.DiscountAmount, 0)` |
+| خصم الصنف | `DiscountAmount`, `DiscountPercent` | الخصم المباشر الممنوح على مستوى السطر |
+| سبب الإرجاع | `ReturnReason` | يحدد سبب إرجاع الصنف في فواتير المرتجع |
+
+**Do not confuse with:**
+- `t.OrdersDetails` (unbilled pre-sales demand / orders).
+- `t.ReturnOrdersDetails` (unapproved / pre-invoice return requests).
+
+## Grain & keys
+- **Grain**: One row per item serial within a transaction header (`TransactionTypeID`, `TransactionYear`, `TransactionNo`, `ItemSerial`).
+- **Composite PK**: `CompanyID`, `TransactionTypeID`, `TransactionYear`, `TransactionNo`, `ItemSerial`.
+- **Tenant Key**: `CompanyID`.
+
+## Pipeline
+Mobile Van/Presales Tablet → `OT_ImportSalesInvoices` (or direct BO billing) → `TransactionsHeaders` + `TransactionsDetails`.
+
+## Related
+- [[TransactionsHeaders]]
+- [[Items]]
+- [[ItemsUnits]]
+- [[OrdersDetails]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -381,50 +359,17 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 ## Impact / Procedures Using This Table
 
 **Reads (283):**
-- [[ABS_Integ_SendInvoices]]
-- [[ABS_Integ_SendInvoices_Jebrene]]
-- [[ABS_Integ_SendReturnInvoices_Jebrene]]
-- [[Acback_Integ_SendInvoices]]
-- [[Acback_Integ_SendReturnInvoices]]
-- [[AccPack_Integ_SendSalesInvoices]]
-- [[AccPack_Integ_SendSalesInvoices_LuxuryItems]]
-- [[Alpha_Integ_SendSalesInvoices]]
 - [[BO_Online_RptCustomerSalesTargetDetails]]
 - [[BaladInsertrtLoadDetailsintoTransactionstyp6]]
-- [[BlueDiamond_Equations]]
-- [[Bonanza_Integ_SendSalesInvoices_SmokingCenter]]
-- [[Bonanza_Integ_SendSalesInvoices_Yasmeen]]
-- [[CL_Integ_SendAllTransactions]]
 - [[CalcItemBalance]]
 - [[DA_SalesTarget]]
 - [[Da_ProductPerformance]]
 - [[Da_SalesGrowth]]
 - [[Da_SalesperRep]]
 - [[Da_YearlyCompanyTargetAndSales]]
-- [[Defaf_Rpt_WareHouse_Item_Balance]]
-- [[Ejabi_Integ_SendInvoices]]
-- [[Ejabi_Integ_SendReturnInvoices]]
-- [[GP_Integ_SendRetSalesInvoices]]
-- [[GP_Integ_SendReturn_Zumot]]
-- [[GP_Integ_SendReturn_Zumot_Aqaba]]
-- [[GP_Integ_SendSalesInvoices]]
-- [[GP_Integ_SendSalesInvoices_Wadi]]
-- [[GP_Integ_SendSalesInvoices_Zumot]]
-- [[GP_Integ_SendSalesInvoices_Zumot_Aqaba]]
-- [[Galaxy_Integ_SendSalesInvoices]]
-- [[Integ_SendSalesInvoices_CB]]
-- [[IscoJordan_Integ_SendInvoices]]
-- [[IscoJordan_Integ_SendReturnInvoices]]
-- [[IscoJordan_Integ_SendTransferOrder]]
-- [[Motakaml_Integ_GetItemBalance]]
-- [[Motakaml_Integ_SendTransactions]]
 - [[OT_Online_GetSalesmanSalesByMonths]]
 - [[OT_Online_RptSalesAndReturnPercByCustomer_Supervisor]]
 - [[OT_Online_RptSalesAndReturnPerc_Supervisor]]
-- [[Phenix_Sukhtian_Integ_SendInvoiceAndReturn]]
-- [[PrestoSoft_Integ_SendTransactions]]
-- [[ProTech_Integration_SendReturnInvoice]]
-- [[ProTech_Integration_SendSalesInvoice]]
 - [[Pro_CalcSalespersonItemBalance]]
 - [[Pro_CheckItemsInvoiceBarcode]]
 - [[Pro_DeliveryDashboard]]
@@ -442,7 +387,6 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 - [[Pro_TransactionsDetails]]
 - [[Pro_TransfersOrdersHeaders]]
 - [[Pro_TransfersOrdersQtyValidation]]
-- [[Pro_ZatcaIntegrationApi]]
 - [[RPT_CUSTOMERSALESDETAILSBYITEMANDSALESPERSONNAME]]
 - [[RPT_SALESDETAILSCUSTOMERSBYVALUE]]
 - [[RPT_SUMMARYSALESAND]]
@@ -481,7 +425,6 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 - [[Rpt_CustomerSalesByUnit]]
 - [[Rpt_CustomerSalesSummary]]
 - [[Rpt_CustomerSalesSummary_BySelection]]
-- [[Rpt_CustomerSalesTablet]]
 - [[Rpt_CustomerTypeSalesByItems]]
 - [[Rpt_CustomersAvgPerClass]]
 - [[Rpt_CustomersCountVisitByWeek]]
@@ -534,7 +477,6 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 - [[Rpt_ReceiptsBySalesman]]
 - [[Rpt_ReturnSalesAmount]]
 - [[Rpt_RoutePerformanceAnalysis]]
-- [[Rpt_RoutePerformanceAnalysis_Spartan]]
 - [[Rpt_RouteSummaryBySalesmanByCustomerClass]]
 - [[Rpt_RouteSummaryDeatils]]
 - [[Rpt_SalesAmountWithDiscountByCategories]]
@@ -552,7 +494,6 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 - [[Rpt_SalesPerRoute]]
 - [[Rpt_SalesPerRouteWithSalesman]]
 - [[Rpt_SalesPersonItemBonusTarget]]
-- [[Rpt_SalesPersonItemBonusTarget_Tablet]]
 - [[Rpt_SalesPersonSpecialTargets]]
 - [[Rpt_SalesPersonTarget]]
 - [[Rpt_SalesTransactionByDocumentsTypes]]
@@ -577,7 +518,6 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 - [[Rpt_SalesmanJourneyPerformance]]
 - [[Rpt_SalesmanOrdersSummary]]
 - [[Rpt_SalesmanRouteAvg]]
-- [[Rpt_SalesmanRouteEfficiency_Zoumt]]
 - [[Rpt_SalesmanRoutePerformance]]
 - [[Rpt_SalesmanRouteSummary]]
 - [[Rpt_SalesmanSalesByCategory]]
@@ -647,28 +587,9 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 - [[Rpt_WithdrawalVoucher_Report]]
 - [[Rpt_WorkFlowAnalysis]]
 - [[Rpt_Workflow_ChangePrice]]
-- [[SAP_Tyconz_Integ_SendInvoiceAndReturn]]
-- [[SMS_Almobhiron]]
-- [[SMS_AnwarMakka]]
-- [[SMS_Bostangy]]
-- [[SMS_Lamis]]
-- [[SMS_SpartenNew]]
-- [[SMS_Tahona]]
-- [[SMS_Wales]]
-- [[SMS_YAN]]
-- [[SMS_Zaidan]]
-- [[SN_Integ_SendTransactions]]
-- [[Shamel_Integ_SendSalesInvoices]]
-- [[Spartan_SAP_Integ_draft]]
-- [[Tahona_Integ_SendSalesInvoice]]
-- [[Tax_Integration]]
-- [[Wings_Integ_SendReturnSales]]
-- [[Wings_Integ_SendSalesInvoice]]
 
 **Writes (10):**
-- [[AlAmeen_Integ]]
 - [[BaladInsertrtLoadDetailsintoTransactionstyp6]]
-- [[Defaf_Integration]]
 - [[OT_ImportReplacement]]
 - [[OT_ImportSalesInvoices]]
 - [[Pro_ConvertLoadOrderToTransaction]]
@@ -690,4 +611,3 @@ Chatbot queries `t.TransactionsDetails` / `t.TransactionsHeaders` only — auto-
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[Shared/Runbooks/Invoice-Posting-Failure]]

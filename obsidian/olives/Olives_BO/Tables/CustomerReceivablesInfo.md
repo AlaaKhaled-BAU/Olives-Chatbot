@@ -7,7 +7,6 @@ tags: [#backoffice, #customer]
 foreign_keys:
 referenced_by:
   - [[Pro_CustomerReceivablesInfo]]
-  - [[Rpt_CustomerReceivablesInfo_Tablet]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -40,7 +39,6 @@ CustomerID
 
 **Reads (2):**
 - [[Pro_CustomerReceivablesInfo]]
-- [[Rpt_CustomerReceivablesInfo_Tablet]]
 
 **Writes (1):**
 - [[Pro_CustomerReceivablesInfo]]

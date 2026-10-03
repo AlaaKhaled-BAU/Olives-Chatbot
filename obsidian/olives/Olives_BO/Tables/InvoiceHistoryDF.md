@@ -6,22 +6,8 @@ schema: dbo
 tags: [#backoffice, #billing, #log]
 foreign_keys:
 referenced_by:
-  - [[ABS_Integration_Sokhtian]]
-  - [[Alpha_Integ]]
-  - [[Alpha_Integ_GoldenArrow]]
-  - [[Alpha_Integ_HistData]]
-  - [[Alpha_updateRoute]]
-  - [[Awael_Integ_HisInvoices]]
   - [[BO_Online_RptCustomerSalesTargetDetails]]
-  - [[Bajali_SAP_Integ]]
-  - [[ECO_Land_SAP_Integ]]
-  - [[Falcons_GetItemBalance]]
-  - [[Falcons_Integ]]
-  - [[GArrow_SAP_Integ]]
-  - [[Jazeera_Integ]]
-  - [[NPF_IntegrationHisData]]
   - [[NiroukhMonthlyandQuarter]]
-  - [[Niroukh_SalesPerTeamQ]]
   - [[OT_SendSalesmanData]]
   - [[Pro_ReturnOrdersHeaders]]
   - [[RPT_CUSTOMERSMAIN_SUBTARGETREPORT_COLLECTIONS]]
@@ -32,15 +18,11 @@ referenced_by:
   - [[RPT_NIROUKHCUSTOMERCLASSTARGET]]
   - [[RPT_NIROUKHCUSTOMERSMAIN_SUBTARGETREPORT]]
   - [[RPT_NIROUKHLOCATIONTARGET]]
-  - [[RamPharm_SAP_Integ]]
   - [[Rpt_CompareCustSalesByCategAndTargetRef]]
   - [[Rpt_CustomerMonthlySalesByArea]]
   - [[Rpt_CustomerSalesByItems]]
   - [[Rpt_MonthlyCompareSalesTargetWithSales]]
-  - [[Rpt_MonthlyCompareSalesTargetWithSales_Spartan]]
   - [[Rpt_NiroukhMonths_Q_Target]]
-  - [[Rpt_Niroukh_LocationTarget]]
-  - [[Rpt_Niroukh_SalesPerTeamQ]]
   - [[Rpt_SalesmanSalesByItems]]
   - [[Rpt_SalesmanSalesTotal]]
   - [[Rpt_SalesmanSalesTotal_BO]]
@@ -49,11 +31,7 @@ referenced_by:
   - [[Rpt_TargetSpartan]]
   - [[Rpt_TowerTargets]]
   - [[Rpt_newNiroukh_monthTarget_comm]]
-  - [[SAMA_SAP_Integ]]
   - [[SalesmanInfo]]
-  - [[Tablet_GetInvoiceHistoryFromERP]]
-  - [[Tablet_GetPendingOrdersTotals]]
-  - [[X3_Integ_HistData]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -61,9 +39,36 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+Historical and archived invoice line-item detail table in Olives_BO. Stores archived invoice line items, products, quantities, prices, and discounts (`ItemNo`, `UnitCode`, `Qty`, `Bonus`, `UnitPrice`, `SellValue`).
+- **Difference from `TransactionsDetails`**:
+  - `TransactionsDetails` is the **live, active, operational** transaction details table recording current sales and returns created by salesmen and back-office billing.
+  - `InvoiceHistoryDF` is the **archived / historical line-item repository** used for multi-year sales reporting, historical category trends, and offline purchase history lookups on mobile tablets.
+- **Header Link**: Pairs with `InvoiceHistoryHF` on `CompNo`, `VouYear`, `VouNo`, and `VouType`.
 
-Core data table in the Back Office (server-side) — stores invoicehistorydf records.
+## Chatbot semantics
+(Query `t.InvoiceHistoryDF` — scoped by session CompNo/CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| تفاصيل أصناف الفواتير التاريخية | `ItemNo`, `Qty`, `SellValue`, `UnitPrice` | Join `t.InvoiceHistoryHF h ON df.VouYear = h.VouYear AND df.VouNo = h.VouNo AND df.VouType = h.VouType` |
+| الكمية التاريخية المباعة | `Qty` | `Qty > 0` |
+| قيمة المبيعات التاريخية للصنف | `SellValue` | إجمالي قيمة مبيعات الصنف في الفاتورة التاريخية |
+
+**CRITICAL RULE FOR CHATBOT:**
+For any questions regarding **current transaction lines or today's sales details**, ALWAYS query `t.TransactionsDetails`. Query `t.InvoiceHistoryDF` only when specifically asked about historical archives or legacy multi-year sales.
+
+## Grain & keys
+- **Grain**: One row per item, batch, and unit within an archived invoice header (`VouYear`, `VouNo`, `VouType`, `ItemNo`, `BatchNo`, `UnitCode`).
+- **Composite PK**: `CompNo`, `VouYear`, `VouNo`, `VouType`, `ItemNo`, `BatchNo`, `UnitCode`.
+- **Tenant Key**: `CompNo`.
+
+## Pipeline
+Legacy ERP Migration / Historical Archival → `InvoiceHistoryDF` → Used by historical sales comparative reporting.
+
+## Related
+- [[InvoiceHistoryHF]]
+- [[TransactionsDetails]]
+- [[Items]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -98,22 +103,8 @@ UnitCode
 ## Impact / Procedures Using This Table
 
 **Reads (48):**
-- [[ABS_Integration_Sokhtian]]
-- [[Alpha_Integ]]
-- [[Alpha_Integ_GoldenArrow]]
-- [[Alpha_Integ_HistData]]
-- [[Alpha_updateRoute]]
-- [[Awael_Integ_HisInvoices]]
 - [[BO_Online_RptCustomerSalesTargetDetails]]
-- [[Bajali_SAP_Integ]]
-- [[ECO_Land_SAP_Integ]]
-- [[Falcons_GetItemBalance]]
-- [[Falcons_Integ]]
-- [[GArrow_SAP_Integ]]
-- [[Jazeera_Integ]]
-- [[NPF_IntegrationHisData]]
 - [[NiroukhMonthlyandQuarter]]
-- [[Niroukh_SalesPerTeamQ]]
 - [[OT_SendSalesmanData]]
 - [[Pro_ReturnOrdersHeaders]]
 - [[RPT_CUSTOMERSMAIN_SUBTARGETREPORT_COLLECTIONS]]
@@ -124,15 +115,11 @@ UnitCode
 - [[RPT_NIROUKHCUSTOMERCLASSTARGET]]
 - [[RPT_NIROUKHCUSTOMERSMAIN_SUBTARGETREPORT]]
 - [[RPT_NIROUKHLOCATIONTARGET]]
-- [[RamPharm_SAP_Integ]]
 - [[Rpt_CompareCustSalesByCategAndTargetRef]]
 - [[Rpt_CustomerMonthlySalesByArea]]
 - [[Rpt_CustomerSalesByItems]]
 - [[Rpt_MonthlyCompareSalesTargetWithSales]]
-- [[Rpt_MonthlyCompareSalesTargetWithSales_Spartan]]
 - [[Rpt_NiroukhMonths_Q_Target]]
-- [[Rpt_Niroukh_LocationTarget]]
-- [[Rpt_Niroukh_SalesPerTeamQ]]
 - [[Rpt_SalesmanSalesByItems]]
 - [[Rpt_SalesmanSalesTotal]]
 - [[Rpt_SalesmanSalesTotal_BO]]
@@ -141,20 +128,9 @@ UnitCode
 - [[Rpt_TargetSpartan]]
 - [[Rpt_TowerTargets]]
 - [[Rpt_newNiroukh_monthTarget_comm]]
-- [[SAMA_SAP_Integ]]
 - [[SalesmanInfo]]
-- [[Tablet_GetInvoiceHistoryFromERP]]
-- [[Tablet_GetPendingOrdersTotals]]
-- [[X3_Integ_HistData]]
 
 **Writes (7):**
-- [[ABS_Integration_Sokhtian]]
-- [[Alpha_Integ_HistData]]
-- [[Alpha_updateRoute]]
-- [[Awael_Integ_HisInvoices]]
-- [[Bajali_SAP_Integ]]
-- [[GArrow_SAP_Integ]]
-- [[SAMA_SAP_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

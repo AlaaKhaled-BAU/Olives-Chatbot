@@ -8,7 +8,6 @@ foreign_keys:
   - [[Companies]]
   - [[SalesPersons]]
 referenced_by:
-  - [[Alpha_Integ_SendVanTransfer]]
   - [[OT_ImportVanTransfer]]
 support_relevance: high
 last_verified: 2026-07-05
@@ -50,11 +49,9 @@ CompanyID, ToSalespersonID -> [[SalesPersons]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (2):**
-- [[Alpha_Integ_SendVanTransfer]]
 - [[OT_ImportVanTransfer]]
 
 **Writes (2):**
-- [[Alpha_Integ_SendVanTransfer]]
 - [[OT_ImportVanTransfer]]
 
 ## Estimated Size / Volatility
@@ -70,4 +67,3 @@ Typical business table
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[Shared/Runbooks/Van-Stock-Mismatch]]

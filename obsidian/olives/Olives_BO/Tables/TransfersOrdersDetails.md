@@ -10,29 +10,13 @@ foreign_keys:
   - [[ItemsUnits]]
   - [[TransfersOrdersHeaders]]
 referenced_by:
-  - [[ABS_Integ_SendTransferOrders]]
-  - [[ABS_Integ_SendTransferOrders_Jebrene]]
-  - [[ABS_Integ_SendUnloadOrders_Jebrene]]
-  - [[AX_INTEG_SENDTRANSFERS]]
-  - [[AX_INTEG_SENDUNLOADTRANSFERS]]
-  - [[Acback_Integ_SendTransfer]]
   - [[BaladInsertrtLoadDetailsintoTransactionstyp6]]
-  - [[Defaf_Integration]]
-  - [[Defaf_Rpt_WareHouse_Item_Balance]]
-  - [[Ejabi_Integ_SendTransferOrders]]
-  - [[GP_Integ_SendTransfersOrders_Zumot]]
-  - [[GP_Integ_SendTransfersOrders_Zumot_Aqaba]]
   - [[GetTransfersOrdersForOnline]]
-  - [[IscoJordan_Integ_SendTransferOrder]]
-  - [[Motakaml_Integ_SendTransferOrder]]
   - [[OT_ImportUploadOrders]]
-  - [[Phenix_Sukhtian_Integ_LoadAndUnLoad]]
-  - [[PrestoSoft_Integ_SendTransferOrders]]
   - [[Pro_AutoBasketLoadItems]]
   - [[Pro_Auto_Unload]]
   - [[Pro_CheckItemsInvoiceBarcode]]
   - [[Pro_ItemsUnitsDetails]]
-  - [[Pro_Rpt_ItemsUnloadSummaryTablet]]
   - [[Pro_SalesReport_ItemCode]]
   - [[Pro_SalesmanStockAndReturnLoadOrders]]
   - [[Pro_StockSettlement]]
@@ -46,11 +30,7 @@ referenced_by:
   - [[Rpt_TransferOrders]]
   - [[Rpt_TransfersOrders]]
   - [[Rpt_WareHouse_Item_Balance]]
-  - [[SN_Integ_SendTransferOrders]]
   - [[Stock_Transfer_Jebrini_Excel]]
-  - [[Tahona_Integ_SendLoadOrders]]
-  - [[Tahoneh_Integ_CreateInvocieFromUnload]]
-  - [[Zoumt_Integ]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -58,9 +38,40 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+Line-item detail for cash van inventory transfer, restocking, and replenishment orders (`TransfersOrdersHeaders`). Records the specific items (`ItemCode`), packaging units (`UnitID`), requested quantities (`Quantity`), and actual warehouse-approved quantities (`QtyAfterApprove`).
+- **Load vs Unload**: Determined by `VouType`:
+  - `VouType = 1`: Load Order (أمر تحميل بضاعة للمركبة).
+  - `VouType = 2`: Unload Order (أمر تنزيل / إعادة بضاعة للمستودع).
+- **Header Link**: Pairs with `TransfersOrdersHeaders` on `OrderYear`, `OrderNo`, and `VouType`.
+- **Approval Adjustments**: Warehouse supervisors may adjust quantities upon physical loading/unloading; `QtyAfterApprove` stores the final accepted transfer quantity.
 
-Core data table in the Back Office (server-side) — stores transfersordersdetails records.
+## Chatbot semantics
+(Query `t.TransfersOrdersDetails` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| أصناف أمر التحميل | `ItemCode`, `Quantity`, `QtyAfterApprove` | `VouType = 1` |
+| أصناف أمر التفريغ / التنزيل | `ItemCode`, `Quantity`, `QtyAfterApprove` | `VouType = 2` |
+| الكمية المحملة الفعلية / المعتمدة | `QtyAfterApprove` | الكمية المصروفة فعلياً من المستودع بعد الاعتماد |
+| اسم الصنف والوحدة | Join `t.Items`, `t.ItemsUnits` | `d.ItemCode = i.ItemCode`, `d.UnitID = u.UnitID` |
+
+**Do not confuse with:**
+- `t.SalesPersonItemsBalance` (the resulting aggregated inventory on the vehicle).
+- `t.TransactionsDetails` with `TransactionTypeID = 6 / 7` (the posted warehouse movement vouchers).
+
+## Grain & keys
+- **Grain**: One row per item and unit within a transfer order (`OrderYear`, `OrderNo`, `VouType`, `ItemCode`, `UnitID`).
+- **Composite PK**: `CompanyID`, `OrderYear`, `OrderNo`, `VouType`, `ItemCode`, `UnitID`.
+- **Tenant Key**: `CompanyID`.
+
+## Pipeline
+Mobile Van Tablet → `OT_ImportUploadOrders` → `TransfersOrdersHeaders` + `TransfersOrdersDetails` → Warehouse Approval (`QtyAfterApprove`).
+
+## Related
+- [[TransfersOrdersHeaders]]
+- [[Items]]
+- [[ItemsUnits]]
+- [[SalesPersonItemsBalance]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -90,26 +101,11 @@ CompanyID, OrderYear, OrderNo, VouType -> [[TransfersOrdersHeaders]](CompanyID, 
 ## Impact / Procedures Using This Table
 
 **Reads (38):**
-- [[ABS_Integ_SendTransferOrders]]
-- [[ABS_Integ_SendTransferOrders_Jebrene]]
-- [[ABS_Integ_SendUnloadOrders_Jebrene]]
-- [[AX_INTEG_SENDTRANSFERS]]
-- [[AX_INTEG_SENDUNLOADTRANSFERS]]
-- [[Acback_Integ_SendTransfer]]
 - [[BaladInsertrtLoadDetailsintoTransactionstyp6]]
-- [[Defaf_Rpt_WareHouse_Item_Balance]]
-- [[Ejabi_Integ_SendTransferOrders]]
-- [[GP_Integ_SendTransfersOrders_Zumot]]
-- [[GP_Integ_SendTransfersOrders_Zumot_Aqaba]]
 - [[GetTransfersOrdersForOnline]]
-- [[IscoJordan_Integ_SendTransferOrder]]
-- [[Motakaml_Integ_SendTransferOrder]]
-- [[Phenix_Sukhtian_Integ_LoadAndUnLoad]]
-- [[PrestoSoft_Integ_SendTransferOrders]]
 - [[Pro_AutoBasketLoadItems]]
 - [[Pro_CheckItemsInvoiceBarcode]]
 - [[Pro_ItemsUnitsDetails]]
-- [[Pro_Rpt_ItemsUnloadSummaryTablet]]
 - [[Pro_SalesReport_ItemCode]]
 - [[Pro_SalesmanStockAndReturnLoadOrders]]
 - [[Pro_StockSettlement]]
@@ -123,14 +119,9 @@ CompanyID, OrderYear, OrderNo, VouType -> [[TransfersOrdersHeaders]](CompanyID, 
 - [[Rpt_TransferOrders]]
 - [[Rpt_TransfersOrders]]
 - [[Rpt_WareHouse_Item_Balance]]
-- [[SN_Integ_SendTransferOrders]]
 - [[Stock_Transfer_Jebrini_Excel]]
-- [[Tahona_Integ_SendLoadOrders]]
-- [[Tahoneh_Integ_CreateInvocieFromUnload]]
-- [[Zoumt_Integ]]
 
 **Writes (6):**
-- [[Defaf_Integration]]
 - [[OT_ImportUploadOrders]]
 - [[Pro_AutoBasketLoadItems]]
 - [[Pro_Auto_Unload]]

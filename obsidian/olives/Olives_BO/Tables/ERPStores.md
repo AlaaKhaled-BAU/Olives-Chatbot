@@ -5,8 +5,8 @@ name: ERPStores
 schema: dbo
 tags: [#backoffice, #integration]
 foreign_keys:
+
 referenced_by:
-  - [[ABS_Integration_Sokhtian]]
   - [[Pro_AssetTransactionsList]]
   - [[Pro_AssetsWarehouseTransactions]]
   - [[Pro_CustomersAndAssets]]
@@ -18,7 +18,6 @@ referenced_by:
   - [[Rpt_SalesmanCashSales]]
   - [[Rpt_SalesmanSalesByItems]]
   - [[Rpt_TransferOrderWH]]
-  - [[X3_Integ_SendSalesOrders]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -34,11 +33,15 @@ Core data table in the Back Office (server-side) — stores erpstores records.
 | Column | Type | Nullable | PK | FK | References |
 |--------|------|----------|----|----|------------|
 | CompanyID | smallint | NO | ✓ |  |  |
-| StoreNo | int | YES | ✓ |  |  |
+| StoreNo | int | NO | ✓ |  |  |
 | ArDesc | varchar | YES |  |  |  |
 | EngDesc | varchar | YES |  |  |  |
 | Reference1 | varchar | YES |  |  |  |
 | Reference2 | varchar | YES |  |  |  |
+| OID | nvarchar | YES |  |  |  |
+| CarNo | nvarchar | YES |  |  |  |
+| Remark | nvarchar | YES |  |  |  |
+
 ## Primary Key
 CompanyID
 StoreNo
@@ -47,7 +50,6 @@ StoreNo
 ## Impact / Procedures Using This Table
 
 **Reads (13):**
-- [[ABS_Integration_Sokhtian]]
 - [[Pro_AssetTransactionsList]]
 - [[Pro_AssetsWarehouseTransactions]]
 - [[Pro_CustomersAndAssets]]
@@ -59,10 +61,8 @@ StoreNo
 - [[Rpt_SalesmanCashSales]]
 - [[Rpt_SalesmanSalesByItems]]
 - [[Rpt_TransferOrderWH]]
-- [[X3_Integ_SendSalesOrders]]
 
 **Writes (2):**
-- [[ABS_Integration_Sokhtian]]
 - [[Pro_Store]]
 
 ## Estimated Size / Volatility

@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #reporting]
 foreign_keys:
 referenced_by:
-  - [[DEVICEREPORT_TABLE_UPDATE]]
   - [[Fill_Sales_Device_Reports]]
   - [[Pro_SalesPersonsDevicePermissions]]
 support_relevance: high
@@ -36,7 +35,6 @@ ID
 ## Impact / Procedures Using This Table
 
 **Reads (3):**
-- [[DEVICEREPORT_TABLE_UPDATE]]
 - [[Fill_Sales_Device_Reports]]
 - [[Pro_SalesPersonsDevicePermissions]]
 

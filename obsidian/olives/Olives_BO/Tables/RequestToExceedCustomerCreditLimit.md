@@ -14,14 +14,44 @@ referenced_by:
   - [[WF_AddWorkFlowLevelOne]]
   - [[WF_AddWorkFlowLevels]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 ---
 # RequestToExceedCustomerCreditLimit
 
-
 ## Business Purpose
+Stores mobile requests submitted by salesmen when creating an invoice that exceeds the customer's defined credit limit. Corresponds to workflow `FunctionID = 2`. Captures the financial snapshot at request time: requested `InvoiceAmount`, current `CustomerCreditLimit`, current `CustomerBanalce` (balance), `CustomerChqBanalce` (uncleared checks), and the `ExceedAmount`. Queryable as `t.RequestToExceedCustomerCreditLimit`.
 
-Workflow request records for special approvals (credit, discount, exceptions).
+## Chatbot semantics
+(Query `t.RequestToExceedCustomerCreditLimit` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| طلبات تجاوز سقف الائتمان | `CustomerNo`, `SalesPersonNo`, `InvoiceAmount` | e.g. `CustomerNo = ...` | Lists credit limit requests |
+| حالة الموافقة في جدول الطلب | `IsAproved` | `IsAproved = 1` (approved), `0` or `NULL` (pending/rejected) | Direct flag stamped upon approval |
+| الربط مع سجل الموافقات العام | Join `t.WF_MasterLog` | `m.FunctionID = 2 AND TRY_CAST(m.Ref1 AS numeric) = r.AutoID AND m.CompanyID = r.CompanyID` | Enables checking approver levels and notes |
+| قيمة التجاوز | `ExceedAmount`, `InvoiceAmount` | Numeric fields | Excess over credit ceiling |
+| رصيد العميل وسقف الائتمان وقت الطلب | `CustomerCreditLimit`, `CustomerBanalce` | Snapshot values | Preserved historical amounts |
+
+**Do not confuse with:**
+- `RequestToExceedCustomerCreditLimitInOrder`: Workflow `FunctionID = 15` (credit limit exception during pre-sales order, not invoice).
+- `RequestToIncreaseCustomerCreditlimit`: Permanent credit limit change requests (`FunctionID = 39`), whereas this table is for a single transaction exception.
+
+## Grain & keys
+- **PK**: `AutoID` (numeric identity, 1 row = 1 credit exception request)
+- **Tenant key**: `CompanyID`
+- **Conventions**: `CustomerNo` → [[Customers]](ID), `SalesPersonNo` → [[SalesPersons]](ID)
+
+## Pipeline (how rows get here)
+Tablet raises credit exception → `OT_ImportRequestToExceedCustomerCreditLimit` imports row into this table (`IsAproved = 0`) → executes `WF_AddWorkFlowLevelOne @CompNo, 2, @NewAutoID` → inserts `WF_MasterLog` (`Ref1 = AutoID`). When supervisor approves, `WF_AddWorkFlowLevels` updates `IsAproved = 1`.
+
+## Related
+- [[WF_MasterLog]]
+- [[WF_SubLog]]
+- [[WF_Functions]]
+- [[Customers]]
+- [[CustomersFinancialDetails]]
+- [[_RequestTo-Join-Conventions]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

@@ -6,8 +6,6 @@ schema: dbo
 tags: [#backoffice, #customer]
 foreign_keys:
 referenced_by:
-  - [[Balad_AddCustomer]]
-  - [[Balad_AddCustomerOnly]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -41,12 +39,8 @@ Core data table in the Back Office (server-side) — stores balad add customer t
 ## Impact / Procedures Using This Table
 
 **Reads (2):**
-- [[Balad_AddCustomer]]
-- [[Balad_AddCustomerOnly]]
 
 **Writes (2):**
-- [[Balad_AddCustomer]]
-- [[Balad_AddCustomerOnly]]
 
 ## Estimated Size / Volatility
 Typical business table

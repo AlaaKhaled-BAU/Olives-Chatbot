@@ -10,7 +10,6 @@ foreign_keys:
 referenced_by:
   - [[Pro_CouponsBooksDetails]]
   - [[Pro_CouponsBooksHeaders]]
-  - [[SMS_ZumotPromoCodes]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -41,7 +40,6 @@ CompanyID, CustomerID -> [[Customers]](CompanyID, ID)
 **Reads (3):**
 - [[Pro_CouponsBooksDetails]]
 - [[Pro_CouponsBooksHeaders]]
-- [[SMS_ZumotPromoCodes]]
 
 **Writes (2):**
 - [[Pro_CouponsBooksDetails]]

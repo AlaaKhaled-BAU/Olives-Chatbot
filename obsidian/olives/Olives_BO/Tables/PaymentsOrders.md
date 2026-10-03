@@ -9,7 +9,6 @@ foreign_keys:
   - [[Customers]]
   - [[SalesPersons]]
 referenced_by:
-  - [[Alpha_Integ_SendIssuePaymentOrder]]
   - [[OT_CustIssueAmount_Update]]
   - [[Pro_GetCashCloseTotals]]
   - [[Pro_OrdersPayment]]
@@ -61,7 +60,6 @@ CompanyID, SalespersonID -> [[SalesPersons]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (8):**
-- [[Alpha_Integ_SendIssuePaymentOrder]]
 - [[OT_CustIssueAmount_Update]]
 - [[Pro_GetCashCloseTotals]]
 - [[Pro_OrdersPayment]]
@@ -71,7 +69,6 @@ CompanyID, SalespersonID -> [[SalesPersons]](CompanyID, ID)
 - [[Rpt_SalesmanSalesRecStatment]]
 
 **Writes (3):**
-- [[Alpha_Integ_SendIssuePaymentOrder]]
 - [[OT_CustIssueAmount_Update]]
 - [[Pro_OrdersPayment]]
 

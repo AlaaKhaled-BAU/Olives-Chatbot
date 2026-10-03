@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #order, #sales]
 foreign_keys:
 referenced_by:
-  - [[ECO_Land_SAP_Integ]]
   - [[OT_ImportActionLog]]
   - [[OT_ImportSalesQuotations]]
   - [[Pro_CompanyParameters]]
@@ -85,7 +84,6 @@ OrderNo
 - [[Rpt_SalesQuotation]]
 
 **Writes (5):**
-- [[ECO_Land_SAP_Integ]]
 - [[OT_ImportActionLog]]
 - [[OT_ImportSalesQuotations]]
 - [[WF_AddWorkFlowLevelOne]]

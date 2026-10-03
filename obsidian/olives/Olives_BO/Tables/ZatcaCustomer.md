@@ -62,10 +62,7 @@ Typical business table
 - [[NewCustomerDefaultValue]]
 - [[CustomerTargetsDetails]]
 - [[NewCustomerSpecialFields_Def]]
-- [[MMS_TaxType]]
 
 - [[ZatcaMode]]
 - [[ZatcaResultGenerateXml]]
 - [[ZatcaCompany]]
-- [[Glossary]]
-- [[Shared/Runbooks/ZATCA-Validation]]

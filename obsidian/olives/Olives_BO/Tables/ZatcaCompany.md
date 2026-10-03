@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #legal]
 foreign_keys:
 referenced_by:
-  - [[Pro_ZatcaIntegrationApi]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -44,7 +43,6 @@ TaxNumber
 ## Impact / Procedures Using This Table
 
 **Reads (1):**
-- [[Pro_ZatcaIntegrationApi]]
 
 **Writes (0):**
 _None_
@@ -62,4 +60,3 @@ Typical business table
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[Shared/Runbooks/ZATCA-Validation]]

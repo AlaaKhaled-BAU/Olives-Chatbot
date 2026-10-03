@@ -8,7 +8,6 @@ foreign_keys:
   - [[Companies]]
   - [[SalesPersons]]
 referenced_by:
-  - [[AccPack_Integ_LuxuryItems]]
   - [[DA_SalesTarget]]
   - [[Pro_SalesPerson_Collection_Targets]]
   - [[Rpt_SalesAndCollectionTargetByLocation]]
@@ -49,7 +48,6 @@ CompanyID, SalesPersonID -> [[SalesPersons]](CompanyID, ID)
 - [[Rpt_SalesCollcetionsTargets]]
 
 **Writes (2):**
-- [[AccPack_Integ_LuxuryItems]]
 - [[Pro_SalesPerson_Collection_Targets]]
 
 ## Estimated Size / Volatility

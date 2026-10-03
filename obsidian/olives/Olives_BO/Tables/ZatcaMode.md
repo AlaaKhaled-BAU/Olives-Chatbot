@@ -46,10 +46,8 @@ Typical business table
 - [[JoTaxResult]]
 - [[CustomersItemsLog]]
 - [[CatalogMedia]]
-- [[MMS_TaxType]]
 - [[JOTaxSettings]]
 
 - [[ZatcaResultGenerateXml]]
 - [[ZatcaCustomer]]
 - [[ZatcaCompany]]
-- [[Glossary]]

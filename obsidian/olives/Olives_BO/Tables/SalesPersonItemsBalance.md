@@ -9,29 +9,8 @@ foreign_keys:
   - [[Items]]
   - [[SalesPersons]]
 referenced_by:
-  - [[AbuOda_BonMarrof_Integ]]
-  - [[AbuOda_Comp2_Integ]]
-  - [[AbuOda_Integ]]
-  - [[Alpha_GetItemBalance]]
-  - [[Alpha_GetItemBalance_Zoumt]]
-  - [[Bajali_SAP_Integ]]
   - [[CalcItemBalance]]
-  - [[ECO_Land_SAP_Integ]]
-  - [[Falcons_GetItemBalance]]
-  - [[GArrow_SAP_Integ]]
-  - [[GP_Integ]]
-  - [[GP_Integ_GetItemBalance]]
-  - [[GP_Integ_GetItemBalanceFromView]]
-  - [[IscoJordan_Integ_GetItemsBalance]]
-  - [[Izhiman_SAP_Integ]]
-  - [[JV_Integ_GetItemBalance]]
-  - [[Khobara_Integ]]
-  - [[MeatLand_Integration]]
-  - [[MeatLand_Integrationnew]]
   - [[OT_SendSalesmanData]]
-  - [[Phenix_Sukhtian_Integ_GetItemsBalance]]
-  - [[PrestoSoft_Integ_GetItemBalance]]
-  - [[Presto_Integ]]
   - [[Pro_Auto_Unload]]
   - [[Pro_CalcSalespersonItemBalance]]
   - [[Pro_CheckSalesmanItemsBalance]]
@@ -41,39 +20,49 @@ referenced_by:
   - [[Pro_TransfersOrdersDetails]]
   - [[Pro_TransfersOrdersHeaders]]
   - [[Pro_TransfersOrdersQtyValidation]]
-  - [[Qerat_Integ]]
-  - [[Qetaf_Integ]]
-  - [[RamPharm_SAP_Integ]]
-  - [[Retco_Integ_ItemBal]]
   - [[Rpt_BasketReport]]
   - [[Rpt_LiveQty]]
   - [[Rpt_SalesPersonItemBalance]]
   - [[Rpt_SalesPersonStockTackingDetails]]
   - [[Rpt_StockTakingReport]]
   - [[Rpt_TransfersOrders]]
-  - [[SAMA_SAP_Integ]]
-  - [[SAP_GetItemBalance]]
-  - [[SAP_GetItemBalance_Amazing]]
-  - [[SAP_GetItemBalance_Karadsheh]]
-  - [[SAP_GetItemBalance_Kaylani]]
-  - [[SN_Integ_GetItemBalance]]
-  - [[Salbeshian_SAP_Integ]]
-  - [[Shamel_Integ_GetItemsBalance]]
-  - [[Shini_Integ]]
-  - [[Wings_Integ_GetItemBalance]]
-  - [[X3_Integ_GetItemBalance]]
-  - [[Yolande_Integ_GetItemBalance]]
-  - [[Zedan_SAP_Integ]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 ---
 # SalesPersonItemsBalance
 
-
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+The van inventory / truck stock balance table — maintains the current on-hand quantity (`ItemQuantity`) of each product (`ItemCode`) and unit (`UnitCode`) in a salesman's mobile vehicle. Essential for van sales operations to determine what goods the salesman can sell immediately without backorders. Queryable via `t.SalesPersonItemsBalance`.
 
-Core data table in the Back Office (server-side) — stores salespersonitemsbalance records.
+## Chatbot semantics
+(Query `t.SalesPersonItemsBalance` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| رصيد سيارة المندوب / بضاعة السيارة | `SalesPersonID`, `ItemCode`, `ItemQuantity` | Filter by salesman | Current inventory on the van |
+| اسم المادة ورصيدها في السيارة | Join `t.Items` | `Items.ItemNo = b.ItemCode` | Displays item name alongside quantity |
+| وحدة القياس | `UnitCode` | e.g. Box, Piece | Inventory packaging unit |
+| مواد نفدت من السيارة | `ItemQuantity` | `ItemQuantity <= 0` | Out of stock items on the van |
+
+**Do not confuse with:**
+- `StoresBalances`: Central warehouse stock balances. `SalesPersonItemsBalance` is specifically mobile van stock.
+- `TransfersOrdersHeaders`: Load and unload transfer orders moving stock between central warehouse and the van.
+
+## Grain & keys
+- **Composite PK**: (`CompanyID`, `SalesPersonID`, `ItemCode`)
+- **Tenant key**: `CompanyID`
+- **FKs**: `SalesPersonID` → [[SalesPersons]](ID), `ItemCode` → [[Items]](ItemNo)
+
+## Pipeline (how rows get here)
+Incremented when load orders (`TransfersOrdersHeaders`, FunctionID 7) are confirmed and synced to BO via `OT_SendSalesmanData`. Decremented upon each invoice sale (`TransactionsHeaders`). Reconciled upon end-of-day van return or stock-taking (`Pro_CalcSalespersonItemBalance`).
+
+## Related
+- [[SalesPersons]]
+- [[Items]]
+- [[TransfersOrdersHeaders]]
+- [[TransactionsHeaders]]
+- [[StoresBalances]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -94,17 +83,8 @@ CompanyID, SalesPersonID -> [[SalesPersons]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (36):**
-- [[Alpha_GetItemBalance]]
-- [[Alpha_GetItemBalance_Zoumt]]
 - [[CalcItemBalance]]
-- [[GP_Integ_GetItemBalance]]
-- [[GP_Integ_GetItemBalanceFromView]]
-- [[IscoJordan_Integ_GetItemsBalance]]
-- [[JV_Integ_GetItemBalance]]
 - [[OT_SendSalesmanData]]
-- [[Phenix_Sukhtian_Integ_GetItemsBalance]]
-- [[PrestoSoft_Integ_GetItemBalance]]
-- [[Presto_Integ]]
 - [[Pro_Auto_Unload]]
 - [[Pro_CalcSalespersonItemBalance]]
 - [[Pro_CheckSalesmanItemsBalance]]
@@ -114,63 +94,20 @@ CompanyID, SalesPersonID -> [[SalesPersons]](CompanyID, ID)
 - [[Pro_TransfersOrdersDetails]]
 - [[Pro_TransfersOrdersHeaders]]
 - [[Pro_TransfersOrdersQtyValidation]]
-- [[Retco_Integ_ItemBal]]
 - [[Rpt_BasketReport]]
 - [[Rpt_LiveQty]]
 - [[Rpt_SalesPersonItemBalance]]
 - [[Rpt_SalesPersonStockTackingDetails]]
 - [[Rpt_StockTakingReport]]
 - [[Rpt_TransfersOrders]]
-- [[SAP_GetItemBalance]]
-- [[SAP_GetItemBalance_Amazing]]
-- [[SAP_GetItemBalance_Karadsheh]]
-- [[SAP_GetItemBalance_Kaylani]]
-- [[SN_Integ_GetItemBalance]]
-- [[Shamel_Integ_GetItemsBalance]]
-- [[Wings_Integ_GetItemBalance]]
-- [[X3_Integ_GetItemBalance]]
-- [[Yolande_Integ_GetItemBalance]]
 
 **Writes (39):**
-- [[AbuOda_BonMarrof_Integ]]
-- [[AbuOda_Comp2_Integ]]
-- [[AbuOda_Integ]]
-- [[Alpha_GetItemBalance]]
-- [[Alpha_GetItemBalance_Zoumt]]
-- [[Bajali_SAP_Integ]]
 - [[CalcItemBalance]]
-- [[ECO_Land_SAP_Integ]]
-- [[Falcons_GetItemBalance]]
-- [[GArrow_SAP_Integ]]
-- [[GP_Integ]]
-- [[GP_Integ_GetItemBalance]]
-- [[IscoJordan_Integ_GetItemsBalance]]
-- [[Izhiman_SAP_Integ]]
-- [[JV_Integ_GetItemBalance]]
-- [[Khobara_Integ]]
-- [[MeatLand_Integration]]
-- [[MeatLand_Integrationnew]]
 - [[OT_SendSalesmanData]]
-- [[Phenix_Sukhtian_Integ_GetItemsBalance]]
-- [[Presto_Integ]]
 - [[Pro_CalcSalespersonItemBalance]]
 - [[Pro_SalesPersonItemsBalance]]
 - [[Pro_TransfersOrdersHeaders]]
 - [[Pro_TransfersOrdersQtyValidation]]
-- [[Qerat_Integ]]
-- [[Qetaf_Integ]]
-- [[RamPharm_SAP_Integ]]
-- [[Retco_Integ_ItemBal]]
-- [[SAMA_SAP_Integ]]
-- [[SAP_GetItemBalance]]
-- [[SAP_GetItemBalance_Amazing]]
-- [[SAP_GetItemBalance_Karadsheh]]
-- [[SAP_GetItemBalance_Kaylani]]
-- [[Salbeshian_SAP_Integ]]
-- [[Shamel_Integ_GetItemsBalance]]
-- [[Shini_Integ]]
-- [[Yolande_Integ_GetItemBalance]]
-- [[Zedan_SAP_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table
@@ -185,4 +122,3 @@ Chatbot queries `t.SalesPersonItemsBalance` only — auto-scoped by `SESSION_CON
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[Shared/Runbooks/Credit-Limit-Block]]

@@ -65,17 +65,46 @@ referenced_by:
   - [[WF_GetPositionWFData]]
   - [[WF_GetPositionWFDataByDate_Alerts]]
   - [[WF_GetPositionWFData_Alerts]]
-support_relevance: low
-last_verified: 2026-07-05
+support_relevance: high
+last_verified: 2026-10-03
 ---
 # WF_SubLog
 
-
 ## Business Purpose
+Per-step workflow log and approval task table — stores one row per approver position, level, or engine notification for each request. Forms the **supervisor inbox** when filtered for pending actions, and forms the audit trail of who approved or rejected each step. Pair with [[WF_MasterLog]] on `ReqID` and company. Queryable via `t.WF_SubLog`.
 
-Per-step workflow log for tablet **approval requests** (one row per approver position / engine step). Pair with [[WF_MasterLog]] on `ReqID`.
+## Chatbot semantics
+(Query `t.WF_SubLog` — scoped by session CompanyID via `t.` views.)
 
-**Code columns** (`Action`, `ActionNeed`) and supervisor inbox filters: [[Workflow_Approval_Codes]]. Pending on you: `Action IS NULL` and `ActionNeed = N'AR'` (see [[WF_GetPositionWFData]]).
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| بانتظار موافقتي (Supervisor Inbox) | `Action`, `ActionNeed`, `PositionID` | `Action IS NULL AND ActionNeed = N'AR' AND PositionID = @PosID` | Exactly what the tablet inbox displays |
+| طلبات وافقت عليها | `Action`, `PositionID`, `ActionDate` | `Action = N'A' AND PositionID = @PosID` | Date range on `ActionDate` |
+| طلبات رفضتها | `Action`, `PositionID`, `ActionDate` | `Action = N'R' AND PositionID = @PosID` | Rejection decisions |
+| مستوى الموافقة الحالي | `ARLevel` | e.g. `ARLevel = 1` | 1 = first level approver, 2 = second level, etc. |
+| تفاصيل الطلب والمندوب | Join `t.WF_MasterLog` | `s.ReqID = m.ReqID AND s.CompanyID = m.CompanyID` | Gives `FunctionID`, `ReqDate`, and `Ref1`..`Ref5` |
+| اسم نوع الطلب | Join `t.WF_Functions` | `m.FunctionID = f.ID` | Gives human-readable request name (`ArName` / `EngName`) |
+
+**Do not confuse with:**
+- `WF_MasterLog.LastStatus`: Request overall outcome (0=Open, 1=Approved, 2=Rejected, 3=Canceled). An individual approver line having `Action = 'A'` does not mean `LastStatus = 1` if higher approval levels remain.
+- `Action = 'N'`: Notification/history line logged by the workflow engine (often with `TrDesc` indicating action at earlier levels); not an inbox action item.
+- `LogActionTransaction`: Field activity log (visits, invoices). Approvals are not field actions.
+
+## Grain & keys
+- **PK**: `SID` (numeric step ID)
+- **Join to Master**: `ReqID` (links to `WF_MasterLog.ReqID`)
+- **Tenant key**: `CompanyID`
+
+## Pipeline (how rows get here)
+Created by `WF_AddWorkFlowLevelOne` when mobile request arrives. Approver takes action in back-office UI or tablet (`WF_GetPositionWFData`) → invokes `WF_AddWorkFlowLevels` → updates `Action`, `ActionDate`, `Notes`, and if higher levels exist, seeds the next level's `WF_SubLog` row.
+
+## Related
+- [[WF_MasterLog]]
+- [[WF_Functions]]
+- [[Workflow_Approval_Codes]]
+- [[WF_GetPositionWFData]]
+- [[WF_AddWorkFlowLevels]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -212,4 +241,3 @@ Typical business table
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[OSFA_DB/Procedures/SetRequestCanceled]]

@@ -54,6 +54,9 @@ Core data table in the Back Office (server-side) — stores salespersontransacti
 | DebitCreditNoteNextSerial_2 | bigint | YES |  |  |  |
 | ReceiveItemsNextSerial | bigint | YES |  |  |  |
 | PaymentsOrdersNextSerial | bigint | YES |  |  |  |
+| ItemsCategStockNextSerial | bigint | YES |  |  |  |
+| BankDepositNextSerial | bigint | YES |  |  |  |
+
 ## Primary Key
 CompanyID
 SalesPersonID

@@ -16,21 +16,37 @@ referenced_by:
   - [[WF_GetPositionWFDataByDate_Alerts]]
   - [[WF_GetPositionWFData_Alerts]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 related_workflows:
   - Workflow-Approval-Setup
 ---
 # WF_Functions
 
-
 ## Business Purpose
+The master registry of workflow function types (47 distinct request types). Maps numeric `ID` to human-readable names (`EngName` / `ArName`). Used by the chatbot to identify what kind of request a `WF_MasterLog` row represents when supervisors ask about specific request families (credit limit, out-of-route, discount, load order). Queryable via `t.WF_Functions`.
 
-Workflow function registry — all available approval/action functions.
+## Chatbot semantics
+(Query `t.WF_Functions` — join with `t.WF_MasterLog` on `m.FunctionID = f.ID`.)
 
-## FunctionID catalog (live, 47 rows)
+| User / Arabic intent | FunctionID | EngName / Meaning | Target Request Table (Ref1) |
+|----------------------|------------|-------------------|-----------------------------|
+| تجاوز حد ائتمان العميل (فاتورة) | `2` | Request To Exceed Customer Credit Limit | [[RequestToExceedCustomerCreditLimit]] |
+| تجاوز حد ائتمان في طلبية | `15` | Request To Exceed Customer Credit Limit In Order | [[RequestToExceedCustomerCreditLimitInOrder]] |
+| بيع لزبون خارج المسار | `5` | Request To Sales Customer Not In Route | [[RequestToVisitCustomerNotInRoute]] |
+| موافقة على طلبية بيع | `6` | Request To Approve Sales Order | [[OrdersHeaders]] (`Ref1`=Year, `Ref2`=No) |
+| موافقة على إرسالية تحميل | `7` | Request To Approve Load Order | [[TransfersOrdersHeaders]] |
+| طلب خصم إضافي | `11` | Request To Add Discount | [[RequestToAddDiscount]] |
+| طلب خصم في طلبية | `13` | Request To Add Discount InOrder | [[RequestToAddDiscountInOrder]] |
+| موافقة على بونص إضافي | `16` | Add Extra Bonus To Invoice | [[RequestToAddExtraBonus]] |
+| طلب إنشاء عميل جديد | `21` | Request To Add New Customer | [[RequestToAddNewCustomer]] |
+| طلب عدم زيارة عميل | `23` | Request Salesman Will Not Visit | [[RequestSalesmanWillNotVisit]] |
+| موافقة على حملة / عرض | `28` | Promo | [[RequestToApprovePromotion]] |
+| تغيير نوع دفع الفاتورة | `1` | Request To Change Invoice Payment Type | [[RequestToChangeInvoicePaymentType]] |
+| طلب إلغاء حركة / دفعة | `46`, `47` | Request To Void Transaction / Cancel Payment | [[RequestToVoidTransaction]] |
 
-| ID | Function |
-|----|----------|
+## Grain & keys
+PK: `ID` (smallint, 1..47). Master reference catalog.
+
 | 1 | Request To Change Invoice Payment Type |
 | 2 | Request To Exceed Customer Credit Limit |
 | 3 | Request To Exceed Checks Due Date |

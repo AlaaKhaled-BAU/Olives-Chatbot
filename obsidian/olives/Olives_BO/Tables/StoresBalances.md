@@ -8,18 +8,8 @@ foreign_keys:
   - [[Companies]]
   - [[Items]]
 referenced_by:
-  - [[Bajali_SAP_Integ]]
-  - [[ECO_Land_SAP_Integ]]
-  - [[GArrow_SAP_Integ]]
-  - [[Izhiman_SAP_Integ]]
-  - [[Khobara_Integ]]
   - [[OT_SendSalesmanData]]
-  - [[Qerat_Integ]]
   - [[RptOnlineRpt_ItemsStockWithReservedQty]]
-  - [[SAMA_SAP_Integ]]
-  - [[Salbeshian_SAP_Integ]]
-  - [[Shini_Integ]]
-  - [[Zedan_SAP_Integ]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -51,16 +41,6 @@ CompanyID, ItemCode -> [[Items]](CompanyID, ItemCode)
 - [[RptOnlineRpt_ItemsStockWithReservedQty]]
 
 **Writes (10):**
-- [[Bajali_SAP_Integ]]
-- [[ECO_Land_SAP_Integ]]
-- [[GArrow_SAP_Integ]]
-- [[Izhiman_SAP_Integ]]
-- [[Khobara_Integ]]
-- [[Qerat_Integ]]
-- [[SAMA_SAP_Integ]]
-- [[Salbeshian_SAP_Integ]]
-- [[Shini_Integ]]
-- [[Zedan_SAP_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

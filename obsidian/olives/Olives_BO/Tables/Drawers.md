@@ -8,15 +8,6 @@ foreign_keys:
   - [[Companies]]
   - [[Customers]]
 referenced_by:
-  - [[Alpha_Integ]]
-  - [[Alpha_updateRoute]]
-  - [[Awtar_Integ_SendReceipts]]
-  - [[Awtar_Integration_WithLog]]
-  - [[GP_Integ_Zumot]]
-  - [[GP_Integ_Zumot_Aqaba]]
-  - [[Jazeera_Integ]]
-  - [[Niroukh_Integ_SendReceipts]]
-  - [[Niroukh_Integration_WithLog]]
   - [[OT_ImportNewCust]]
   - [[OT_ImportReceipts]]
   - [[Pro_Checks]]
@@ -27,9 +18,6 @@ referenced_by:
   - [[Rpt_PrintCollectedReceipt]]
   - [[Rpt_ReceiptVouchers]]
   - [[Rpt_ReceivablesSalesInvoice]]
-  - [[SAP_Integ_Karadsheh]]
-  - [[SN_Integ_SendPayments]]
-  - [[Tahona_Integ_SendReceipts]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -63,13 +51,6 @@ CompanyID, CustomerID -> [[Customers]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (18):**
-- [[Alpha_Integ]]
-- [[Alpha_updateRoute]]
-- [[Awtar_Integ_SendReceipts]]
-- [[GP_Integ_Zumot]]
-- [[GP_Integ_Zumot_Aqaba]]
-- [[Jazeera_Integ]]
-- [[Niroukh_Integ_SendReceipts]]
 - [[Pro_Checks]]
 - [[Pro_Drawers]]
 - [[Pro_ImportData]]
@@ -78,21 +59,12 @@ CompanyID, CustomerID -> [[Customers]](CompanyID, ID)
 - [[Rpt_PrintCollectedReceipt]]
 - [[Rpt_ReceiptVouchers]]
 - [[Rpt_ReceivablesSalesInvoice]]
-- [[SAP_Integ_Karadsheh]]
-- [[SN_Integ_SendPayments]]
-- [[Tahona_Integ_SendReceipts]]
 
 **Writes (10):**
-- [[Alpha_Integ]]
-- [[Alpha_updateRoute]]
-- [[Awtar_Integration_WithLog]]
-- [[Jazeera_Integ]]
-- [[Niroukh_Integration_WithLog]]
 - [[OT_ImportNewCust]]
 - [[OT_ImportReceipts]]
 - [[Pro_Drawers]]
 - [[Pro_ImportData]]
-- [[SAP_Integ_Karadsheh]]
 
 ## Estimated Size / Volatility
 Typical business table

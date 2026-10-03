@@ -14,7 +14,6 @@ referenced_by:
   - [[Pro_CustomersAndAssets]]
   - [[Pro_IssueAssets]]
   - [[Pro_WithdrawAssets]]
-  - [[Tablet_AssetsTransactions_Insert]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -55,7 +54,6 @@ TransID
 - [[Pro_CustomersAndAssets]]
 - [[Pro_IssueAssets]]
 - [[Pro_WithdrawAssets]]
-- [[Tablet_AssetsTransactions_Insert]]
 
 **Writes (3):**
 - [[Pro_AssetsDefinition]]

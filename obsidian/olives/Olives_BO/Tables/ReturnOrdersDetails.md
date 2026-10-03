@@ -10,11 +10,8 @@ foreign_keys:
   - [[ItemsUnits]]
   - [[ReturnOrdersHeaders]]
 referenced_by:
-  - [[Awtar_Integ_SendReturnOrder]]
   - [[ConvertReturnOrderToInvoiceDelivery]]
-  - [[Niroukh_Integ_SendReturnOrder]]
   - [[OT_ImportReturnOrder]]
-  - [[PrestoSoft_Integ_SendReturnOrders]]
   - [[Pro_ItemsUnitsDetails]]
   - [[Pro_ReturnOrdersDetails]]
   - [[Pro_ReturnOrdersHeaders]]
@@ -36,9 +33,37 @@ related_workflows:
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+Line-item detail for customer return requests (`ReturnOrdersHeaders`). Records items requested to be returned by a customer, including item code (`ItemCode`), unit (`UnitID`), requested return quantity (`Quantity`), unit price (`Price`), and return discount/tax adjustments.
+- **Workflow & Conversion**: Return orders are requests submitted from mobile tablets that often require supervisor approval (Workflow Function 22). Once approved, they may be converted into actual return invoices (`TransactionsHeaders` with `TransactionTypeID = 2`).
+- **Header Link**: Pairs with `ReturnOrdersHeaders` on `TransactionYear` and `TransactionNo`.
 
-Core data table in the Back Office (server-side) — stores returnordersdetails records.
+## Chatbot semantics
+(Query `t.ReturnOrdersDetails` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| أصناف طلب الإرجاع | `ItemCode`, `Quantity`, `Price` | Join `t.ReturnOrdersHeaders h ON d.TransactionYear = h.TransactionYear AND d.TransactionNo = h.TransactionNo` |
+| كمية المرتجع المطلوبة | `Quantity` | `Quantity > 0` |
+| سعر وقيمة الإرجاع | `Price`, `DiscountAmount` | قيمة المرتجع المحسوبة للسطر |
+| اسم الصنف والوحدة | Join `t.Items`, `t.ItemsUnits` | `d.ItemCode = i.ItemCode`, `d.UnitID = u.UnitID` |
+
+**Do not confuse with:**
+- `t.TransactionsDetails` with `TransactionTypeID = 2` (executed return sales invoice lines that affect accounts immediately).
+- `t.OrdersDetails` (pre-sales purchase orders).
+
+## Grain & keys
+- **Grain**: One row per item and unit within a return order (`TransactionYear`, `TransactionNo`, `ItemCode`, `UnitID`).
+- **Composite PK**: `CompanyID`, `TransactionYear`, `TransactionNo`, `ItemCode`, `UnitID`.
+- **Tenant Key**: `CompanyID`.
+
+## Pipeline
+Mobile Salesman Tablet → `OT_ImportReturnOrder` → `ReturnOrdersHeaders` + `ReturnOrdersDetails` → Supervisor Workflow (Function 22) → Conversion to Return Invoice.
+
+## Related
+- [[ReturnOrdersHeaders]]
+- [[Items]]
+- [[ItemsUnits]]
+- [[TransactionsDetails]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -96,10 +121,7 @@ CompanyID, TransactionYear, TransactionNo -> [[ReturnOrdersHeaders]](CompanyID, 
 ## Impact / Procedures Using This Table
 
 **Reads (16):**
-- [[Awtar_Integ_SendReturnOrder]]
 - [[ConvertReturnOrderToInvoiceDelivery]]
-- [[Niroukh_Integ_SendReturnOrder]]
-- [[PrestoSoft_Integ_SendReturnOrders]]
 - [[Pro_ItemsUnitsDetails]]
 - [[Pro_ReturnOrdersDetails]]
 - [[Pro_ReturnOrdersHeaders]]

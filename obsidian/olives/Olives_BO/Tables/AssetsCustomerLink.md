@@ -19,7 +19,6 @@ referenced_by:
   - [[Rpt_NotSoldPerCateg]]
   - [[Rpt_SoldUnsoldPerRoute]]
   - [[Rpt_UnloadCustomersPerRoute]]
-  - [[Tablet_AssetsTransactions_Insert]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -59,7 +58,6 @@ AssetID
 - [[Rpt_NotSoldPerCateg]]
 - [[Rpt_SoldUnsoldPerRoute]]
 - [[Rpt_UnloadCustomersPerRoute]]
-- [[Tablet_AssetsTransactions_Insert]]
 
 **Writes (3):**
 - [[Pro_AssetTransfer]]

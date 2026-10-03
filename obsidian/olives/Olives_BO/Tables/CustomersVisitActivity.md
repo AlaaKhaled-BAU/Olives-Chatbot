@@ -12,15 +12,35 @@ referenced_by:
   - [[OT_ImportCustomerSurveyAnswers]]
   - [[Pro_CustomersVisitActivity]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 ---
 # CustomersVisitActivity
 
-
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+The customer visit task configuration table — defines mandatory or ordered activities (`VisitActivityInOrder`) that a salesman occupying position `PositionsID` must perform when visiting a customer `CustomerID` (e.g. shelf survey before invoice, stock audit before orders). Queryable via `t.CustomersVisitActivity`.
 
-Core data table in the Back Office (server-side) — stores customersvisitactivity records.
+## Chatbot semantics
+(Query `t.CustomersVisitActivity` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| أنشطة الزيارة المطلوبة | `CustomerID`, `PositionsID`, `VisitActivityInOrder` | Direct filter | Task sequence configured for visit |
+| ترتيب مهام الزيارة | `VisitActivityInOrder` | Comma-separated or ordered task codes | Enforcement string on mobile app |
+
+## Grain & keys
+- **Composite PK**: (`CompanyID`, `CustomerID`, `PositionsID`)
+- **Tenant key**: `CompanyID`
+- **FKs**: `CustomerID` → [[Customers]](ID), `PositionsID` → [[Positions]](ID)
+
+## Pipeline
+Configured in Back Office visit workflow screens (`Pro_CustomersVisitActivity`). Synchronized to mobile devices via `OT_SendCustomersInfo`.
+
+## Related
+- [[Customers]]
+- [[Positions]]
+- [[LogActionTransaction]]
+- [[RequestToExceedFinishAllTasks]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

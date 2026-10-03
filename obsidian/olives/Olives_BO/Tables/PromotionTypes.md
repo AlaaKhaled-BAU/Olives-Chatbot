@@ -40,13 +40,10 @@ Typical business table
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[Glossary]]
 - [[JoTaxResult]]
 - [[CustomersItemsLog]]
 - [[CatalogMedia]]
 - [[DR_DynamicReportsParameters]]
-- [[MMS_TaxType]]
-- [[MMS_OrderTypes]]
 - [[CustomerTargetsDetails]]
 - [[PromotionsApprovalLog]]
 - [[SalesQuotationHeaders]]

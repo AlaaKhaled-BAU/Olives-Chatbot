@@ -11,7 +11,6 @@ referenced_by:
   - [[Pro_SalesPersonGroupItemBonusTarget]]
   - [[Pro_SalesPersonItemBonusTargetGroup]]
   - [[Rpt_SalesPersonItemBonusTarget]]
-  - [[Rpt_SalesPersonItemBonusTarget_Tablet]]
 support_relevance: high
 last_verified: 2026-07-05
 related_workflows:
@@ -46,7 +45,6 @@ CompanyID -> [[Companies]](ID)
 - [[Pro_SalesPersonGroupItemBonusTarget]]
 - [[Pro_SalesPersonItemBonusTargetGroup]]
 - [[Rpt_SalesPersonItemBonusTarget]]
-- [[Rpt_SalesPersonItemBonusTarget_Tablet]]
 
 **Writes (1):**
 - [[Pro_ItemsGroupBonusTarget]]

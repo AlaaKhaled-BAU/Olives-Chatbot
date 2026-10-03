@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice]
 foreign_keys:
 referenced_by:
-  - [[Presto_Integ]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -35,7 +34,6 @@ CompanyID
 ## Impact / Procedures Using This Table
 
 **Reads (1):**
-- [[Presto_Integ]]
 
 **Writes (0):**
 _None_

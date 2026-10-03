@@ -7,16 +7,7 @@ tags: [#backoffice]
 foreign_keys:
   - [[Currencies]]
 referenced_by:
-  - [[ABS_Integ_SendPayment_Jebrene]]
-  - [[ABS_Integ_SendPayment_Sokhtian]]
-  - [[Falcons_GetItemBalance]]
   - [[OT_SendCompData]]
-  - [[ProTech_Integration]]
-  - [[ProTech_Integration_SendOrders]]
-  - [[ProTech_Integration_SendPayment]]
-  - [[ProTech_Integration_SendReturnInvoice]]
-  - [[ProTech_Integration_SendSalesInvoice]]
-  - [[Pro_ActualAmountOnline_Tablet]]
   - [[Pro_Checks]]
   - [[Pro_Currencies]]
   - [[Pro_CurrenciesRate]]
@@ -31,12 +22,10 @@ referenced_by:
   - [[Pro_SalesQuotationHeaders]]
   - [[Pro_SalesmanCashSettlement]]
   - [[Pro_TransactionsHeaders]]
-  - [[Pro_ZatcaIntegrationApi]]
   - [[Rpt_AcceptedSalesInvoices]]
   - [[Rpt_LoadOrderFirstApproval]]
   - [[Rpt_ReceiptVouchers]]
   - [[Rpt_ReceivablesSalesInvoice]]
-  - [[Shini_Integ]]
 support_relevance: high
 last_verified: 2026-07-05
 related_workflows:
@@ -70,16 +59,7 @@ ID -> [[Currencies]](ID)
 ## Impact / Procedures Using This Table
 
 **Reads (30):**
-- [[ABS_Integ_SendPayment_Jebrene]]
-- [[ABS_Integ_SendPayment_Sokhtian]]
-- [[Falcons_GetItemBalance]]
 - [[OT_SendCompData]]
-- [[ProTech_Integration]]
-- [[ProTech_Integration_SendOrders]]
-- [[ProTech_Integration_SendPayment]]
-- [[ProTech_Integration_SendReturnInvoice]]
-- [[ProTech_Integration_SendSalesInvoice]]
-- [[Pro_ActualAmountOnline_Tablet]]
 - [[Pro_Checks]]
 - [[Pro_Currencies]]
 - [[Pro_CurrenciesRate]]
@@ -94,15 +74,12 @@ ID -> [[Currencies]](ID)
 - [[Pro_SalesQuotationHeaders]]
 - [[Pro_SalesmanCashSettlement]]
 - [[Pro_TransactionsHeaders]]
-- [[Pro_ZatcaIntegrationApi]]
 - [[Rpt_AcceptedSalesInvoices]]
 - [[Rpt_LoadOrderFirstApproval]]
 - [[Rpt_ReceiptVouchers]]
 - [[Rpt_ReceivablesSalesInvoice]]
-- [[Shini_Integ]]
 
 **Writes (2):**
-- [[ProTech_Integration]]
 - [[Pro_Currencies]]
 
 ## Estimated Size / Volatility

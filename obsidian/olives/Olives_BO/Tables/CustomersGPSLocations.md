@@ -8,13 +8,6 @@ foreign_keys:
   - [[Companies]]
   - [[Customers]]
 referenced_by:
-  - [[ABS_Integ_SendInvoices]]
-  - [[ABS_Integ_SendInvoices_Jebrene]]
-  - [[ABS_Integ_SendReturnInvoices_Jebrene]]
-  - [[ABS_Integ_SendSalesOrder]]
-  - [[ABS_Integ_SendSalesOrder_Jebrene]]
-  - [[ECO_Land_SAP_Integ]]
-  - [[Falcons_GetItemBalance]]
   - [[OT_ImportCustomerGPS]]
   - [[Pro_Customers]]
   - [[Pro_CustomersFinancialDetails]]
@@ -29,9 +22,6 @@ referenced_by:
   - [[Rpt_SalesmanItemSalesPerRoute]]
   - [[Rpt_SoldUnsoldPerRoute]]
   - [[Rpt_UnloadCustomersPerRoute]]
-  - [[Salbeshian_SAP_Integ]]
-  - [[Spartan_SAP_Integ]]
-  - [[Spartan_SAP_Integ_draft]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -65,13 +55,6 @@ CompanyID, CustomerID -> [[Customers]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (24):**
-- [[ABS_Integ_SendInvoices]]
-- [[ABS_Integ_SendInvoices_Jebrene]]
-- [[ABS_Integ_SendReturnInvoices_Jebrene]]
-- [[ABS_Integ_SendSalesOrder]]
-- [[ABS_Integ_SendSalesOrder_Jebrene]]
-- [[ECO_Land_SAP_Integ]]
-- [[Falcons_GetItemBalance]]
 - [[OT_ImportCustomerGPS]]
 - [[Pro_Customers]]
 - [[Pro_CustomersFinancialDetails]]
@@ -86,14 +69,10 @@ CompanyID, CustomerID -> [[Customers]](CompanyID, ID)
 - [[Rpt_SalesmanItemSalesPerRoute]]
 - [[Rpt_SoldUnsoldPerRoute]]
 - [[Rpt_UnloadCustomersPerRoute]]
-- [[Salbeshian_SAP_Integ]]
-- [[Spartan_SAP_Integ]]
-- [[Spartan_SAP_Integ_draft]]
 
 **Writes (3):**
 - [[OT_ImportCustomerGPS]]
 - [[Pro_CustomersGPS]]
-- [[Salbeshian_SAP_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

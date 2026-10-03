@@ -7,15 +7,11 @@ tags: [#backoffice, #customer, #reference]
 foreign_keys:
   - [[Companies]]
 referenced_by:
-  - [[Awtar_Integration_WithLog]]
-  - [[ECO_Land_SAP_Integ]]
-  - [[Niroukh_Integration_WithLog]]
   - [[POAOnlineReport]]
   - [[Pro_Customers]]
   - [[Pro_CustomersFinancialDetails]]
   - [[Pro_CustomersGroups]]
   - [[Rpt_CustomerNameByLocation]]
-  - [[Spartan_SAP_Integ]]
 support_relevance: high
 last_verified: 2026-07-05
 related_workflows:
@@ -46,20 +42,13 @@ CompanyID -> [[Companies]](ID)
 ## Impact / Procedures Using This Table
 
 **Reads (9):**
-- [[Awtar_Integration_WithLog]]
-- [[ECO_Land_SAP_Integ]]
-- [[Niroukh_Integration_WithLog]]
 - [[POAOnlineReport]]
 - [[Pro_Customers]]
 - [[Pro_CustomersFinancialDetails]]
 - [[Pro_CustomersGroups]]
 - [[Rpt_CustomerNameByLocation]]
-- [[Spartan_SAP_Integ]]
 
 **Writes (4):**
-- [[Awtar_Integration_WithLog]]
-- [[ECO_Land_SAP_Integ]]
-- [[Niroukh_Integration_WithLog]]
 - [[Pro_CustomersGroups]]
 
 ## Estimated Size / Volatility

@@ -9,9 +9,7 @@ foreign_keys:
   - [[CustomersPromotionsGroups]]
   - [[PromotionsHeaders]]
 referenced_by:
-  - [[Awtar_Integration_GetPromotion]]
   - [[Diag_Check_Linked_Sales_Cust_Promotions]]
-  - [[Niroukh_Integration_GetPromotion]]
   - [[Pro_Customers]]
   - [[Pro_CustomersPromotionsGroups]]
   - [[Pro_CustomersPromotionsGroupsByDevice]]
@@ -19,9 +17,7 @@ referenced_by:
   - [[Pro_PromotionsCustomersGroupsLink]]
   - [[Pro_PromotionsHeaders]]
   - [[RG_Hakkak_CopyPromotions]]
-  - [[RamPharm_SAP_Integ]]
   - [[Rpt_CustomersPromotionsGroupsByType]]
-  - [[X3_INTEGRATIONPROMOTION_WITHLOG]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -50,9 +46,7 @@ CompanyID, PromotionID -> [[PromotionsHeaders]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (11):**
-- [[Awtar_Integration_GetPromotion]]
 - [[Diag_Check_Linked_Sales_Cust_Promotions]]
-- [[Niroukh_Integration_GetPromotion]]
 - [[Pro_CustomersPromotionsGroups]]
 - [[Pro_CustomersPromotionsGroupsByDevice]]
 - [[Pro_ImportPromotionData]]
@@ -60,17 +54,13 @@ CompanyID, PromotionID -> [[PromotionsHeaders]](CompanyID, ID)
 - [[Pro_PromotionsHeaders]]
 - [[RG_Hakkak_CopyPromotions]]
 - [[Rpt_CustomersPromotionsGroupsByType]]
-- [[X3_INTEGRATIONPROMOTION_WITHLOG]]
 
 **Writes (8):**
-- [[Awtar_Integration_GetPromotion]]
-- [[Niroukh_Integration_GetPromotion]]
 - [[Pro_Customers]]
 - [[Pro_CustomersPromotionsGroupsByDevice]]
 - [[Pro_ImportPromotionData]]
 - [[Pro_PromotionsCustomersGroupsLink]]
 - [[Pro_PromotionsHeaders]]
-- [[RamPharm_SAP_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

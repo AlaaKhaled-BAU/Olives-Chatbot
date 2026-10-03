@@ -6,7 +6,6 @@ schema: dbo
 tags: [#auth, #backoffice, #reporting, #sales]
 foreign_keys:
 referenced_by:
-  - [[DEVICEREPORT_TABLE_UPDATE]]
   - [[Fill_Sales_Device_Reports]]
   - [[Pro_SalesPersonsDevicePermissions]]
   - [[TechnicalSupportTools_CopyReportsfornewSalesman]]
@@ -36,7 +35,6 @@ ReportID
 ## Impact / Procedures Using This Table
 
 **Reads (4):**
-- [[DEVICEREPORT_TABLE_UPDATE]]
 - [[Fill_Sales_Device_Reports]]
 - [[Pro_SalesPersonsDevicePermissions]]
 - [[TechnicalSupportTools_CopyReportsfornewSalesman]]

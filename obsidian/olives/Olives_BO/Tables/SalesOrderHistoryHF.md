@@ -6,24 +6,16 @@ schema: dbo
 tags: [#backoffice, #log, #order, #sales]
 foreign_keys:
 referenced_by:
-  - [[Alpha_Integ]]
-  - [[Alpha_Integ_HistData]]
-  - [[Alpha_updateRoute]]
-  - [[Awtar_Integ_AllUsers]]
   - [[BO_Online_RptCustomerSalesTargetDetails]]
   - [[GetSalesOrdersForApiReport_GCI]]
   - [[GetSalesOrdersForOnlineReport]]
   - [[GetSalesOrdersForOnlineReport_GCI]]
-  - [[NPF_IntegrationHisData]]
-  - [[Niroukh_Integ_AllUsers]]
   - [[Online_RptSalesOrderStatusInERP]]
   - [[Pro_DeliveryAssigning]]
   - [[Rpt_DailyDriver]]
   - [[Rpt_DailyUnit]]
   - [[Rpt_MasterOrders]]
   - [[Rpt_NumericDistribution]]
-  - [[SAP_Integ_Lamis]]
-  - [[Spartan_SAP_Integ_draft]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -31,9 +23,37 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+Historical sales order archive header table in Olives_BO. Stores archived pre-sales orders, historical customer purchase orders, or orders imported from legacy ERP systems (`OrderYear`, `OrderNo`, `OrderDate`, `SalesmanNo`, `CustomerNo`, `OrderState`, `PO_No`).
+- **Difference from `OrdersHeaders`**:
+  - `OrdersHeaders` is the **live, active, operational** sales order table where new pre-sales customer orders are submitted from mobile devices, modified, approved via workflow, and dispatched for fulfillment.
+  - `SalesOrderHistoryHF` is an **archived / external order repository** used for historical demand tracking, customer ordering patterns, and delivery fulfillment status tracking in ERP (`OrderState`, `OrderStateDesc`).
+- **Header Link**: Pairs with detail lines in `SalesOrderHistoryDF` on `CompNo`, `OrderYear`, and `OrderNo`.
 
-Core data table in the Back Office (server-side) — stores salesorderhistoryhf records.
+## Chatbot semantics
+(Query `t.SalesOrderHistoryHF` — scoped by session CompNo/CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| طلبيات سابقة في الأرشيف / تاريخ الطلبيات | `OrderNo`, `OrderYear`, `OrderDate`, `CustomerNo` | `CustomerNo = @CustNo` |
+| حالة الطلبية في الأرشيف | `OrderState`, `OrderStateDesc`, `ReasonDesc` | حالة تسليم أو إغلاق الطلبية في النظام القديم |
+| رقم أمر الشراء التاريخي للعميل | `PO_No` | رقم أمر الشراء الوارد من العميل |
+
+**CRITICAL RULE FOR CHATBOT:**
+For any questions regarding **current open orders, today's customer orders, or pending approvals**, ALWAYS query `t.OrdersHeaders`. Query `t.SalesOrderHistoryHF` only when specifically asked about historical order archives or legacy ERP orders.
+
+## Grain & keys
+- **Grain**: One row per historical order header (`CompNo`, `OrderYear`, `OrderNo`).
+- **Composite PK**: `CompNo`, `OrderYear`, `OrderNo`.
+- **Tenant Key**: `CompNo`.
+
+## Pipeline
+Legacy ERP Migration / Historical Yearly Archival → `SalesOrderHistoryHF` + `SalesOrderHistoryDF` → Used in delivery and historical fulfillment tracking.
+
+## Related
+- [[SalesOrderHistoryDF]]
+- [[OrdersHeaders]]
+- [[Customers]]
+- [[SalesPersons]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -63,29 +83,18 @@ OrderNo
 ## Impact / Procedures Using This Table
 
 **Reads (15):**
-- [[Alpha_Integ_HistData]]
-- [[Awtar_Integ_AllUsers]]
 - [[BO_Online_RptCustomerSalesTargetDetails]]
 - [[GetSalesOrdersForApiReport_GCI]]
 - [[GetSalesOrdersForOnlineReport]]
 - [[GetSalesOrdersForOnlineReport_GCI]]
-- [[NPF_IntegrationHisData]]
-- [[Niroukh_Integ_AllUsers]]
 - [[Online_RptSalesOrderStatusInERP]]
 - [[Pro_DeliveryAssigning]]
 - [[Rpt_DailyDriver]]
 - [[Rpt_DailyUnit]]
 - [[Rpt_MasterOrders]]
 - [[Rpt_NumericDistribution]]
-- [[Spartan_SAP_Integ_draft]]
 
 **Writes (6):**
-- [[Alpha_Integ]]
-- [[Alpha_Integ_HistData]]
-- [[Alpha_updateRoute]]
-- [[Awtar_Integ_AllUsers]]
-- [[Niroukh_Integ_AllUsers]]
-- [[SAP_Integ_Lamis]]
 
 ## Estimated Size / Volatility
 Typical business table

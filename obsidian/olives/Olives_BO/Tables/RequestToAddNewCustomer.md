@@ -11,14 +11,43 @@ referenced_by:
   - [[WF_AddWorkFlowLevelOne]]
   - [[WF_AddWorkFlowLevels]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 ---
 # RequestToAddNewCustomer
 
-
 ## Business Purpose
+Stores approval requests submitted when a salesman in the field registers a new prospective customer and requests official account creation. Corresponds to workflow `FunctionID = 21` ("Request To Add New Customer"). Captures customer data, salesman, timestamp, notes, GPS coordinates, and `IsAproved`. Queryable via `t.RequestToAddNewCustomer`.
 
-Workflow request records for special approvals (credit, discount, exceptions).
+## Chatbot semantics
+(Query `t.RequestToAddNewCustomer` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| طلبات إضافة زبون جديد من الميدان | `SalesPersonNo`, `TrDate`, `Notes` | Direct filter | Lists new customer onboarding requests |
+| حالة الموافقة على إنشاء الحساب | `IsAproved` | `IsAproved = 1` (approved), `0` or `NULL` (pending) | Direct approval status |
+| الربط مع سجل الموافقات العام | Join `t.WF_MasterLog` | `m.FunctionID = 21 AND TRY_CAST(m.Ref1 AS numeric) = req.AutoID AND m.CompanyID = req.CompanyID` | View supervisor decision levels & notes |
+| موقع تسجيل العميل | `Latitude`, `Longitude` | GPS strings | Audit location where salesman created customer |
+
+**Do not confuse with:**
+- `Customers`: The official approved customer master table.
+- `ProspectiveCustomers` / `Add_Customer`: Temporary staging tables during import.
+
+## Grain & keys
+- **PK**: `AutoID` (numeric identity, 1 row = 1 new customer request)
+- **Tenant key**: `CompanyID`
+- **Conventions**: `SalesPersonNo` → [[SalesPersons]](ID)
+
+## Pipeline (how rows get here)
+Salesman adds customer on tablet → `OT_ImportRequestToAddNewCustomer` inserts into this table (`IsAproved = 0`) → calls `WF_AddWorkFlowLevelOne @CompNo, 21, @NewAutoID` → inserts `WF_MasterLog` (`Ref1 = AutoID`). When supervisor approves, `WF_AddWorkFlowLevels` sets `IsAproved = 1` and creates the real `Customers` master record.
+
+## Related
+- [[WF_MasterLog]]
+- [[WF_SubLog]]
+- [[WF_Functions]]
+- [[Customers]]
+- [[CustomersFinancialDetails]]
+- [[_RequestTo-Join-Conventions]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

@@ -10,16 +10,40 @@ foreign_keys:
   - [[SalesPersons]]
 referenced_by:
   - [[SalesmanInfo]]
-support_relevance: low
-last_verified: 2026-07-05
+support_relevance: high
+last_verified: 2026-10-03
 ---
 # NoTransactionsLog
 
-
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+Fact log recording route points where a salesman logged no transaction or skipped an activity, capturing the date, salesman, route, GPS coordinates, and reason code. Links to [[NoTransactionsReasons]] via `ReasonID` to explain why the route stop had no commercial transaction. Queryable via `t.NoTransactionsLog`.
 
-Core data table in the Back Office (server-side) — stores notransactionslog records.
+## Chatbot semantics
+(Query `t.NoTransactionsLog` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| سجل عدم وجود حركات | `SalesPersonID`, `RouteID`, `VisitDate` | e.g. `CAST(VisitDate AS date) = '...'` | Shows unserviced or non-transacting stops |
+| سبب عدم الحركة | `ReasonID` | Join `t.NoTransactionsReasons` on `r.ID = l.ReasonID AND r.ReasonType = 1` | Translates to text reason (e.g. no cash, closed) |
+| إحداثيات وملاحظات | `Latitude`, `Longitude`, `Notes` | Direct select | GPS audit of the stop |
+
+**Do not confuse with:**
+- `LogActionTransaction`: General action log where `ActionID = N'8'` is NoSaleExit and `21` is WillNotVisit. `NoTransactionsLog` is a dedicated structured event log for non-transaction route stops.
+
+## Grain & keys
+- **PK**: `AutoID` (bigint)
+- **Tenant key**: `CompanyID`
+- **FKs**: `SalesPersonID` → [[SalesPersons]](ID), `RouteID` → [[RoutesInformation]](ID)
+
+## Pipeline
+Uploaded from mobile devices during end-of-visit or daily route sync.
+
+## Related
+- [[NoTransactionsReasons]]
+- [[SalesPersons]]
+- [[RoutesInformation]]
+- [[LogActionTransaction]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

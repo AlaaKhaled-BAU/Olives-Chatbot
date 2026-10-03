@@ -7,10 +7,8 @@ tags: [#backoffice, #log, #sales, #visit]
 foreign_keys:
 referenced_by:
   - [[All_Visits]]
-  - [[Alpha_SalesmanCustRoute]]
   - [[AppDashBoard]]
   - [[DA_SalesTarget]]
-  - [[Defaf_Integration]]
   - [[MedicalEfficiencyOnlineReport]]
   - [[OT_FixActionLog]]
   - [[OT_ImportActionLog]]
@@ -58,7 +56,6 @@ referenced_by:
   - [[Rpt_NetVisitsTime]]
   - [[Rpt_NoSalesReasons]]
   - [[Rpt_RoutePerformanceAnalysis]]
-  - [[Rpt_RoutePerformanceAnalysis_Spartan]]
   - [[Rpt_RouteScoreBySalesman]]
   - [[Rpt_RouteScoreBySalesman123]]
   - [[Rpt_RouteScoreBySalesmanCombine]]
@@ -74,14 +71,12 @@ referenced_by:
   - [[Rpt_RouteSummaryBySalesmanCombineForEFF]]
   - [[Rpt_RouteSummaryBySalesmanCombine_Merchandisers]]
   - [[Rpt_RouteSummaryBySalesmanCombine_New]]
-  - [[Rpt_RouteSummaryBySalesmanCombine_Spartan]]
   - [[Rpt_RouteSummaryBySalesmanCombine_Sukhtian]]
   - [[Rpt_RouteSummaryBySalesmanCombine_Sukhtian_Totals]]
   - [[Rpt_RouteSummaryBySalesmanCombineforExcel]]
   - [[Rpt_RouteSummaryBySalesmanCombineforExcel_Bushnaq]]
   - [[Rpt_RouteSummaryBySalesman_Delivery]]
   - [[Rpt_RouteSummaryBySalesman_Merchandisers]]
-  - [[Rpt_RouteSummaryBySalesman_Spartan]]
   - [[Rpt_RouteSummaryBySalesman_Sukhtian]]
   - [[Rpt_RouteSummaryBySalesman_Suktian]]
   - [[Rpt_RouteSummaryBySalesman_Suktian_Draft]]
@@ -104,7 +99,6 @@ referenced_by:
   - [[Rpt_SalesmanRouteAvg]]
   - [[Rpt_SalesmanRouteEfficiency]]
   - [[Rpt_SalesmanRouteEfficiency_SV_LV_TV2]]
-  - [[Rpt_SalesmanRouteEfficiency_Zoumt]]
   - [[Rpt_SalesmanRoutePerformance]]
   - [[Rpt_SalesmanRouteSummary]]
   - [[Rpt_SalesmanRouteTargetDetails]]
@@ -151,17 +145,6 @@ referenced_by:
   - [[Rpt_WF_UnvisitedCustomer]]
   - [[Rpt_WeeklySalesmanVisits]]
   - [[Rpt_first_last_visit_Invoice_TowerExcel]]
-  - [[SMS_Almobhiron]]
-  - [[SMS_AnwarMakka]]
-  - [[SMS_Bostangy]]
-  - [[SMS_Lamis]]
-  - [[SMS_MeatLand]]
-  - [[SMS_MeatLand2]]
-  - [[SMS_SpartenNew]]
-  - [[SMS_Tahona]]
-  - [[SMS_Wales]]
-  - [[SMS_YAN]]
-  - [[SMS_Zaidan]]
   - [[SalesmanInfo]]
   - [[SalesmenRoutesummery_Range_forExcel]]
   - [[Tech_No_Gps_Check_for_second_Visit]]
@@ -191,6 +174,35 @@ Decode `ActionID` via [[LogActions]] (`lookup_hot("LogActions")` or `lookup_hot(
 **Workflow approvals** (موافقة تابلت، رفض، معلّق) are **not** `ActionID` — they live in [[WF_MasterLog]] / [[WF_SubLog]]; see [[Workflow_Approval_Codes]].
 
 Visit-related: 0 CustEntry, 3 CustLeave, 8 NoSaleExit, 14/15 prospective, 21 will-not-visit, 31 postpone, 38 no-visit reason import. Journey: 10 Start, 11 End. Documents: 4 invoice, 5 order, 9 return invoice, 12 payment. **7 SystemLogin = app login, not a customer visit.**
+
+## Chatbot semantics
+(Query `t.LogActionTransaction` — scoped by session CompNo/CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| عدد الزيارات الفعلية للعميل | `ActionID`, `Data1`, `SalesmanID`, `TimeStamp` | `ActionID = N'0' AND TRY_CAST(Data1 AS bigint) = @CustomerID` |
+| زيارات المندوب اليومية الفعلية | `ActionID`, `SalesmanID`, `TimeStamp` | `ActionID = N'0' AND TRY_CAST(SalesmanID AS int) = @SalesmanID AND CAST(TimeStamp AS date) = @Date` |
+| وقت دخول وخروج العميل (مدة الزيارة) | `ActionID = N'0'` (دخول) vs `ActionID = N'3'` (خروج) | حساب الفارق الزمني `DATEDIFF(minute, t0.TimeStamp, t3.TimeStamp)` |
+| عدم بيع / خروج بدون حركة | `ActionID = N'8'` | خروج من زيارة عميل دون إصدار فاتورة أو طلبية |
+| عدم زيارة مع ذكر السبب | `ActionID = N'21'` أو `N'38'` | عدم زيارة عميل مجدول مع توثيق السبب |
+| بداية ونهاية الجولة للمندوب | `ActionID = N'10'` (بداية) و `ActionID = N'11'` (نهاية) | توقيت بدء وانتهاء يوم العمل الميداني |
+| تسجيل الدخول للتطبيق (ليس زيارة) | `ActionID = N'7'` | `ActionID = N'7'` هو تسجيل دخول للنظام ولا يمثل زيارة عميل |
+| إحداثيات وموقع الزيارة | `GpsX`, `GpsY` | خطوط الطول والعرض للتحقق من التواجد الجغرافي |
+
+## Grain & keys
+- **Grain**: One row per recorded field action / event on the mobile device (`AutoID`).
+- **PK**: `AutoID`.
+- **Tenant Key**: `CompNo`.
+
+## Pipeline
+Mobile Device Action Log (`OSFA_DB.dbo.OT_ActionLog`) → `OT_ImportActionLog` → `LogActionTransaction` → Reconciled before reports via `OT_FixActionLog`.
+
+## Related
+- [[LogActions]]
+- [[SalesPersonsRoutes]]
+- [[CustomersFinancialDetails]]
+- [[Customers]]
+- [[SalesPersons]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -228,10 +240,8 @@ AutoID
 
 **Reads (161):**
 - [[All_Visits]]
-- [[Alpha_SalesmanCustRoute]]
 - [[AppDashBoard]]
 - [[DA_SalesTarget]]
-- [[Defaf_Integration]]
 - [[MedicalEfficiencyOnlineReport]]
 - [[OT_FixActionLog]]
 - [[OT_ImportActionLog]]
@@ -279,7 +289,6 @@ AutoID
 - [[Rpt_NetVisitsTime]]
 - [[Rpt_NoSalesReasons]]
 - [[Rpt_RoutePerformanceAnalysis]]
-- [[Rpt_RoutePerformanceAnalysis_Spartan]]
 - [[Rpt_RouteScoreBySalesman]]
 - [[Rpt_RouteScoreBySalesman123]]
 - [[Rpt_RouteScoreBySalesmanCombine]]
@@ -295,14 +304,12 @@ AutoID
 - [[Rpt_RouteSummaryBySalesmanCombineForEFF]]
 - [[Rpt_RouteSummaryBySalesmanCombine_Merchandisers]]
 - [[Rpt_RouteSummaryBySalesmanCombine_New]]
-- [[Rpt_RouteSummaryBySalesmanCombine_Spartan]]
 - [[Rpt_RouteSummaryBySalesmanCombine_Sukhtian]]
 - [[Rpt_RouteSummaryBySalesmanCombine_Sukhtian_Totals]]
 - [[Rpt_RouteSummaryBySalesmanCombineforExcel]]
 - [[Rpt_RouteSummaryBySalesmanCombineforExcel_Bushnaq]]
 - [[Rpt_RouteSummaryBySalesman_Delivery]]
 - [[Rpt_RouteSummaryBySalesman_Merchandisers]]
-- [[Rpt_RouteSummaryBySalesman_Spartan]]
 - [[Rpt_RouteSummaryBySalesman_Sukhtian]]
 - [[Rpt_RouteSummaryBySalesman_Suktian]]
 - [[Rpt_RouteSummaryBySalesman_Suktian_Draft]]
@@ -325,7 +332,6 @@ AutoID
 - [[Rpt_SalesmanRouteAvg]]
 - [[Rpt_SalesmanRouteEfficiency]]
 - [[Rpt_SalesmanRouteEfficiency_SV_LV_TV2]]
-- [[Rpt_SalesmanRouteEfficiency_Zoumt]]
 - [[Rpt_SalesmanRoutePerformance]]
 - [[Rpt_SalesmanRouteSummary]]
 - [[Rpt_SalesmanRouteTargetDetails]]
@@ -372,17 +378,6 @@ AutoID
 - [[Rpt_WF_UnvisitedCustomer]]
 - [[Rpt_WeeklySalesmanVisits]]
 - [[Rpt_first_last_visit_Invoice_TowerExcel]]
-- [[SMS_Almobhiron]]
-- [[SMS_AnwarMakka]]
-- [[SMS_Bostangy]]
-- [[SMS_Lamis]]
-- [[SMS_MeatLand]]
-- [[SMS_MeatLand2]]
-- [[SMS_SpartenNew]]
-- [[SMS_Tahona]]
-- [[SMS_Wales]]
-- [[SMS_YAN]]
-- [[SMS_Zaidan]]
 - [[SalesmanInfo]]
 - [[SalesmenRoutesummery_Range_forExcel]]
 - [[Tech_No_Gps_Check_for_second_Visit]]
@@ -392,15 +387,6 @@ AutoID
 **Writes (11):**
 - [[OT_FixActionLog]]
 - [[OT_ImportActionLog]]
-- [[SMS_Almobhiron]]
-- [[SMS_AnwarMakka]]
-- [[SMS_Bostangy]]
-- [[SMS_MeatLand]]
-- [[SMS_SpartenNew]]
-- [[SMS_Tahona]]
-- [[SMS_Wales]]
-- [[SMS_YAN]]
-- [[SMS_Zaidan]]
 
 ## Estimated Size / Volatility
 Typical business table

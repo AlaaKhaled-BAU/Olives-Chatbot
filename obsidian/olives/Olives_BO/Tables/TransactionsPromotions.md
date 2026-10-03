@@ -7,8 +7,6 @@ tags: [#backoffice, #sales]
 foreign_keys:
   - [[Companies]]
 referenced_by:
-  - [[Integ_SendSalesInvoices_CB]]
-  - [[Integ_SendSalesOrders_CB]]
   - [[OT_ImportReturnOrder]]
   - [[OT_ImportSalesInvoices]]
   - [[OT_ImportSalesOrders]]
@@ -18,7 +16,6 @@ referenced_by:
   - [[Rpt_PromotionsWithDrawalsWithinDate]]
   - [[Rpt_RoutesByPeriod]]
   - [[Rpt_SalesPersonItemBonusTarget]]
-  - [[Rpt_SalesPersonItemBonusTarget_Tablet]]
 support_relevance: high
 last_verified: 2026-07-05
 related_workflows: [[Promotion-Setup]]
@@ -66,15 +63,12 @@ CompanyID -> [[Companies]](ID)
 ## Impact / Procedures Using This Table
 
 **Reads (9):**
-- [[Integ_SendSalesInvoices_CB]]
-- [[Integ_SendSalesOrders_CB]]
 - [[Pro_CheckPromotionTarget]]
 - [[Rpt_CustomersPromotionLog]]
 - [[Rpt_PromotionCheckReport]]
 - [[Rpt_PromotionsWithDrawalsWithinDate]]
 - [[Rpt_RoutesByPeriod]]
 - [[Rpt_SalesPersonItemBonusTarget]]
-- [[Rpt_SalesPersonItemBonusTarget_Tablet]]
 
 **Writes (3):**
 - [[OT_ImportReturnOrder]]

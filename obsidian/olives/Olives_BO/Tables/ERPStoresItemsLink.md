@@ -8,7 +8,6 @@ foreign_keys:
   - [[Companies]]
   - [[Items]]
 referenced_by:
-  - [[ABS_Integration_Sokhtian]]
   - [[Pro_ERPStoresLinkWithItems]]
 support_relevance: high
 last_verified: 2026-07-05
@@ -37,11 +36,9 @@ CompanyID, ItemCode -> [[Items]](CompanyID, ItemCode)
 ## Impact / Procedures Using This Table
 
 **Reads (2):**
-- [[ABS_Integration_Sokhtian]]
 - [[Pro_ERPStoresLinkWithItems]]
 
 **Writes (2):**
-- [[ABS_Integration_Sokhtian]]
 - [[Pro_ERPStoresLinkWithItems]]
 
 ## Estimated Size / Volatility

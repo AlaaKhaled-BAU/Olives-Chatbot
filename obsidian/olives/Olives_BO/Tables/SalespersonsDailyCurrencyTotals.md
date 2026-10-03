@@ -7,8 +7,6 @@ tags: [#backoffice, #sales]
 foreign_keys:
 referenced_by:
   - [[DeleteSalespersonsDailyCurrencyTotals]]
-  - [[OT_ActualAmountOnline_Tablet_Insert]]
-  - [[Pro_ActualAmountOnline_Tablet]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -40,11 +38,8 @@ CurrencyID
 
 **Reads (3):**
 - [[DeleteSalespersonsDailyCurrencyTotals]]
-- [[OT_ActualAmountOnline_Tablet_Insert]]
-- [[Pro_ActualAmountOnline_Tablet]]
 
 **Writes (1):**
-- [[OT_ActualAmountOnline_Tablet_Insert]]
 
 ## Estimated Size / Volatility
 Typical business table

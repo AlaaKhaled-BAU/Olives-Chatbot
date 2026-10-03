@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #legal, #sales]
 foreign_keys:
 referenced_by:
-  - [[Pro_ZatcaIntegrationApi]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -41,7 +40,6 @@ ID
 _None_
 
 **Writes (1):**
-- [[Pro_ZatcaIntegrationApi]]
 
 ## Estimated Size / Volatility
 Typical business table
@@ -58,7 +56,6 @@ Typical business table
 - [[JoTaxResult]]
 - [[CustomersItemsLog]]
 - [[CatalogMedia]]
-- [[MMS_TaxType]]
 - [[CustomerTargetsDetails]]
 - [[PromotionsApprovalLog]]
 - [[SalesQuotationHeaders]]
@@ -66,4 +63,3 @@ Typical business table
 - [[ZatcaMode]]
 - [[ZatcaResultGenerateXml]]
 - [[ZatcaCustomer]]
-- [[Glossary]]

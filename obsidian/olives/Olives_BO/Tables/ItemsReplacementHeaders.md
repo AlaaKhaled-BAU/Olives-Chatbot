@@ -10,13 +10,10 @@ foreign_keys:
   - [[RoutesInformation]]
   - [[SalesPersons]]
 referenced_by:
-  - [[Alpha_Integ_SendItemsReplacement]]
   - [[DEMOSALESPERSON]]
   - [[DEMOSALESPERSON2]]
   - [[OT_ImportReplacement]]
   - [[Pro_ItemsReplacementHeaders]]
-  - [[SAP_Integ_ItemsReplacementIN_Amazing]]
-  - [[SAP_Integ_ItemsReplacementOut_Amazing]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -59,19 +56,13 @@ CompanyID, SalesPersonID -> [[SalesPersons]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (7):**
-- [[Alpha_Integ_SendItemsReplacement]]
 - [[DEMOSALESPERSON]]
 - [[DEMOSALESPERSON2]]
 - [[OT_ImportReplacement]]
 - [[Pro_ItemsReplacementHeaders]]
-- [[SAP_Integ_ItemsReplacementIN_Amazing]]
-- [[SAP_Integ_ItemsReplacementOut_Amazing]]
 
 **Writes (4):**
-- [[Alpha_Integ_SendItemsReplacement]]
 - [[OT_ImportReplacement]]
-- [[SAP_Integ_ItemsReplacementIN_Amazing]]
-- [[SAP_Integ_ItemsReplacementOut_Amazing]]
 
 ## Estimated Size / Volatility
 Typical business table

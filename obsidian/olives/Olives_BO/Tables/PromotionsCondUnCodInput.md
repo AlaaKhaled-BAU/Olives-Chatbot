@@ -6,8 +6,6 @@ schema: dbo
 tags: [#backoffice, #sales]
 foreign_keys:
 referenced_by:
-  - [[Awtar_Integration_GetPromotion]]
-  - [[Niroukh_Integration_GetPromotion]]
   - [[OT_SendItemsInfo]]
   - [[Pro_ImportPromotionData]]
   - [[Pro_PromotionInputOutput]]
@@ -18,11 +16,9 @@ referenced_by:
   - [[Pro_SalesPersonItemBonusTarget_OnlineErrorReporting]]
   - [[RG_Hakkak_CopyPromotions]]
   - [[RG_Rpt_PromotionInformation]]
-  - [[RamPharm_SAP_Integ]]
   - [[Rpt_PromotionInputItem]]
   - [[Rpt_PromotionsDuplicatedItems]]
   - [[SalesmanPromotion_Excel]]
-  - [[X3_INTEGRATIONPROMOTION_WITHLOG]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -59,8 +55,6 @@ ItemSerial
 ## Impact / Procedures Using This Table
 
 **Reads (16):**
-- [[Awtar_Integration_GetPromotion]]
-- [[Niroukh_Integration_GetPromotion]]
 - [[OT_SendItemsInfo]]
 - [[Pro_ImportPromotionData]]
 - [[Pro_PromotionInputOutput]]
@@ -74,15 +68,11 @@ ItemSerial
 - [[Rpt_PromotionInputItem]]
 - [[Rpt_PromotionsDuplicatedItems]]
 - [[SalesmanPromotion_Excel]]
-- [[X3_INTEGRATIONPROMOTION_WITHLOG]]
 
 **Writes (6):**
-- [[Awtar_Integration_GetPromotion]]
-- [[Niroukh_Integration_GetPromotion]]
 - [[Pro_ImportPromotionData]]
 - [[Pro_PromotionsCondUnCodInput]]
 - [[Pro_PromotionsHeaders]]
-- [[RamPharm_SAP_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

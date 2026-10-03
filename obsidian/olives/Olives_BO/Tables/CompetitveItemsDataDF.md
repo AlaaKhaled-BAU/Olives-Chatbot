@@ -29,7 +29,7 @@ Core data table in the Back Office (server-side) — stores competitveitemsdatad
 | CompanyID | smallint | NO | ✓ | ✓ | [[CompetitveItemsDataHF]] |
 | TrYear | smallint | NO | ✓ | ✓ | [[CompetitveItemsDataHF]] |
 | TrNo | int | NO | ✓ | ✓ | [[CompetitveItemsDataHF]] |
-| CompetitiveItem | nvarchar | YES | ✓ |  |  |
+| CompetitiveItem | nvarchar | NO | ✓ |  |  |
 | Qty | money | YES |  |  |  |
 | Price | float | YES |  |  |  |
 | Notes | nvarchar | YES |  |  |  |
@@ -37,6 +37,10 @@ Core data table in the Back Office (server-side) — stores competitveitemsdatad
 | ShelfPrice | float | YES |  |  |  |
 | RetailPrice | float | YES |  |  |  |
 | WholeSalePrice | float | YES |  |  |  |
+| ExpiryDate | smalldatetime | YES |  |  |  |
+| CountryOfOrigin | nvarchar | YES |  |  |  |
+| IsPromotions | bit | YES |  |  |  |
+
 ## Primary Key
 CompanyID
 TrYear

@@ -6,11 +6,7 @@ schema: dbo
 tags: [#backoffice, #billing, #order]
 foreign_keys:
 referenced_by:
-  - [[Alpha_GetItemBalance_Zoumt]]
-  - [[Alpha_Integ_SendInvoicesDelivery]]
-  - [[Alpha_InvoiceDeliveryHF_BD]]
   - [[ConvertReturnOrderToInvoiceDelivery]]
-  - [[Falcons_Integ]]
   - [[OSFA_MobileDeliveryAPI]]
   - [[OT_ImportInvoicesDelivery]]
   - [[OT_SendCustomersInfo]]
@@ -41,8 +37,6 @@ referenced_by:
   - [[Rpt_RouteSummaryBySalesman_Delivery]]
   - [[Rpt_SalesmanDeliverySummary]]
   - [[SalesmanInfo]]
-  - [[Tablet_GetSalesmanDeliveryTrans]]
-  - [[X3_Integ_DeliveryInvoice]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -102,11 +96,7 @@ VouType
 ## Impact / Procedures Using This Table
 
 **Reads (37):**
-- [[Alpha_GetItemBalance_Zoumt]]
-- [[Alpha_Integ_SendInvoicesDelivery]]
-- [[Alpha_InvoiceDeliveryHF_BD]]
 - [[ConvertReturnOrderToInvoiceDelivery]]
-- [[Falcons_Integ]]
 - [[OSFA_MobileDeliveryAPI]]
 - [[OT_ImportInvoicesDelivery]]
 - [[OT_SendCustomersInfo]]
@@ -137,13 +127,8 @@ VouType
 - [[Rpt_RouteSummaryBySalesman_Delivery]]
 - [[Rpt_SalesmanDeliverySummary]]
 - [[SalesmanInfo]]
-- [[Tablet_GetSalesmanDeliveryTrans]]
-- [[X3_Integ_DeliveryInvoice]]
 
 **Writes (11):**
-- [[Alpha_GetItemBalance_Zoumt]]
-- [[Alpha_Integ_SendInvoicesDelivery]]
-- [[Alpha_InvoiceDeliveryHF_BD]]
 - [[ConvertReturnOrderToInvoiceDelivery]]
 - [[OSFA_MobileDeliveryAPI]]
 - [[OT_ImportInvoicesDelivery]]

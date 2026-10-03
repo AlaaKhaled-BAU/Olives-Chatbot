@@ -8,7 +8,6 @@ foreign_keys:
   - [[Companies]]
   - [[SalesPersons]]
 referenced_by:
-  - [[Alpha_Integ_CreateSalesmanStockTaking]]
   - [[OT_ImportSalesmanStockTacking]]
   - [[OT_ImportUnloadOrderForSalesmanStock]]
   - [[Pro_CompanyParameters]]
@@ -19,7 +18,6 @@ referenced_by:
   - [[Rpt_SalesPersonStockTackingDetails]]
   - [[Rpt_StockTakingReport]]
   - [[Rpt_StockTakingReportWithPrices]]
-  - [[Send_Bonanza_SalesmanStock_Dahlaki]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -63,7 +61,6 @@ CompanyID, SalesPersonID -> [[SalesPersons]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (11):**
-- [[Alpha_Integ_CreateSalesmanStockTaking]]
 - [[OT_ImportSalesmanStockTacking]]
 - [[Pro_CompanyParameters]]
 - [[Pro_SalesPersonStockTacking]]
@@ -73,14 +70,11 @@ CompanyID, SalesPersonID -> [[SalesPersons]](CompanyID, ID)
 - [[Rpt_SalesPersonStockTackingDetails]]
 - [[Rpt_StockTakingReport]]
 - [[Rpt_StockTakingReportWithPrices]]
-- [[Send_Bonanza_SalesmanStock_Dahlaki]]
 
 **Writes (5):**
-- [[Alpha_Integ_CreateSalesmanStockTaking]]
 - [[OT_ImportSalesmanStockTacking]]
 - [[OT_ImportUnloadOrderForSalesmanStock]]
 - [[Pro_SalesPersonStockTacking]]
-- [[Send_Bonanza_SalesmanStock_Dahlaki]]
 
 ## Estimated Size / Volatility
 Typical business table

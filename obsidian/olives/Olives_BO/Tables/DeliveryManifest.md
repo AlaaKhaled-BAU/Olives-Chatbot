@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #order]
 foreign_keys:
 referenced_by:
-  - [[Falcons_Integ]]
   - [[OT_SendCustomersInfo]]
   - [[Pro_DeliveryCar]]
   - [[Pro_DeliveryManifest]]
@@ -14,7 +13,6 @@ referenced_by:
   - [[Rpt_DriversDeliverySummary]]
   - [[Rpt_InvoicesDelivery]]
   - [[Rpt_SalesmanDeliverySummary]]
-  - [[Tablet_GetSalesmanDeliveryTrans]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -43,7 +41,6 @@ Serial
 ## Impact / Procedures Using This Table
 
 **Reads (9):**
-- [[Falcons_Integ]]
 - [[OT_SendCustomersInfo]]
 - [[Pro_DeliveryCar]]
 - [[Pro_DeliveryManifest]]
@@ -51,7 +48,6 @@ Serial
 - [[Rpt_DriversDeliverySummary]]
 - [[Rpt_InvoicesDelivery]]
 - [[Rpt_SalesmanDeliverySummary]]
-- [[Tablet_GetSalesmanDeliveryTrans]]
 
 **Writes (2):**
 - [[Pro_DeliveryCar]]

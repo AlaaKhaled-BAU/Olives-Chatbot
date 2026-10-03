@@ -48,7 +48,6 @@ Referenced by 4 procedure(s): 3 writing, 1 reading.
 - [[WF_AddWorkFlowLevelOne]]
 - [[WF_AddWorkFlowLevels]]
 **Readers (1):**
-- [[OSFA_DB/Procedures/OT_AppService|OT_AppService]]
 
 ## Estimated Size / Volatility
 ~0 rows (estimate from sys.partitions).

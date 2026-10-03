@@ -9,14 +9,10 @@ foreign_keys:
   - [[Items]]
   - [[ItemsUnits]]
 referenced_by:
-  - [[Acback_Integ_SendReturnInvoices]]
-  - [[AccPack_Integ_SendSalesInvoices_LuxuryItems]]
-  - [[Galaxy_Integ_SendSalesInvoices]]
   - [[OT_ImportInvoiceReturnLink]]
   - [[Pro_JoTaxApi]]
   - [[Pro_JoTaxApiFromOSFA]]
   - [[Pro_JoTaxApiFromOSFA____]]
-  - [[Pro_ZatcaIntegrationApi]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -60,14 +56,10 @@ CompanyID, UnitID -> [[ItemsUnits]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (8):**
-- [[Acback_Integ_SendReturnInvoices]]
-- [[AccPack_Integ_SendSalesInvoices_LuxuryItems]]
-- [[Galaxy_Integ_SendSalesInvoices]]
 - [[OT_ImportInvoiceReturnLink]]
 - [[Pro_JoTaxApi]]
 - [[Pro_JoTaxApiFromOSFA]]
 - [[Pro_JoTaxApiFromOSFA____]]
-- [[Pro_ZatcaIntegrationApi]]
 
 **Writes (1):**
 - [[OT_ImportInvoiceReturnLink]]

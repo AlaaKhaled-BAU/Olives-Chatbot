@@ -6,8 +6,6 @@ schema: dbo
 tags: [#backoffice, #reference]
 foreign_keys:
 referenced_by:
-  - [[AlAmeen_Integ]]
-  - [[Defaf_Rpt_WareHouse_Item_Balance]]
   - [[Pro_Checks]]
   - [[Pro_ConvertLoadOrderToTransaction]]
   - [[Pro_ConvertUnloadOrderToTransaction]]
@@ -54,8 +52,6 @@ ID
 ## Impact / Procedures Using This Table
 
 **Reads (22):**
-- [[AlAmeen_Integ]]
-- [[Defaf_Rpt_WareHouse_Item_Balance]]
 - [[Pro_Checks]]
 - [[Pro_ConvertLoadOrderToTransaction]]
 - [[Pro_ConvertUnloadOrderToTransaction]]
@@ -78,7 +74,6 @@ ID
 - [[Rpt_WareHouse_Item_Balance]]
 
 **Writes (3):**
-- [[AlAmeen_Integ]]
 - [[Pro_ConvertLoadOrderToTransaction]]
 - [[Pro_ConvertUnloadOrderToTransaction]]
 

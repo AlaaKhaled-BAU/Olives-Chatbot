@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #customer, #sales]
 foreign_keys:
 referenced_by:
-  - [[AccPack_Integ_LuxuryItems]]
   - [[DA_SalesTarget]]
   - [[Rpt_LuxuryItemsCustTarget]]
   - [[SalesmanInfo]]
@@ -42,13 +41,11 @@ CustomerRef2
 ## Impact / Procedures Using This Table
 
 **Reads (4):**
-- [[AccPack_Integ_LuxuryItems]]
 - [[DA_SalesTarget]]
 - [[Rpt_LuxuryItemsCustTarget]]
 - [[SalesmanInfo]]
 
 **Writes (1):**
-- [[AccPack_Integ_LuxuryItems]]
 
 ## Estimated Size / Volatility
 Typical business table

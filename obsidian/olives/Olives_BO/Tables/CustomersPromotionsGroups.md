@@ -9,18 +9,12 @@ foreign_keys:
   - [[CompanyBranches]]
   - [[Customers]]
 referenced_by:
-  - [[Alpha_Integ]]
-  - [[Awtar_Integration_GetPromotion]]
   - [[Diag_Check_Linked_Sales_Cust_Promotions]]
-  - [[Jazeera_Integ]]
-  - [[Niroukh_Integration_GetPromotion]]
   - [[Pro_Customers]]
   - [[Pro_CustomersFinancialDetails]]
   - [[Pro_CustomersPromotionsGroups]]
   - [[Pro_CustomersPromotionsGroupsByDevice]]
-  - [[RamPharm_SAP_Integ]]
   - [[Rpt_CustomersPromotionsGroupsByType]]
-  - [[X3_INTEGRATIONPROMOTION_WITHLOG]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -52,26 +46,17 @@ CompanyID, CustomerID -> [[Customers]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (12):**
-- [[Alpha_Integ]]
-- [[Awtar_Integration_GetPromotion]]
 - [[Diag_Check_Linked_Sales_Cust_Promotions]]
-- [[Jazeera_Integ]]
-- [[Niroukh_Integration_GetPromotion]]
 - [[Pro_Customers]]
 - [[Pro_CustomersFinancialDetails]]
 - [[Pro_CustomersPromotionsGroups]]
 - [[Pro_CustomersPromotionsGroupsByDevice]]
-- [[RamPharm_SAP_Integ]]
 - [[Rpt_CustomersPromotionsGroupsByType]]
-- [[X3_INTEGRATIONPROMOTION_WITHLOG]]
 
 **Writes (6):**
-- [[Awtar_Integration_GetPromotion]]
-- [[Niroukh_Integration_GetPromotion]]
 - [[Pro_Customers]]
 - [[Pro_CustomersPromotionsGroups]]
 - [[Pro_CustomersPromotionsGroupsByDevice]]
-- [[RamPharm_SAP_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

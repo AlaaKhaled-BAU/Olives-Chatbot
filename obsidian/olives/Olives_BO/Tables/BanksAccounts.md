@@ -8,8 +8,6 @@ foreign_keys:
   - [[Banks]]
   - [[Companies]]
 referenced_by:
-  - [[SAP_Tyconz_Integ]]
-  - [[SAP_Tyconz_Integ_SendPayments]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -40,10 +38,8 @@ CompanyID -> [[Companies]](ID)
 ## Impact / Procedures Using This Table
 
 **Reads (1):**
-- [[SAP_Tyconz_Integ_SendPayments]]
 
 **Writes (1):**
-- [[SAP_Tyconz_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

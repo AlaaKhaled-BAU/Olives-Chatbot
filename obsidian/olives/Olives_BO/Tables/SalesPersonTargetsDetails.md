@@ -16,7 +16,6 @@ referenced_by:
   - [[NiroukhMonthlyandQuarter]]
   - [[NiroukhMonthlyandQuarter_Month]]
   - [[NiroukhTargetPerDay]]
-  - [[Niroukh_VSQ]]
   - [[OT_NiroukhMonthlyandQuarter_Month]]
   - [[Pro_ImportSalesPersonTargets]]
   - [[Pro_SalesPersonTargets]]
@@ -26,10 +25,8 @@ referenced_by:
   - [[Rpt_AnnualTargetAnalysis]]
   - [[Rpt_AreaSalesAndSalesmanTarget]]
   - [[Rpt_MonthlyCompareSalesTargetWithSales]]
-  - [[Rpt_MonthlyCompareSalesTargetWithSales_Spartan]]
   - [[Rpt_MonthlySalesTargetBySalesman]]
   - [[Rpt_NiroukhMonths_Q_Target]]
-  - [[Rpt_Niroukh_ClassTarget]]
   - [[Rpt_SalesAndCollectionTargetByLocation]]
   - [[Rpt_SalesAndOrders]]
   - [[Rpt_SalesCollcetionsTargets]]
@@ -50,9 +47,38 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+Sales quota and performance target detail table for sales representatives and supervisors. Defines the planned monthly sales targets per representative (`SalesPersonID`), year (`TargetYear`), month (`TargetMonth`), and target reference category (`TargetReferenceID`), measured by target value/amount (`Amount`), physical quantity (`Quantity`), active selling days (`DaysNumber`), and expected commission rates.
+- **Quota Tracking**: Used by sales managers and supervisors to monitor target achievement percentages against actual net sales recorded in `TransactionsHeaders` and `TransactionsDetails`.
+- **Target Reference**: `TargetReferenceID` links to `TargetsReferences` (e.g. Total Sales target, Focus Category target, New Customers target).
 
-Core data table in the Back Office (server-side) — stores salespersontargetsdetails records.
+## Chatbot semantics
+(Query `t.SalesPersonTargetsDetails` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| أهداف / تارجت المندوب | `Amount`, `Quantity`, `TargetYear`, `TargetMonth` | `SalesPersonID = @SalesmanID AND TargetYear = @Year AND TargetMonth = @Month` |
+| تارجت المبيعات الشهري بالدينار / القيمة | `Amount` | القيمة المالية المستهدفة للمبيعات في الشهر |
+| تارجت الكميات | `Quantity` | الكمية الإجمالية المستهدفة بالأصناف |
+| نسبة العمولة | `Commission` | النسبة المحددة لحساب عمولة المندوب عند تحقيق التارجت |
+| اسم المندوب والتارجت | Join `t.SalesPersons` | `td.SalesPersonID = sp.ID` |
+
+**Do not confuse with:**
+- `t.TransactionsDetails` (actual realized sales achieved by the salesman).
+- `t.CustomerTargetsDetails` (sales target allocated per specific customer).
+
+## Grain & keys
+- **Grain**: One row per salesman, year, month, and target reference (`SalesPersonID`, `TargetYear`, `TargetMonth`, `TargetReferenceID`).
+- **Composite PK**: `CompanyID`, `SalesPersonID`, `TargetYear`, `TargetMonth`, `TargetReferenceID`.
+- **Tenant Key**: `CompanyID`.
+
+## Pipeline
+Back Office Sales Ops Management → `Pro_ImportSalesPersonTargets` → `SalesPersonTargetsDetails` → Compared against actual sales in KPI and performance reports (`Rpt_SalespersonTargetComparison`).
+
+## Related
+- [[SalesPersons]]
+- [[TargetsReferences]]
+- [[TransactionsHeaders]]
+- [[TransactionsDetails]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -94,7 +120,6 @@ CompanyID, TargetReferenceID -> [[TargetsReferences]](CompanyID, ID)
 - [[NiroukhMonthlyandQuarter]]
 - [[NiroukhMonthlyandQuarter_Month]]
 - [[NiroukhTargetPerDay]]
-- [[Niroukh_VSQ]]
 - [[OT_NiroukhMonthlyandQuarter_Month]]
 - [[Pro_ImportSalesPersonTargets]]
 - [[Pro_SalesPersonTargets]]
@@ -104,10 +129,8 @@ CompanyID, TargetReferenceID -> [[TargetsReferences]](CompanyID, ID)
 - [[Rpt_AnnualTargetAnalysis]]
 - [[Rpt_AreaSalesAndSalesmanTarget]]
 - [[Rpt_MonthlyCompareSalesTargetWithSales]]
-- [[Rpt_MonthlyCompareSalesTargetWithSales_Spartan]]
 - [[Rpt_MonthlySalesTargetBySalesman]]
 - [[Rpt_NiroukhMonths_Q_Target]]
-- [[Rpt_Niroukh_ClassTarget]]
 - [[Rpt_SalesAndCollectionTargetByLocation]]
 - [[Rpt_SalesAndOrders]]
 - [[Rpt_SalesCollcetionsTargets]]

@@ -17,7 +17,6 @@ referenced_by:
   - [[Pro_CustomersAndAssets]]
   - [[Pro_IssueAssets]]
   - [[Pro_WithdrawAssets]]
-  - [[Tablet_AssetsTransactions_Insert]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -74,13 +73,11 @@ UserID -> [[Users]](UserID)
 - [[Pro_CustomersAndAssets]]
 - [[Pro_IssueAssets]]
 - [[Pro_WithdrawAssets]]
-- [[Tablet_AssetsTransactions_Insert]]
 
 **Writes (4):**
 - [[Pro_AssetTransfer]]
 - [[Pro_IssueAssets]]
 - [[Pro_WithdrawAssets]]
-- [[Tablet_AssetsTransactions_Insert]]
 
 ## Estimated Size / Volatility
 Typical business table

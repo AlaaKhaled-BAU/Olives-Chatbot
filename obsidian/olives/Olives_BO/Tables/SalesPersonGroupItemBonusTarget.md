@@ -13,7 +13,6 @@ referenced_by:
   - [[Pro_SalesPersonItemBonusTarget_Online]]
   - [[Pro_SalesPersonItemBonusTarget_OnlineErrorReporting]]
   - [[Rpt_SalesPersonItemBonusTarget]]
-  - [[Rpt_SalesPersonItemBonusTarget_Tablet]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -63,7 +62,6 @@ CompanyID, SalesPersonGroupID -> [[SalesPersonsGroups]](CompanyID, ID)
 - [[Pro_SalesPersonItemBonusTarget_Online]]
 - [[Pro_SalesPersonItemBonusTarget_OnlineErrorReporting]]
 - [[Rpt_SalesPersonItemBonusTarget]]
-- [[Rpt_SalesPersonItemBonusTarget_Tablet]]
 
 **Writes (1):**
 - [[Pro_SalesPersonGroupItemBonusTarget]]

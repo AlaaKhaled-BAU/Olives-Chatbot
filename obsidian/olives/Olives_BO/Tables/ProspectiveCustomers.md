@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #customer]
 foreign_keys:
 referenced_by:
-  - [[AX_INTEG_SENDSALESQUOTATIONS]]
   - [[OT_ImportCompetitveItemsData]]
   - [[OT_ImportCustomerSurveyAnswers]]
   - [[OT_ImportNewCust_Prospective]]
@@ -74,7 +73,6 @@ ID
 ## Impact / Procedures Using This Table
 
 **Reads (8):**
-- [[AX_INTEG_SENDSALESQUOTATIONS]]
 - [[OT_ImportCompetitveItemsData]]
 - [[OT_ImportCustomerSurveyAnswers]]
 - [[OT_ImportNewCust_Prospective]]

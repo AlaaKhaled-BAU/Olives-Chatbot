@@ -6,47 +6,8 @@ schema: dbo
 tags: [#backoffice, #billing]
 foreign_keys:
 referenced_by:
-  - [[ABS_Integration_Jebrene]]
-  - [[ABS_Integration_Sokhtian]]
-  - [[AX_INTEGRATION]]
-  - [[AbuOda_BonMarrof_Integ]]
-  - [[AbuOda_Comp2_Integ]]
-  - [[AbuOda_Integ]]
-  - [[Acback_Integration]]
-  - [[AccPack_Integ]]
-  - [[AccPack_Integ_LuxuryItems]]
-  - [[AccPack_Integyandrug]]
-  - [[Alpha_Integ]]
-  - [[Alpha_updateRoute]]
-  - [[Awael_Integration_WithLog]]
-  - [[Awtar_Integration_WithLog]]
-  - [[Bajali_SAP_Integ]]
-  - [[Bonanza_Integ_Yasmeen]]
-  - [[Darwaza_Integration_WithLog]]
-  - [[Defaf_Integration]]
-  - [[ECO_Land_SAP_Integ]]
-  - [[Falcons_Integ]]
-  - [[GArrow_SAP_Integ]]
-  - [[GP_Integ]]
-  - [[GP_Integ_Wadi]]
-  - [[GP_Integ_Zumot]]
-  - [[GP_Integ_Zumot_Aqaba]]
-  - [[GTS_Integration_WithLog]]
-  - [[Galaxy_Integration]]
-  - [[Isco_Integration_WithLog]]
-  - [[Izhiman_SAP_Integ]]
-  - [[JV_Integ]]
-  - [[Khobara_Integ]]
-  - [[MeatLand_Integration]]
-  - [[MeatLand_Integrationnew]]
-  - [[Motakaml_Integration_WithLog]]
-  - [[NPF_Integration]]
-  - [[Niroukh_Integration_WithLog]]
   - [[OSFA_SP_Api]]
   - [[OSFA_SP_Api_Jawad]]
-  - [[Phenix_Sukhtian_Integ_WithLog]]
-  - [[Presto_Integ]]
-  - [[ProTech_Integration]]
   - [[Pro_CustomersPromotionsGroupsLink]]
   - [[Pro_DriverDetailsDashboard]]
   - [[Pro_ImportData]]
@@ -63,10 +24,6 @@ referenced_by:
   - [[Pro_SalesQuotationHeaders]]
   - [[Pro_SalesmanDetailsDashboard]]
   - [[Pro_TransactionsHeaders]]
-  - [[Pro_ZatcaIntegrationApi]]
-  - [[Qerat_Integ]]
-  - [[Qetaf_Integ]]
-  - [[RamPharm_SAP_Integ]]
   - [[Rpt_AcceptedSalesInvoices]]
   - [[Rpt_CustomersPriceLists]]
   - [[Rpt_LoadOrderFirstApproval]]
@@ -77,7 +34,6 @@ referenced_by:
   - [[Rpt_RouteSummaryBySalesmanBushnaqExcel]]
   - [[Rpt_RouteSummaryBySalesman_Delivery]]
   - [[Rpt_RouteSummaryBySalesman_Merchandisers]]
-  - [[Rpt_RouteSummaryBySalesman_Spartan]]
   - [[Rpt_RouteSummaryBySalesman_Sukhtian]]
   - [[Rpt_RouteSummaryBySalesman_Suktian]]
   - [[Rpt_RouteSummaryBySalesman_Suktian_Draft]]
@@ -85,27 +41,8 @@ referenced_by:
   - [[Rpt_SalesmanRouteDetails]]
   - [[Rpt_SalesmanRouteDetails_SendToBarcodePrinter]]
   - [[Rpt_UPriceReport]]
-  - [[SAMA_SAP_Integ]]
-  - [[SAP_Integ]]
-  - [[SAP_Integ_Amazing]]
-  - [[SAP_Integ_Hammoudeh]]
-  - [[SAP_Integ_Karadsheh]]
-  - [[SAP_Integ_Kaylani]]
-  - [[SAP_Integ_Lamis]]
-  - [[SAP_Integ_MERI]]
-  - [[SAP_Integ_Malak]]
-  - [[SAP_Integration_WithLog]]
-  - [[SAP_Naouri_Integ]]
-  - [[SAP_Tyconz_Integ]]
-  - [[Salbeshian_SAP_Integ]]
-  - [[Shamel_Integration]]
-  - [[Shini_Integ]]
-  - [[Tahona_Integration_WithLog]]
-  - [[Wings_Integration]]
-  - [[Yolande_Integ]]
-  - [[Zedan_SAP_Integ]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 related_workflows:
   - Customer-Setup
   - Items-Master-Data-Setup
@@ -115,10 +52,33 @@ related_workflows:
 ---
 # PriceLists
 
-
 ## Business Purpose
+The master price list header table — defines commercial pricing tiers (e.g. Retail, Wholesale, Key Accounts, Cash Van). Provides header validity dates (`StartDate`, `EndDate`) and descriptive names (`Name`). Individual product prices under each price list live in [[PriceListDetails]]. Bound to customers via `CustomersFinancialDetails.PriceListID`. Queryable via `t.PriceLists`.
 
-Price list definitions — trade price, wholesale, retail tiers for products.
+## Chatbot semantics
+(Query `t.PriceLists` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| قوائم الأسعار | `ID`, `Name` | `Name LIKE N'%...%'` OR `ID = ...` | Price list tiers |
+| أسعار المواد في القائمة | Join `t.PriceListDetails` | `d.PriceListID = p.ID` | Specific item selling prices |
+| قائمة أسعار العميل | Join `t.CustomersFinancialDetails` | `cfd.PriceListID = p.ID` | Price tier assigned to customer |
+| صلاحية قائمة الأسعار | `StartDate`, `EndDate` | Date checks | Active period of price tier |
+
+## Grain & keys
+- **Composite PK**: (`CompanyID`, `ID`)
+- **Tenant key**: `CompanyID`
+
+## Pipeline
+Managed via Back Office pricing setup screens (`Pro_PriceLists`). Synced to mobile devices for calculating invoice item rates.
+
+## Related
+- [[PriceListDetails]]
+- [[CustomersFinancialDetails]]
+- [[Items]]
+- [[TransactionsHeaders]]
+- [[OrdersHeaders]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -141,17 +101,6 @@ ID
 ## Impact / Procedures Using This Table
 
 **Reads (48):**
-- [[ABS_Integration_Jebrene]]
-- [[AX_INTEGRATION]]
-- [[Acback_Integration]]
-- [[AccPack_Integ]]
-- [[AccPack_Integyandrug]]
-- [[Awael_Integration_WithLog]]
-- [[Bonanza_Integ_Yasmeen]]
-- [[GP_Integ_Zumot]]
-- [[GP_Integ_Zumot_Aqaba]]
-- [[JV_Integ]]
-- [[Presto_Integ]]
 - [[Pro_CustomersPromotionsGroupsLink]]
 - [[Pro_DriverDetailsDashboard]]
 - [[Pro_ImportData]]
@@ -168,7 +117,6 @@ ID
 - [[Pro_SalesQuotationHeaders]]
 - [[Pro_SalesmanDetailsDashboard]]
 - [[Pro_TransactionsHeaders]]
-- [[Pro_ZatcaIntegrationApi]]
 - [[Rpt_AcceptedSalesInvoices]]
 - [[Rpt_CustomersPriceLists]]
 - [[Rpt_LoadOrderFirstApproval]]
@@ -179,7 +127,6 @@ ID
 - [[Rpt_RouteSummaryBySalesmanBushnaqExcel]]
 - [[Rpt_RouteSummaryBySalesman_Delivery]]
 - [[Rpt_RouteSummaryBySalesman_Merchandisers]]
-- [[Rpt_RouteSummaryBySalesman_Spartan]]
 - [[Rpt_RouteSummaryBySalesman_Sukhtian]]
 - [[Rpt_RouteSummaryBySalesman_Suktian]]
 - [[Rpt_RouteSummaryBySalesman_Suktian_Draft]]
@@ -187,70 +134,13 @@ ID
 - [[Rpt_SalesmanRouteDetails]]
 - [[Rpt_SalesmanRouteDetails_SendToBarcodePrinter]]
 - [[Rpt_UPriceReport]]
-- [[SAP_Naouri_Integ]]
-- [[Tahona_Integration_WithLog]]
 
 **Writes (60):**
-- [[ABS_Integration_Jebrene]]
-- [[ABS_Integration_Sokhtian]]
-- [[AbuOda_BonMarrof_Integ]]
-- [[AbuOda_Comp2_Integ]]
-- [[AbuOda_Integ]]
-- [[Acback_Integration]]
-- [[AccPack_Integ]]
-- [[AccPack_Integ_LuxuryItems]]
-- [[AccPack_Integyandrug]]
-- [[Alpha_Integ]]
-- [[Alpha_updateRoute]]
-- [[Awael_Integration_WithLog]]
-- [[Awtar_Integration_WithLog]]
-- [[Bajali_SAP_Integ]]
-- [[Darwaza_Integration_WithLog]]
-- [[Defaf_Integration]]
-- [[ECO_Land_SAP_Integ]]
-- [[Falcons_Integ]]
-- [[GArrow_SAP_Integ]]
-- [[GP_Integ]]
-- [[GP_Integ_Wadi]]
-- [[GTS_Integration_WithLog]]
-- [[Galaxy_Integration]]
-- [[Isco_Integration_WithLog]]
-- [[Izhiman_SAP_Integ]]
-- [[JV_Integ]]
-- [[Khobara_Integ]]
-- [[MeatLand_Integration]]
-- [[MeatLand_Integrationnew]]
-- [[Motakaml_Integration_WithLog]]
-- [[NPF_Integration]]
-- [[Niroukh_Integration_WithLog]]
 - [[OSFA_SP_Api]]
 - [[OSFA_SP_Api_Jawad]]
-- [[Phenix_Sukhtian_Integ_WithLog]]
-- [[ProTech_Integration]]
 - [[Pro_ImportData]]
 - [[Pro_ImportPriceListData]]
 - [[Pro_PriceLists]]
-- [[Qerat_Integ]]
-- [[Qetaf_Integ]]
-- [[RamPharm_SAP_Integ]]
-- [[SAMA_SAP_Integ]]
-- [[SAP_Integ]]
-- [[SAP_Integ_Amazing]]
-- [[SAP_Integ_Hammoudeh]]
-- [[SAP_Integ_Karadsheh]]
-- [[SAP_Integ_Kaylani]]
-- [[SAP_Integ_Lamis]]
-- [[SAP_Integ_MERI]]
-- [[SAP_Integ_Malak]]
-- [[SAP_Integration_WithLog]]
-- [[SAP_Naouri_Integ]]
-- [[SAP_Tyconz_Integ]]
-- [[Salbeshian_SAP_Integ]]
-- [[Shamel_Integration]]
-- [[Shini_Integ]]
-- [[Wings_Integration]]
-- [[Yolande_Integ]]
-- [[Zedan_SAP_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

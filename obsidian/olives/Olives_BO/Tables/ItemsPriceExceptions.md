@@ -10,14 +10,7 @@ foreign_keys:
   - [[Items]]
   - [[ItemsUnits]]
 referenced_by:
-  - [[AccPack_Integ_LuxuryItems]]
-  - [[Awael_Integration_WithLog]]
-  - [[Bajali_SAP_Integ]]
-  - [[Bonanza_Integ_Yasmeen]]
-  - [[ECO_Land_SAP_Integ]]
-  - [[GArrow_SAP_Integ]]
   - [[Pro_ItemsPriceExceptions]]
-  - [[Yolande_Integ]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -69,19 +62,10 @@ CompanyID, UnitID -> [[ItemsUnits]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (4):**
-- [[AccPack_Integ_LuxuryItems]]
-- [[Bonanza_Integ_Yasmeen]]
 - [[Pro_ItemsPriceExceptions]]
-- [[Yolande_Integ]]
 
 **Writes (7):**
-- [[AccPack_Integ_LuxuryItems]]
-- [[Awael_Integration_WithLog]]
-- [[Bajali_SAP_Integ]]
-- [[ECO_Land_SAP_Integ]]
-- [[GArrow_SAP_Integ]]
 - [[Pro_ItemsPriceExceptions]]
-- [[Yolande_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

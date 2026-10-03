@@ -10,7 +10,6 @@ foreign_keys:
   - [[RoutesInformation]]
 referenced_by:
   - [[All_Visits]]
-  - [[Alpha_SalesmanCustRoute]]
   - [[Fill_In_Missing_PositionRoute]]
   - [[OT_WF_SalesmanVisits]]
   - [[Pro_Dashboard_Almalak]]
@@ -44,7 +43,6 @@ referenced_by:
   - [[Rpt_SalesmanRouteDetails_SendToBarcodePrinter]]
   - [[Rpt_SalesmanRouteEfficiency]]
   - [[Rpt_SalesmanRouteEfficiency_SV_LV_TV2]]
-  - [[Rpt_SalesmanRouteEfficiency_Zoumt]]
   - [[Rpt_SalesmanRouteSummary]]
   - [[Rpt_SalesmanRouteTargetDetails]]
   - [[Rpt_SalesmanSummaryRoute]]
@@ -62,32 +60,53 @@ referenced_by:
   - [[Rpt_WF_SalesmanVisits]]
   - [[Rpt_WF_UnvisitedCustomer]]
   - [[Rpt_WeeklySalesmanVisits]]
-  - [[Sama_GPS_Integ]]
-  - [[Tablet_GetSalesmanRoute]]
   - [[Technical_CreateRouteBasedonID]]
   - [[Technical_CreateRouteBasedonID_ForPageOnly]]
   - [[Technical_CreateRouteBasedonReference1]]
   - [[Technical_CreateRouteBasedonReference1_UpdateOnly]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 related_workflows: [[Route-Planning]]
 ---
 # SalesPersonsRoutes
 
-
 ## Business Purpose
+**Planned / future salesman visits** — weekly route schedule **template** defining which route ID a sales position covers on each day of the week across 4 monthly cycle weeks (`Week1`..`Week4`). Queryable via `t.SalesPersonsRoutes`.
 
-**Planned / future salesman visits** — weekly route **template** (not GPS history, not actual visits).
+- `WeekDay` 1–7 = Saturday–Friday (`Day` column confirms Arabic name: السبت, الأحد, ...).
+- `Week1`–`Week4` = route id per **week-of-month slot** — resolved with `Fun_GetWeekNo` / BO week logic.
+- **Never query this table alone** for customer visit plans: customer-to-route assignment lives in [[CustomersFinancialDetails]].
 
-- `WeekDay` 1–7 = Saturday–Friday (`Day` column confirms Arabic name).
-- `Week1`–`Week4` = route id per **week-of-month slot** — resolve with `Fun_GetWeekNo` / BO week logic (same as `OT_SendSalesmanData`); do not assume calendar weeks 1–4 blindly.
-- **Never query this table alone** for «زيارات قادمة»: join chain below.
+## Chatbot semantics
+(Query `t.SalesPersonsRoutes` — scoped by session CompanyID via `t.` views.)
 
-**Push to tablet:** [[OT_SendSalesmanData]] reads this + [[CustomersFinancialDetails]] + [[RoutesInformation]] and builds `OSFA_DB.OT_SalesmanRoute` (daily customer list). Optional override: [[SalespersonRouteByDate]] (sparse, some clients).
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| خطة المسار الأسبوعية للمندوب | `PositionsID`, `WeekDay`, `Week1`..`Week4` | Filter by position | Returns route IDs for each day |
+| مسار اليوم للمندوب | `WeekDay`, `Day` | Match weekday (1=السبت..7=الجمعة) | Pick corresponding `WeekN` route ID |
+| الزبائن المخطط زيارتهم في المسار | Join `t.CustomersFinancialDetails` | `c.RouteID = r.WeekN AND c.PositionsID = r.PositionsID` | Customer list ordered by `c.VisitOrder` |
+| اسم المسار | Join `t.RoutesInformation` | `RoutesInformation.ID = r.WeekN` | Name of the route |
 
-**Chatbot planned visits:** `SalesPersons` → `PositionID` → this table for target weekday → pick correct `WeekN` column → `CustomersFinancialDetails` (`RouteID`, `VisitOrder`, same `PositionsID`) → `RoutesInformation.Name`.
+**Do not confuse with:**
+- `LogActionTransaction`: Actual visits performed in the field (`ActionID = N'0'`).
+- `SalespersonRouteByDate`: Date-specific route overrides (used by some clients).
+- `SalesmanVisitsSummary`: Hidden table in gate; do not route queries here.
 
-**Actual past visits:** [[LogActionTransaction]] (`ActionID = N'0'`), imported via [[OT_ImportActionLog]] — not this table.
+## Grain & keys
+- **Composite PK**: (`CompanyID`, `PositionsID`, `WeekDay`)
+- **Tenant key**: `CompanyID`
+- **FKs**: `PositionsID` → [[Positions]](ID), `Week1`..`Week4` → [[RoutesInformation]](ID)
+
+## Pipeline (how rows get here)
+Defined in Back Office route planning UI (`Pro_SalesPersonsRoutes`). Read by `OT_SendSalesmanData` to generate daily journey plans sent to salesman tablets.
+
+## Related
+- [[RoutesInformation]]
+- [[CustomersFinancialDetails]]
+- [[SalesPersons]]
+- [[LogActionTransaction]]
+- [[SalespersonRouteByDate]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -115,7 +134,6 @@ CompanyID, Week4 -> [[RoutesInformation]](CompanyID, ID)
 
 **Reads (59):**
 - [[All_Visits]]
-- [[Alpha_SalesmanCustRoute]]
 - [[Fill_In_Missing_PositionRoute]]
 - [[OT_WF_SalesmanVisits]]
 - [[Pro_Dashboard_Almalak]]
@@ -149,7 +167,6 @@ CompanyID, Week4 -> [[RoutesInformation]](CompanyID, ID)
 - [[Rpt_SalesmanRouteDetails_SendToBarcodePrinter]]
 - [[Rpt_SalesmanRouteEfficiency]]
 - [[Rpt_SalesmanRouteEfficiency_SV_LV_TV2]]
-- [[Rpt_SalesmanRouteEfficiency_Zoumt]]
 - [[Rpt_SalesmanRouteSummary]]
 - [[Rpt_SalesmanRouteTargetDetails]]
 - [[Rpt_SalesmanSummaryRoute]]
@@ -167,15 +184,12 @@ CompanyID, Week4 -> [[RoutesInformation]](CompanyID, ID)
 - [[Rpt_WF_SalesmanVisits]]
 - [[Rpt_WF_UnvisitedCustomer]]
 - [[Rpt_WeeklySalesmanVisits]]
-- [[Sama_GPS_Integ]]
-- [[Tablet_GetSalesmanRoute]]
 - [[Technical_CreateRouteBasedonID]]
 - [[Technical_CreateRouteBasedonID_ForPageOnly]]
 - [[Technical_CreateRouteBasedonReference1]]
 - [[Technical_CreateRouteBasedonReference1_UpdateOnly]]
 
 **Writes (8):**
-- [[Alpha_SalesmanCustRoute]]
 - [[Fill_In_Missing_PositionRoute]]
 - [[Pro_ImportRouteInfoFromExcel2]]
 - [[Pro_SalesPersonsRoutes]]

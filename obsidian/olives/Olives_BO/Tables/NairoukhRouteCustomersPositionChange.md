@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #customer, #gps, #sales]
 foreign_keys:
 referenced_by:
-  - [[Technical_Nairoukh_Awtar_linkRoutesToPosition]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -31,10 +30,8 @@ Core data table in the Back Office (server-side) — stores nairoukhroutecustome
 ## Impact / Procedures Using This Table
 
 **Reads (1):**
-- [[Technical_Nairoukh_Awtar_linkRoutesToPosition]]
 
 **Writes (1):**
-- [[Technical_Nairoukh_Awtar_linkRoutesToPosition]]
 
 ## Estimated Size / Volatility
 Typical business table

@@ -54,4 +54,3 @@ Typical business table
 - [[GapTransHeaders]]
 - [[GapTransTimeLine]]
 - [[GapTransTags]]
-- [[Glossary]]

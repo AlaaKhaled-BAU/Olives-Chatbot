@@ -8,7 +8,6 @@ foreign_keys:
   - [[Companies]]
 referenced_by:
   - [[All_Visits]]
-  - [[Alpha_SalesmanCustRoute]]
   - [[Pro_DriverDetailsDashboard]]
   - [[Pro_ImportData]]
   - [[Pro_ImportRouteInfoFromExcel]]
@@ -23,7 +22,6 @@ referenced_by:
   - [[Pro_SalesmanDetailsDashboard]]
   - [[Pro_SalespersonRouteByDate]]
   - [[Pro_TransactionsHeaders]]
-  - [[Pro_ZatcaIntegrationApi]]
   - [[RPT_Salesman_Routes_Customers_MonthlyCountandVisits]]
   - [[RPT_ZheimanRouteSummaryForExcel]]
   - [[Rpt_CheckCustomers]]
@@ -69,21 +67,45 @@ referenced_by:
   - [[Rpt_UnvisitedCustomerDetails]]
   - [[Rpt_UnvisitedRouteCustomers]]
   - [[Rpt_customersbarcodes]]
-  - [[Sama_GPS_Integ]]
-  - [[Tablet_GetSalesmanRoute]]
   - [[Technical_CreateRouteBasedonID]]
   - [[Technical_CreateRouteBasedonID_ForPageOnly]]
   - [[Technical_CreateRouteBasedonReference1]]
   - [[Technical_CreateRouteBasedonReference1_UpdateOnly]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 ---
 # RoutesInformation
 
-
 ## Business Purpose
+The master route definition catalog — stores named sales routes and delivery territories. Each route record has an `ID` and a descriptive `Name` (e.g. geographical zone, sector, or day route). Acts as the central anchor connecting weekly schedule templates in [[SalesPersonsRoutes]] with customer stop assignments in [[CustomersFinancialDetails]]. Queryable via `t.RoutesInformation`.
 
-Route definitions — sequences of customer visits assigned to salespersons.
+## Chatbot semantics
+(Query `t.RoutesInformation` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| اسم المسار / خط السير | `ID`, `Name` | `Name LIKE N'%...%'` OR `ID = ...` | Primary route lookup |
+| زبائن المسار | Join `t.CustomersFinancialDetails` | `cfd.RouteID = r.ID` | Lists assigned customers in `VisitOrder` |
+| جدول المسارات الأسبوعي | Join `t.SalesPersonsRoutes` | `r.ID IN (spr.Week1, spr.Week2, spr.Week3, spr.Week4)` | Shows when route is run |
+| مسار نشط / ملغي | `IsSuspended` | `IsSuspended = 0` (Active) | Route operational status |
+
+**Do not confuse with:**
+- `SalesPersonsRoutes`: The schedule template assigning route IDs to weekdays.
+- `CustomersFinancialDetails`: The table where each customer is linked to a `RouteID`.
+
+## Grain & keys
+- **PK**: `ID` (integer route number)
+- **Tenant key**: `CompanyID`
+
+## Pipeline
+Maintained in Back Office route setup screens (`Pro_RoutesInformation`). Referenced by `OT_SendSalesmanData` to bundle daily customer lists for tablet synchronization.
+
+## Related
+- [[SalesPersonsRoutes]]
+- [[CustomersFinancialDetails]]
+- [[SalesPersons]]
+- [[LogActionTransaction]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -103,7 +125,6 @@ CompanyID -> [[Companies]](ID)
 
 **Reads (68):**
 - [[All_Visits]]
-- [[Alpha_SalesmanCustRoute]]
 - [[Pro_DriverDetailsDashboard]]
 - [[Pro_ImportData]]
 - [[Pro_ImportRouteInfoFromExcel]]
@@ -118,7 +139,6 @@ CompanyID -> [[Companies]](ID)
 - [[Pro_SalesmanDetailsDashboard]]
 - [[Pro_SalespersonRouteByDate]]
 - [[Pro_TransactionsHeaders]]
-- [[Pro_ZatcaIntegrationApi]]
 - [[RPT_Salesman_Routes_Customers_MonthlyCountandVisits]]
 - [[RPT_ZheimanRouteSummaryForExcel]]
 - [[Rpt_CheckCustomers]]
@@ -164,15 +184,12 @@ CompanyID -> [[Companies]](ID)
 - [[Rpt_UnvisitedCustomerDetails]]
 - [[Rpt_UnvisitedRouteCustomers]]
 - [[Rpt_customersbarcodes]]
-- [[Sama_GPS_Integ]]
-- [[Tablet_GetSalesmanRoute]]
 - [[Technical_CreateRouteBasedonID]]
 - [[Technical_CreateRouteBasedonID_ForPageOnly]]
 - [[Technical_CreateRouteBasedonReference1]]
 - [[Technical_CreateRouteBasedonReference1_UpdateOnly]]
 
 **Writes (8):**
-- [[Alpha_SalesmanCustRoute]]
 - [[Pro_ImportData]]
 - [[Pro_ImportRouteInfoFromExcel2]]
 - [[Pro_RoutesInformation]]

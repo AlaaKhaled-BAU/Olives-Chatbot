@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #billing, #customer, #workflow]
 foreign_keys:
 referenced_by:
-  - [[Alpha_Integ_IncreaseCustomerCreditlimit]]
   - [[Rpt_IncreaseCreditLimit]]
   - [[Rpt_IncreaseCreditLimit_forALPHA]]
   - [[WF_AddRequestToIncreaseCustomerCreditlimit]]
@@ -45,7 +44,6 @@ AutoID
 ## Impact / Procedures Using This Table
 
 **Reads (4):**
-- [[Alpha_Integ_IncreaseCustomerCreditlimit]]
 - [[Rpt_IncreaseCreditLimit]]
 - [[Rpt_IncreaseCreditLimit_forALPHA]]
 - [[WF_AddRequestToIncreaseCustomerCreditlimit]]

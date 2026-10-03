@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #customer]
 foreign_keys:
 referenced_by:
-  - [[Defaf_AddCustomer]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -40,10 +39,8 @@ Core data table in the Back Office (server-side) — stores add customer records
 ## Impact / Procedures Using This Table
 
 **Reads (1):**
-- [[Defaf_AddCustomer]]
 
 **Writes (1):**
-- [[Defaf_AddCustomer]]
 
 ## Estimated Size / Volatility
 Typical business table

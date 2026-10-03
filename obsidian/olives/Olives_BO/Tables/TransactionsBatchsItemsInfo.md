@@ -9,8 +9,6 @@ foreign_keys:
   - [[Items]]
   - [[ItemsUnits]]
 referenced_by:
-  - [[Motakaml_Integ_GetItemBalance]]
-  - [[Motakaml_Integ_SendTransactions]]
   - [[OT_ImportCustStockTacking]]
   - [[OT_ImportReplacement]]
   - [[OT_ImportReturnOrder]]
@@ -62,8 +60,6 @@ CompanyID, Unit -> [[ItemsUnits]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (6):**
-- [[Motakaml_Integ_GetItemBalance]]
-- [[Motakaml_Integ_SendTransactions]]
 - [[Pro_ReturnOrdersDetails]]
 - [[Rpt_ApprovedOrder]]
 - [[Rpt_CustomerStockByExpire]]

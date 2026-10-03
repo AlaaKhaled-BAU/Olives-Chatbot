@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #gps, #order, #sales]
 foreign_keys:
 referenced_by:
-  - [[Falcons_Integ]]
   - [[OT_SendCustomersInfo]]
   - [[Rpt_RouteSummaryByDelivery]]
 support_relevance: high
@@ -37,7 +36,6 @@ RouteDate
 ## Impact / Procedures Using This Table
 
 **Reads (3):**
-- [[Falcons_Integ]]
 - [[OT_SendCustomersInfo]]
 - [[Rpt_RouteSummaryByDelivery]]
 

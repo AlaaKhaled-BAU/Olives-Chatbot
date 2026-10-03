@@ -9,24 +9,13 @@ foreign_keys:
   - [[Customers]]
   - [[CustomersPromotionsGroups]]
 referenced_by:
-  - [[Alpha_Integ]]
-  - [[Awtar_Integ_AllUsers]]
-  - [[Awtar_Integ_AllUsers_SOA]]
-  - [[Defaf_AddCustomer]]
   - [[Diag_Check_Linked_Sales_Cust_Promotions]]
-  - [[GP_Integ_Wadi]]
-  - [[Jazeera_Integ]]
-  - [[Niroukh_Integ_AllUsers]]
-  - [[Niroukh_Integ_AllUsers_SOA]]
   - [[OT_ImportNewCust]]
   - [[OT_ImportNewCust_145]]
   - [[Pro_Customers]]
   - [[Pro_CustomersPromotionsGroupsByDevice]]
   - [[Pro_CustomersPromotionsGroupsLink]]
   - [[Pro_PriceList_PromGroup_SalesLink]]
-  - [[RamPharm_SAP_Integ]]
-  - [[SAMA_SAP_Integ]]
-  - [[X3_INTEGRATIONPROMOTION_WITHLOG]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -55,39 +44,20 @@ CompanyID, CustomersPromotionsGroupsID -> [[CustomersPromotionsGroups]](CompanyI
 ## Impact / Procedures Using This Table
 
 **Reads (17):**
-- [[Alpha_Integ]]
-- [[Awtar_Integ_AllUsers]]
-- [[Awtar_Integ_AllUsers_SOA]]
-- [[Defaf_AddCustomer]]
 - [[Diag_Check_Linked_Sales_Cust_Promotions]]
-- [[GP_Integ_Wadi]]
-- [[Jazeera_Integ]]
-- [[Niroukh_Integ_AllUsers]]
-- [[Niroukh_Integ_AllUsers_SOA]]
 - [[OT_ImportNewCust]]
 - [[Pro_Customers]]
 - [[Pro_CustomersPromotionsGroupsByDevice]]
 - [[Pro_CustomersPromotionsGroupsLink]]
 - [[Pro_PriceList_PromGroup_SalesLink]]
-- [[RamPharm_SAP_Integ]]
-- [[SAMA_SAP_Integ]]
-- [[X3_INTEGRATIONPROMOTION_WITHLOG]]
 
 **Writes (14):**
-- [[Awtar_Integ_AllUsers]]
-- [[Awtar_Integ_AllUsers_SOA]]
-- [[Defaf_AddCustomer]]
-- [[GP_Integ_Wadi]]
-- [[Niroukh_Integ_AllUsers]]
-- [[Niroukh_Integ_AllUsers_SOA]]
 - [[OT_ImportNewCust]]
 - [[OT_ImportNewCust_145]]
 - [[Pro_Customers]]
 - [[Pro_CustomersPromotionsGroupsByDevice]]
 - [[Pro_CustomersPromotionsGroupsLink]]
 - [[Pro_PriceList_PromGroup_SalesLink]]
-- [[RamPharm_SAP_Integ]]
-- [[SAMA_SAP_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

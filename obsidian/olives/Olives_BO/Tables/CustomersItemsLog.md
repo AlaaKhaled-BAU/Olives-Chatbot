@@ -61,5 +61,3 @@ Typical business table
 - [[Olives_BO/Procedures/EncodeArabicToUTF8DataFromOSFA_API]]
 - [[Olives_BO/Procedures/SMSSEND_ZUMOT]]
 - [[Olives_BO/Procedures/Test_Banks]]
-- [[Olives_BO/Procedures/Alpha_GetCurrRate]]
-- [[Olives_BO/Procedures/Awtar_Integ_GetDataFromAPI]]

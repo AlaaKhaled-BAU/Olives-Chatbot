@@ -6,11 +6,6 @@ schema: dbo
 tags: [#backoffice, #customer]
 foreign_keys:
 referenced_by:
-  - [[Alpha_Integ]]
-  - [[Alpha_Integ_HistData]]
-  - [[Jazeera_Integ]]
-  - [[Spartan_SAP_Integ_UpdateCustomerChqList]]
-  - [[Yolande_Integ]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -49,17 +44,8 @@ BankNo
 ## Impact / Procedures Using This Table
 
 **Reads (5):**
-- [[Alpha_Integ]]
-- [[Alpha_Integ_HistData]]
-- [[Jazeera_Integ]]
-- [[Spartan_SAP_Integ_UpdateCustomerChqList]]
-- [[Yolande_Integ]]
 
 **Writes (4):**
-- [[Alpha_Integ]]
-- [[Alpha_Integ_HistData]]
-- [[Spartan_SAP_Integ_UpdateCustomerChqList]]
-- [[Yolande_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

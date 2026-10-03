@@ -12,8 +12,31 @@ last_verified: 2026-08-05
 # BankDepositDF
 
 ## Business Purpose
+Line-item detail for bank deposit vouchers (`BankDepositHF`). Records the individual collection receipts or financial transactions (`RecYear`, `RecType`, `RecNo`) that are included in a bulk bank deposit, along with the deposited amount (`RecAmount`).
+- **Header Link**: Pairs with `BankDepositHF` on `VouYear` and `VouNo`.
+- **Receipt Link**: Connects to collection receipts (`Receipts`) via `RecYear` and `RecNo` (with `RecType = TransactionTypeID`).
 
-Back-office table in Olives_BO.
+## Chatbot semantics
+(Query `t.BankDepositDF` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| سندات القبض المودعة بالبنك | `RecNo`, `RecYear`, `RecAmount` | `VouYear = @DepositYear AND VouNo = @DepositNo` |
+| مبالغ السندات المودعة | `RecAmount` | قيمة السند المدرج في الإيداع البنكي |
+| السند ورقم الإيداع | Join `t.BankDepositHF` | `df.VouYear = h.VouYear AND df.VouNo = h.VouNo` |
+
+## Grain & keys
+- **Grain**: One row per collection receipt included within a bank deposit voucher (`VouYear`, `VouNo`, `RecYear`, `RecType`, `RecNo`).
+- **Composite PK**: `CompanyID`, `VouYear`, `VouNo`, `RecYear`, `RecType`, `RecNo`.
+- **Tenant Key**: `CompanyID`.
+
+## Pipeline
+Mobile Salesman App → `OT_ImportBankDeposit` → `BankDepositHF` + `BankDepositDF` → Accounting Reconciliation.
+
+## Related
+- [[BankDepositHF]]
+- [[Receipts]]
+- [[Checks]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

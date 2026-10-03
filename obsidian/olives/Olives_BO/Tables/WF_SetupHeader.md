@@ -10,16 +10,38 @@ referenced_by:
   - [[Pro_WF_SetupHeader]]
   - [[WF_AddWorkFlowLevelOne_Promotions]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 related_workflows:
   - Workflow-Approval-Setup
 ---
 # WF_SetupHeader
 
-
 ## Business Purpose
+The workflow approval rule configuration header — defines approval chains for each request type (`FunctionID`). Specifies the applicant source (`FromType`, `FromID`), total number of required approval levels (`LevelCount`), and whether the workflow rule is active (`IsSuspended`). The specific approver positions for each level live in [[WF_SetupDetails]]. Queryable via `t.WF_SetupHeader`.
 
-Workflow approval process definitions — levels, approvers, and conditions.
+## Chatbot semantics
+(Query `t.WF_SetupHeader` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| إعدادات وسلسلة موافقات الطلب | `FunctionID`, `LevelCount` | Filter by `FunctionID` | Shows how many levels are required |
+| تفاصيل الرتب والموافقين | Join `t.WF_SetupDetails` | `d.SetupID = h.AutoID` | Position assigned to each approval level |
+| سلسلة موافقات نشطة | `IsSuspended` | `IsSuspended = 0` | Active workflow definition |
+
+## Grain & keys
+- **PK**: `AutoID` (bigint identity)
+- **Tenant key**: `CompanyID`
+- **FK**: `FunctionID` → [[WF_Functions]](ID)
+
+## Pipeline
+Configured in Back Office workflow setup screens (`Pro_WF_SetupHeader`). Evaluated by `WF_AddWorkFlowLevelOne` when creating new requests to determine how many `WF_SubLog` rows to generate.
+
+## Related
+- [[WF_SetupDetails]]
+- [[WF_Functions]]
+- [[WF_MasterLog]]
+- [[WF_SubLog]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -57,4 +79,3 @@ Chatbot queries `t.WF_SetupHeader` / `t.WF_SetupDetails` only — auto-scoped by
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[Shared/Runbooks/Credit-Limit-Block]]

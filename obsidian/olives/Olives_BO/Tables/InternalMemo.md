@@ -7,7 +7,6 @@ tags: [#backoffice]
 foreign_keys:
 referenced_by:
   - [[InternalMemo_Insert]]
-  - [[OLIVES_INTEG_INTERNALMEMO]]
   - [[Pro_InternalMemo]]
   - [[Rpt_IntenalMemo]]
 support_relevance: high
@@ -51,7 +50,6 @@ AutoID
 
 **Reads (4):**
 - [[InternalMemo_Insert]]
-- [[OLIVES_INTEG_INTERNALMEMO]]
 - [[Pro_InternalMemo]]
 - [[Rpt_IntenalMemo]]
 

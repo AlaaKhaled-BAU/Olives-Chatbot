@@ -21,10 +21,6 @@ referenced_by:
   - [[PRO_GETCUSTVISITEXITNOTES]]
   - [[PRO_GETRECEIPTSFOREMAIL]]
   - [[PRO_GETVOIDEDRECEIPTSFOREMAIL]]
-  - [[Phenix_Sukhtian_Integ_CloseSession]]
-  - [[Phenix_Sukhtian_Integ_GetDataFromAPI]]
-  - [[Phenix_Sukhtian_Integ_OpenSession]]
-  - [[Phenix_Sukhtian_Integ_WithLog]]
   - [[Pro_AutoBasketLoadItems]]
   - [[Pro_CalcSalespersonItemBalance]]
   - [[Pro_CheckPromotionTarget]]
@@ -51,7 +47,6 @@ referenced_by:
   - [[Pro_TransfersOrdersHeaders]]
   - [[Pro_Users]]
   - [[Rpt_SalesPersonItemBonusTarget]]
-  - [[Rpt_SalesPersonItemBonusTarget_Tablet]]
   - [[WF_AddWorkFlowLevelOne]]
   - [[WF_AddWorkFlowLevelOne_Promotions]]
   - [[WF_AddWorkFlowLevels]]
@@ -152,6 +147,9 @@ System-wide configuration flags controlling feature toggles, behavior, and ERP i
 | MobileAppVersion | varchar | YES |  |  |  |
 | TaxPriceList | int | YES |  |  |  |
 | UseWFReAssign | bit | YES |  |  |  |
+| ShowExceptionsIssuesDashBoard | bit | YES |  |  |  |
+| EnableVerificationSanadInWF | bit | YES |  |  |  |
+
 ## Primary Key
 CompanyID
 ## Foreign Keys
@@ -172,10 +170,6 @@ CompanyID -> [[Companies]](ID)
 - [[PRO_GETCUSTVISITEXITNOTES]]
 - [[PRO_GETRECEIPTSFOREMAIL]]
 - [[PRO_GETVOIDEDRECEIPTSFOREMAIL]]
-- [[Phenix_Sukhtian_Integ_CloseSession]]
-- [[Phenix_Sukhtian_Integ_GetDataFromAPI]]
-- [[Phenix_Sukhtian_Integ_OpenSession]]
-- [[Phenix_Sukhtian_Integ_WithLog]]
 - [[Pro_AutoBasketLoadItems]]
 - [[Pro_CalcSalespersonItemBalance]]
 - [[Pro_CheckPromotionTarget]]
@@ -202,7 +196,6 @@ CompanyID -> [[Companies]](ID)
 - [[Pro_TransfersOrdersHeaders]]
 - [[Pro_Users]]
 - [[Rpt_SalesPersonItemBonusTarget]]
-- [[Rpt_SalesPersonItemBonusTarget_Tablet]]
 - [[WF_AddWorkFlowLevelOne]]
 - [[WF_AddWorkFlowLevelOne_Promotions]]
 - [[WF_AddWorkFlowLevels]]
@@ -224,7 +217,6 @@ Typical business table
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[Shared/Runbooks/Login-Device-Issues]]
 
 ## Cross-Database
 

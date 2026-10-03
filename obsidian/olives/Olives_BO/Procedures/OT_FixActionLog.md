@@ -21,8 +21,9 @@ last_verified: 2026-07-05
 
 
 ## Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
-Automatically documented procedure in the Olives_BO database. Reads LogAction, LogActionTransaction, OrdersHeaders, Receipts, SalesPersons, TransactionsHeaders. Writes LogActionTransaction. Invoked by 6 procedure(s). See Tables Read/Written and Callers/Callees below for the full dependency map.
+Maintenance and reconciliation procedure in Olives_BO that repairs and links missing action log entries with back-office transactional documents.
+- **Trigger**: Automatically executed prior to running combined supervisor route and performance reports (such as `Rpt_SalesmanDaySummaryCombine` and `Rpt_RouteSummaryBySalesman*`).
+- **Outcome**: Reconciles orphan or unlinked document actions in `LogActionTransaction` against actual posted headers in `OrdersHeaders`, `TransactionsHeaders`, and `Receipts` for a given salesman and date range, ensuring visit durations and document counts are aligned before reporting.
 ## Parameters
 - @CompanyID int
 - @SalesmanNo int

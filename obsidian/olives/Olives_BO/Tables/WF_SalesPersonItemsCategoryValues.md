@@ -5,6 +5,7 @@ name: WF_SalesPersonItemsCategoryValues
 schema: dbo
 tags: [#auth, #backoffice, #inventory, #reference, #sales, #workflow]
 foreign_keys:
+
 referenced_by:
   - [[Pro_WF_SalesPersonItemsCategoryValues]]
 support_relevance: high
@@ -21,9 +22,11 @@ Workflow configuration or log table for approval process management.
 | Column | Type | Nullable | PK | FK | References |
 |--------|------|----------|----|----|------------|
 | CompanyID | smallint | NO | ✓ |  |  |
-| ItemCode | nvarchar | YES | ✓ |  |  |
+| ItemCode | nvarchar | NO | ✓ |  |  |
 | SalesPersonID | int | NO | ✓ |  |  |
 | AllowValue | float | YES |  |  |  |
+| IsSuspended | bit | YES |  |  |  |
+
 ## Primary Key
 CompanyID
 ItemCode
@@ -50,4 +53,3 @@ Typical business table
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[Shared/Runbooks/Login-Device-Issues]]

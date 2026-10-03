@@ -9,17 +9,8 @@ foreign_keys:
   - [[Items]]
   - [[Positions]]
 referenced_by:
-  - [[AcBack_Integ_GetItemBalance]]
-  - [[Alpha_GetItemBalance]]
-  - [[Bajali_SAP_Integ]]
-  - [[Bonanza_Integ_Esmint]]
   - [[DiagnosticTools_CheckSalespersonConfiguration]]
-  - [[ECO_Land_SAP_Integ]]
-  - [[GArrow_SAP_Integ]]
-  - [[IscoJordan_Integ_GetItemsBalance]]
-  - [[Izhiman_SAP_Integ]]
   - [[OT_SendSalesmanData]]
-  - [[PrestoSoft_Integ_GetItemBalance]]
   - [[Pro_CustomersItemsAssigment]]
   - [[Pro_Items]]
   - [[Pro_ReturnlineManagerApproval]]
@@ -28,7 +19,6 @@ referenced_by:
   - [[Pro_SalesPersonStockTackingDetails]]
   - [[Pro_TransfersOrdersDetails]]
   - [[Pro_TransfersOrders_Auto]]
-  - [[Retco_Integ_ItemBal]]
   - [[Rpt_DeliveryBatchHeader]]
   - [[Rpt_ItemsCustomersNotSold]]
   - [[Rpt_ItemsCustomersNotSoldBySelection]]
@@ -39,10 +29,7 @@ referenced_by:
   - [[Rpt_SalesPersonStockTackingDetails]]
   - [[Rpt_StockTakingReport]]
   - [[Rpt_TransfersOrders]]
-  - [[SAP_Naouri_Integ]]
   - [[X3_AssignItems]]
-  - [[X3_INTEGRATIONPROMOTION_WITHLOG]]
-  - [[X3_INTEG_ASSIGNITEMS]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -50,9 +37,40 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+Salesman item portfolio / catalog assignment table in Olives_BO. Restricts or designates which specific products (`ItemCode`) a sales position or representative (`PositionsID`) is authorized to sell, load, or distribute on their mobile device.
+- **Selective Distribution**: Used in multi-division companies where distinct sales forces (e.g. Food vs. Non-Food, Pharma vs. Personal Care, Van vs. Pre-sales) only handle a specific subset of the overall 18,000+ item catalog.
+- **Mobile Filter**: Handheld devices sync and display only items assigned to the salesman's active position, preventing salesmen from selling unauthorized categories.
+- **Suspension Flag**: `IsSuspended = 1` temporarily revokes a salesman's permission to sell that specific item.
 
-Core data table in the Back Office (server-side) — stores salespersonitemsassignment records.
+## Chatbot semantics
+(Query `t.SalesPersonItemsAssignment` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| الأصناف المصرح بها للمندوب / بورتفوليو المندوب | `PositionsID`, `ItemCode`, `IsSuspended` | `PositionsID = @PositionID AND IsSuspended = 0` |
+| هل المندوب مخول ببيع هذا الصنف | `PositionsID`, `ItemCode` | `PositionsID = @PositionID AND ItemCode = @ItemCode AND IsSuspended = 0` |
+| أصناف موقوفة عن مندوب معين | `IsSuspended` | `PositionsID = @PositionID AND IsSuspended = 1` |
+| اسم الصنف وتفاصيله المخصصة | Join `t.Items` | `a.ItemCode = i.ItemCode` |
+
+**Do not confuse with:**
+- `t.CustomersItemsAssigment` (restriction of items permitted for sale to a specific customer).
+- `t.SalesPersonItemsBalance` (actual physical quantity currently on the van).
+- `t.Items` (master catalog of all products).
+
+## Grain & keys
+- **Grain**: One row per position and assigned item (`PositionsID`, `ItemCode`).
+- **Composite PK**: `CompanyID`, `PositionsID`, `ItemCode`.
+- **Tenant Key**: `CompanyID`.
+
+## Pipeline
+Back Office Product Assignment Screen (`Pro_SalesPersonItemsAssignment`) → `SalesPersonItemsAssignment` → Synced to mobile handheld devices via `OT_SendSalesmanData`.
+
+## Related
+- [[Positions]]
+- [[SalesPersons]]
+- [[Items]]
+- [[CustomersItemsAssigment]]
+- [[SalesPersonItemsBalance]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -73,13 +91,8 @@ CompanyID, PositionsID -> [[Positions]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (30):**
-- [[AcBack_Integ_GetItemBalance]]
-- [[Alpha_GetItemBalance]]
-- [[Bonanza_Integ_Esmint]]
 - [[DiagnosticTools_CheckSalespersonConfiguration]]
-- [[IscoJordan_Integ_GetItemsBalance]]
 - [[OT_SendSalesmanData]]
-- [[PrestoSoft_Integ_GetItemBalance]]
 - [[Pro_CustomersItemsAssigment]]
 - [[Pro_Items]]
 - [[Pro_ReturnlineManagerApproval]]
@@ -88,7 +101,6 @@ CompanyID, PositionsID -> [[Positions]](CompanyID, ID)
 - [[Pro_SalesPersonStockTackingDetails]]
 - [[Pro_TransfersOrdersDetails]]
 - [[Pro_TransfersOrders_Auto]]
-- [[Retco_Integ_ItemBal]]
 - [[Rpt_DeliveryBatchHeader]]
 - [[Rpt_ItemsCustomersNotSold]]
 - [[Rpt_ItemsCustomersNotSoldBySelection]]
@@ -99,20 +111,11 @@ CompanyID, PositionsID -> [[Positions]](CompanyID, ID)
 - [[Rpt_SalesPersonStockTackingDetails]]
 - [[Rpt_StockTakingReport]]
 - [[Rpt_TransfersOrders]]
-- [[SAP_Naouri_Integ]]
 - [[X3_AssignItems]]
-- [[X3_INTEGRATIONPROMOTION_WITHLOG]]
-- [[X3_INTEG_ASSIGNITEMS]]
 
 **Writes (8):**
-- [[Bajali_SAP_Integ]]
-- [[Bonanza_Integ_Esmint]]
-- [[ECO_Land_SAP_Integ]]
-- [[GArrow_SAP_Integ]]
-- [[Izhiman_SAP_Integ]]
 - [[OT_SendSalesmanData]]
 - [[Pro_SalesPersonItemsAssignment]]
-- [[SAP_Naouri_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

@@ -6,8 +6,6 @@ schema: dbo
 tags: [#backoffice, #customer, #integration]
 foreign_keys:
 referenced_by:
-  - [[GP_Integ_GetCreditInvoice_Zumot]]
-  - [[GP_Integ_GetCreditInvoice_Zumot_Aqaba]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -36,8 +34,6 @@ NewInvID
 ## Impact / Procedures Using This Table
 
 **Reads (2):**
-- [[GP_Integ_GetCreditInvoice_Zumot]]
-- [[GP_Integ_GetCreditInvoice_Zumot_Aqaba]]
 
 **Writes (0):**
 _None_

@@ -35,7 +35,6 @@ Referenced by 2 procedure(s): 1 writing, 1 reading.
 **Writers (1):**
 - [[Pro_DiscountEarlyPayByInvoiceRef]]
 **Readers (1):**
-- [[OSFA_DB/Procedures/OT_AppService|OT_AppService]]
 
 ## Estimated Size / Volatility
 ~2 rows (estimate from sys.partitions).

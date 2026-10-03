@@ -8,14 +8,8 @@ foreign_keys:
   - [[Companies]]
   - [[Items]]
 referenced_by:
-  - [[Awael_Integ_BatchesQty]]
-  - [[Awael_Integ_HisInvoices]]
-  - [[Awtar_Integration_WithLog]]
-  - [[Niroukh_Integration_WithLog]]
   - [[Pro_OrdersHeaders]]
   - [[Pro_ReturnOrdersHeaders]]
-  - [[RamPharm_SAP_Integ]]
-  - [[X3_Integ_SOA_Batches]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -48,22 +42,10 @@ CompanyID, ItemNo -> [[Items]](CompanyID, ItemCode)
 ## Impact / Procedures Using This Table
 
 **Reads (8):**
-- [[Awael_Integ_BatchesQty]]
-- [[Awael_Integ_HisInvoices]]
-- [[Awtar_Integration_WithLog]]
-- [[Niroukh_Integration_WithLog]]
 - [[Pro_OrdersHeaders]]
 - [[Pro_ReturnOrdersHeaders]]
-- [[RamPharm_SAP_Integ]]
-- [[X3_Integ_SOA_Batches]]
 
 **Writes (6):**
-- [[Awael_Integ_BatchesQty]]
-- [[Awael_Integ_HisInvoices]]
-- [[Awtar_Integration_WithLog]]
-- [[Niroukh_Integration_WithLog]]
-- [[RamPharm_SAP_Integ]]
-- [[X3_Integ_SOA_Batches]]
 
 ## Estimated Size / Volatility
 Typical business table

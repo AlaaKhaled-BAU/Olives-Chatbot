@@ -6,10 +6,8 @@ schema: dbo
 tags: [#backoffice, #customer, #inventory]
 foreign_keys:
 referenced_by:
-  - [[ABS_Integration_Sokhtian_Aging]]
   - [[RptOnlineRpt_CustAging]]
   - [[Rpt_CustomerAccountStatement_Sukhtian]]
-  - [[Spartan_SAP_Integ]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -44,13 +42,10 @@ CustomerID
 ## Impact / Procedures Using This Table
 
 **Reads (4):**
-- [[ABS_Integration_Sokhtian_Aging]]
 - [[RptOnlineRpt_CustAging]]
 - [[Rpt_CustomerAccountStatement_Sukhtian]]
-- [[Spartan_SAP_Integ]]
 
 **Writes (1):**
-- [[ABS_Integration_Sokhtian_Aging]]
 
 ## Estimated Size / Volatility
 Typical business table

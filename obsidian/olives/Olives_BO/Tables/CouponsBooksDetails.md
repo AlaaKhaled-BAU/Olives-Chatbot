@@ -12,7 +12,6 @@ referenced_by:
   - [[OT_ImportSalesInvoices]]
   - [[Pro_CouponsBooksDetails]]
   - [[Pro_CouponsBooksHeaders]]
-  - [[SMS_ZumotPromoCodes]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -52,13 +51,11 @@ CompanyID, PromotionID -> [[PromotionsHeaders]](CompanyID, ID)
 **Reads (3):**
 - [[Pro_CouponsBooksDetails]]
 - [[Pro_CouponsBooksHeaders]]
-- [[SMS_ZumotPromoCodes]]
 
 **Writes (4):**
 - [[OT_ImportSalesInvoices]]
 - [[Pro_CouponsBooksDetails]]
 - [[Pro_CouponsBooksHeaders]]
-- [[SMS_ZumotPromoCodes]]
 
 ## Estimated Size / Volatility
 Typical business table

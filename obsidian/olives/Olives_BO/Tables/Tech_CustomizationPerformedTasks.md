@@ -47,7 +47,6 @@ Typical business table
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[Glossary]]
 - [[JoTaxResult]]
 - [[CustomersItemsLog]]
 - [[CatalogMedia]]

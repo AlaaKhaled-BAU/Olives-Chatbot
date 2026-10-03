@@ -44,12 +44,17 @@ Core data table in the Back Office (server-side) — stores customerstocktacking
 | CompanyID | smallint | NO | ✓ | ✓ | [[ItemsUnits]] |
 | OrderYear | smallint | NO | ✓ | ✓ | [[CustomerStockTacking]] |
 | OrderNo | int | NO | ✓ | ✓ | [[CustomerStockTacking]] |
-| ItemCode | nvarchar | YES | ✓ | ✓ | [[Items]] |
-| UnitID | nvarchar | YES | ✓ | ✓ | [[ItemsUnits]] |
+| ItemCode | nvarchar | NO | ✓ | ✓ | [[Items]] |
+| UnitID | nvarchar | NO | ✓ | ✓ | [[ItemsUnits]] |
 | Quantity | float | YES |  |  |  |
 | ItemImage | image | YES |  |  |  |
 | ExpDate | smalldatetime | YES |  |  |  |
 | Notes | nvarchar | YES |  |  |  |
+| SP_Qty | float | YES |  |  |  |
+| ItemStatus | nvarchar | YES |  |  |  |
+| price | nvarchar | YES |  |  |  |
+| no_faces | int | YES |  |  |  |
+
 ## Primary Key
 CompanyID
 OrderYear

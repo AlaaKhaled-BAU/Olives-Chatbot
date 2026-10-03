@@ -6,20 +6,8 @@ schema: dbo
 tags: [#backoffice, #billing, #log]
 foreign_keys:
 referenced_by:
-  - [[ABS_Integration_Sokhtian]]
-  - [[Alpha_Integ]]
-  - [[Alpha_Integ_GoldenArrow]]
-  - [[Alpha_Integ_HistData]]
-  - [[Alpha_updateRoute]]
-  - [[Awael_Integ_HisInvoices]]
   - [[BO_Online_RptCustomerSalesTargetDetails]]
-  - [[Bajali_SAP_Integ]]
-  - [[Falcons_Integ]]
-  - [[GArrow_SAP_Integ]]
-  - [[Jazeera_Integ]]
-  - [[NPF_IntegrationHisData]]
   - [[NiroukhMonthlyandQuarter]]
-  - [[Niroukh_SalesPerTeamQ]]
   - [[OT_SendCompData]]
   - [[OT_SendSalesmanData]]
   - [[Pro_ReturnOrdersHeaders]]
@@ -35,10 +23,7 @@ referenced_by:
   - [[Rpt_CustomerMonthlySalesByArea]]
   - [[Rpt_CustomerSalesByItems]]
   - [[Rpt_MonthlyCompareSalesTargetWithSales]]
-  - [[Rpt_MonthlyCompareSalesTargetWithSales_Spartan]]
   - [[Rpt_NiroukhMonths_Q_Target]]
-  - [[Rpt_Niroukh_LocationTarget]]
-  - [[Rpt_Niroukh_SalesPerTeamQ]]
   - [[Rpt_SalesmanSalesByItems]]
   - [[Rpt_SalesmanSalesTotal]]
   - [[Rpt_SalesmanSalesTotal_BO]]
@@ -47,11 +32,7 @@ referenced_by:
   - [[Rpt_TargetSpartan]]
   - [[Rpt_TowerTargets]]
   - [[Rpt_newNiroukh_monthTarget_comm]]
-  - [[SAMA_SAP_Integ]]
   - [[SalesmanInfo]]
-  - [[Tablet_GetInvoiceHistoryFromERP]]
-  - [[Tablet_GetPendingOrdersTotals]]
-  - [[X3_Integ_HistData]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -59,9 +40,39 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+Historical invoice and sales archive header table in Olives_BO. Stores imported historical sales invoices, legacy transactions from external ERPs, or archived past-year transactions (`VouYear`, `VouNo`, `VouDate`, `SalesmanNo`, `CustomerNo`).
+- **Difference from `TransactionsHeaders`**:
+  - `TransactionsHeaders` is the **live, active, operational** transaction header table where all current-year van sales, credit invoices, and return invoices are generated and modified by salesmen and the back-office billing engine.
+  - `InvoiceHistoryHF` is an **historical/archival read-only snapshot repository** used primarily to:
+    1. Calculate historical sales comparisons and multi-year KPI growth trends (e.g. `Rpt_MonthlyCompareSalesTargetWithSales`, comparing 2026 vs. 2025/2024).
+    2. Sync historical purchases down to salesmen tablets via `OT_SendSalesmanData` so salesmen can view past purchase history on the road without bogging down the live transactional engine.
+- **Master Discriminator (`VouType`)**: `1` = Historical Sales Invoice, `2` = Historical Return Invoice.
 
-Core data table in the Back Office (server-side) — stores invoicehistoryhf records.
+## Chatbot semantics
+(Query `t.InvoiceHistoryHF` — scoped by session CompNo/CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| فواتير السنوات السابقة / الأرشيف التاريخي | `VouNo`, `VouYear`, `VouDate`, `CustomerNo`, `SalesmanNo` | `CustomerNo = @CustNo AND VouYear < @CurrentYear` |
+| مقارنة مبيعات العام الحالي مع السابق | Aggregate with `TransactionsHeaders` | `InvoiceHistoryHF` للسنوات السابقة و `TransactionsHeaders` للعام الحالي |
+| تفاصيل أصناف الفاتورة التاريخية | Join `t.InvoiceHistoryDF` | `df.VouYear = h.VouYear AND df.VouNo = h.VouNo AND df.VouType = h.VouType` |
+
+**CRITICAL RULE FOR CHATBOT:**
+For any questions regarding **current transactions, today's sales, this month's invoices, or live returns**, ALWAYS query `t.TransactionsHeaders`. Query `t.InvoiceHistoryHF` only when specifically asked about historical archives, legacy ERP transactions, or multi-year sales history.
+
+## Grain & keys
+- **Grain**: One row per historical invoice voucher header (`CompNo`, `VouYear`, `VouNo`, `VouType`).
+- **Composite PK**: `CompNo`, `VouYear`, `VouNo`, `VouType`.
+- **Tenant Key**: `CompNo`.
+
+## Pipeline
+Legacy ERP Migration / Historical Yearly Archival → `InvoiceHistoryHF` + `InvoiceHistoryDF` → Synced to mobile devices for past history lookups.
+
+## Related
+- [[InvoiceHistoryDF]]
+- [[TransactionsHeaders]]
+- [[Customers]]
+- [[SalesPersons]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -93,20 +104,8 @@ VouType
 ## Impact / Procedures Using This Table
 
 **Reads (45):**
-- [[ABS_Integration_Sokhtian]]
-- [[Alpha_Integ]]
-- [[Alpha_Integ_GoldenArrow]]
-- [[Alpha_Integ_HistData]]
-- [[Alpha_updateRoute]]
-- [[Awael_Integ_HisInvoices]]
 - [[BO_Online_RptCustomerSalesTargetDetails]]
-- [[Bajali_SAP_Integ]]
-- [[Falcons_Integ]]
-- [[GArrow_SAP_Integ]]
-- [[Jazeera_Integ]]
-- [[NPF_IntegrationHisData]]
 - [[NiroukhMonthlyandQuarter]]
-- [[Niroukh_SalesPerTeamQ]]
 - [[OT_SendCompData]]
 - [[OT_SendSalesmanData]]
 - [[Pro_ReturnOrdersHeaders]]
@@ -122,10 +121,7 @@ VouType
 - [[Rpt_CustomerMonthlySalesByArea]]
 - [[Rpt_CustomerSalesByItems]]
 - [[Rpt_MonthlyCompareSalesTargetWithSales]]
-- [[Rpt_MonthlyCompareSalesTargetWithSales_Spartan]]
 - [[Rpt_NiroukhMonths_Q_Target]]
-- [[Rpt_Niroukh_LocationTarget]]
-- [[Rpt_Niroukh_SalesPerTeamQ]]
 - [[Rpt_SalesmanSalesByItems]]
 - [[Rpt_SalesmanSalesTotal]]
 - [[Rpt_SalesmanSalesTotal_BO]]
@@ -135,17 +131,8 @@ VouType
 - [[Rpt_TowerTargets]]
 - [[Rpt_newNiroukh_monthTarget_comm]]
 - [[SalesmanInfo]]
-- [[Tablet_GetInvoiceHistoryFromERP]]
-- [[Tablet_GetPendingOrdersTotals]]
-- [[X3_Integ_HistData]]
 
 **Writes (6):**
-- [[Alpha_Integ_HistData]]
-- [[Alpha_updateRoute]]
-- [[Awael_Integ_HisInvoices]]
-- [[Bajali_SAP_Integ]]
-- [[GArrow_SAP_Integ]]
-- [[SAMA_SAP_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

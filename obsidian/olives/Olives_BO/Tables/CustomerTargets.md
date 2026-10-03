@@ -10,10 +10,8 @@ foreign_keys:
   - [[TargetsTypes]]
 referenced_by:
   - [[BO_Online_RptCustomerSalesTargetDetails]]
-  - [[Niroukh_SalesPerTeamQ]]
   - [[Pro_CustomerTargets]]
   - [[Rpt_MonthlyCompareSalesTargetWithCustomer]]
-  - [[Rpt_Niroukh_SalesPerTeamQ]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -46,10 +44,8 @@ TargetTypeID -> [[TargetsTypes]](ID)
 
 **Reads (5):**
 - [[BO_Online_RptCustomerSalesTargetDetails]]
-- [[Niroukh_SalesPerTeamQ]]
 - [[Pro_CustomerTargets]]
 - [[Rpt_MonthlyCompareSalesTargetWithCustomer]]
-- [[Rpt_Niroukh_SalesPerTeamQ]]
 
 **Writes (1):**
 - [[Pro_CustomerTargets]]

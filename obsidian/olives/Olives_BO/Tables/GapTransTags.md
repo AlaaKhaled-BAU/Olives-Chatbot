@@ -61,7 +61,6 @@ Typical business table
 - [[GapTransHeaders]]
 - [[GapTransTimeLine]]
 - [[GapTags]]
-- [[Glossary]]
 ## Cross-Database
 
 See also: [[OSFA_DB/Tables/GapTransTags|FO GapTransTags]]

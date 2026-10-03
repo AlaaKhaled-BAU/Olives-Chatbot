@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #order, #sales]
 foreign_keys:
 referenced_by:
-  - [[Integ_Normal_DeliveryOrder]]
   - [[OT_ImportSalesInvoices]]
   - [[OT_SendCustomersInfo]]
   - [[Pro_DeliveryCar]]
@@ -56,7 +55,6 @@ OrderNo
 ## Impact / Procedures Using This Table
 
 **Reads (6):**
-- [[Integ_Normal_DeliveryOrder]]
 - [[OT_SendCustomersInfo]]
 - [[Pro_DeliveryCar]]
 - [[Pro_DeliveryCarSummaryReport]]
@@ -64,7 +62,6 @@ OrderNo
 - [[Rpt_OrdersDeliveryDrivers]]
 
 **Writes (3):**
-- [[Integ_Normal_DeliveryOrder]]
 - [[OT_ImportSalesInvoices]]
 - [[Pro_DeliveryCar]]
 

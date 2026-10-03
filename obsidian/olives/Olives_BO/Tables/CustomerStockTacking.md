@@ -44,7 +44,7 @@ Core data table in the Back Office (server-side) — stores customerstocktacking
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
 |--------|------|----------|----|----|------------|
-| CompanyID | smallint | NO | ✓ | ✓ | [[SalesPersons]] |
+| CompanyID | smallint | NO | ✓ | ✓ | [[Customers]] |
 | OrderYear | smallint | NO | ✓ |  |  |
 | OrderNo | int | NO | ✓ |  |  |
 | OrderDate | smalldatetime | YES |  |  |  |
@@ -61,6 +61,8 @@ Core data table in the Back Office (server-side) — stores customerstocktacking
 | ServerDate | smalldatetime | YES |  |  |  |
 | TabletSysID | varchar | YES |  |  |  |
 | LocationLineID | int | YES |  |  |  |
+| IsLinkedToSalesOrder | bit | YES |  |  |  |
+
 ## Primary Key
 CompanyID
 OrderYear

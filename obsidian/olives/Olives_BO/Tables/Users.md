@@ -24,7 +24,6 @@ referenced_by:
   - [[Pro_Users]]
   - [[Rpt_IntenalMemo]]
   - [[Rpt_SecurityLog]]
-  - [[Sama_GPS_Integ]]
 support_relevance: high
 last_verified: 2026-07-05
 related_workflows:
@@ -78,7 +77,6 @@ UserID
 - [[Pro_Users]]
 - [[Rpt_IntenalMemo]]
 - [[Rpt_SecurityLog]]
-- [[Sama_GPS_Integ]]
 
 **Writes (1):**
 - [[Pro_Users]]
@@ -97,4 +95,3 @@ Typical business table
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
 - [[Olives_BO/Tables/UsersGroupsLink]]
-- [[Shared/Runbooks/Login-Device-Issues]]

@@ -13,14 +13,35 @@ referenced_by:
   - [[WF_AddWorkFlowLevelOne_Promotions]]
   - [[WF_AddWorkFlowLevels]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 ---
 # WF_PositionsVer
 
-
 ## Business Purpose
+The workflow position version cache table — tracks the synchronization version (`WFVer`) of approval hierarchies for each position (`PositionID`). When workflow setup changes or a new request level is created, the version counter increments so that mobile devices and supervisor tablets know their inbox setup must refresh. Queryable via `t.WF_PositionsVer`.
 
-Workflow configuration or log table for approval process management.
+## Chatbot semantics
+(Query `t.WF_PositionsVer` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| نسخة إعدادات الموافقات للوظيفة | `PositionID`, `WFVer` | Direct filter | Version number of position workflow |
+| تحديث إعدادات التابلت | `WFVer` | Monotonically increasing counter | Trigger for tablet inbox sync |
+
+## Grain & keys
+- **Composite PK**: (`CompanyID`, `PositionID`)
+- **Tenant key**: `CompanyID`
+- **FK**: `PositionID` → [[Positions]](ID)
+
+## Pipeline
+Updated by `WF_AddWorkFlowLevelOne` and `WF_AddWorkFlowLevels` when approval rows are generated. Read by `OT_SendSalesmanData` during mobile sync.
+
+## Related
+- [[Positions]]
+- [[WF_SubLog]]
+- [[WF_SetupHeader]]
+- [[WF_SetupDetails]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

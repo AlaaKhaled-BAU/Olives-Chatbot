@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #billing, #legal]
 foreign_keys:
 referenced_by:
-  - [[JoTax_Integ_SendTransaction]]
   - [[Pro_JoTaxApi]]
   - [[Pro_JoTaxApiFromOSFA]]
   - [[Pro_JoTaxApiFromOSFA____]]
@@ -35,7 +34,6 @@ SettingKey
 ## Impact / Procedures Using This Table
 
 **Reads (4):**
-- [[JoTax_Integ_SendTransaction]]
 - [[Pro_JoTaxApi]]
 - [[Pro_JoTaxApiFromOSFA]]
 - [[Pro_JoTaxApiFromOSFA____]]

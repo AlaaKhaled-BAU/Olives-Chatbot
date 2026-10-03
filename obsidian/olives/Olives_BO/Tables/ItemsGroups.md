@@ -34,9 +34,6 @@ CompanyID ID
 
 Referenced by 3 procedure(s): 0 writing, 3 reading.
 **Readers (3):**
-- [[Bisan_Integration]]
-- [[MeatLand_Integration]]
-- [[MeatLand_Integrationnew]]
 
 ## Estimated Size / Volatility
 ~3 rows (estimate from sys.partitions).

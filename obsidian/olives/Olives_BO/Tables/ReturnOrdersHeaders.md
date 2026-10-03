@@ -12,18 +12,11 @@ foreign_keys:
   - [[RoutesInformation]]
   - [[SalesPersons]]
 referenced_by:
-  - [[Alpha_Integ_SendReturnOrder]]
-  - [[Awtar_Integ_SendReturnOrder]]
-  - [[Bajali_SAP_Integ]]
   - [[ConvertReturnOrderToInvoiceDelivery]]
   - [[DEMOSALESPERSON]]
   - [[DEMOSALESPERSON2]]
-  - [[ECO_Land_SAP_Integ]]
-  - [[GArrow_SAP_Integ]]
-  - [[Niroukh_Integ_SendReturnOrder]]
   - [[OT_ImportActionLog]]
   - [[OT_ImportReturnOrder]]
-  - [[PrestoSoft_Integ_SendReturnOrders]]
   - [[Pro_CompanyParameters]]
   - [[Pro_ReturnOrdersHeaders]]
   - [[Rpt_CustomerReturnOrdersDetails]]
@@ -36,21 +29,47 @@ referenced_by:
   - [[Rpt_RouteSummaryBySalesman_Suktian_Draft]]
   - [[Rpt_TransactionDateAndTime]]
   - [[Rpt_TransactionsNotes]]
-  - [[SAP_Integ_SendReturnOrder_Karadsheh]]
   - [[WF_AddWorkFlowLevelOne]]
   - [[WF_AddWorkFlowLevels]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 related_workflows:
   - Return-Reversal-Workflow
 ---
 # ReturnOrdersHeaders
 
-
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+The return orders header table — stores customer return requests/orders created on mobile devices before warehouse receipt or approval. Corresponds to workflow `FunctionID = 22` ("Request To Approve Return Order"). Captures composite PK (`TransactionYear`, `TransactionNo`), customer (`CustomerID`), salesman (`SalesPersonID`), date (`OrderDate`), totals, and void flags (`IsVoid`). Queryable via `t.ReturnOrdersHeaders`.
 
-Core data table in the Back Office (server-side) — stores returnordersheaders records.
+## Chatbot semantics
+(Query `t.ReturnOrdersHeaders` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| طلبيات الإرجاع / المرتجع | `CustomerID`, `SalesPersonID`, `OrderDate` | Direct filters | Return order requests |
+| طلبيات غير ملغاة | `IsVoid` | `IsVoid = 0 OR IsVoid IS NULL` | Active return orders |
+| إجمالي قيمة طلب الإرجاع | `NetTotal` | Numeric | Net value of return order |
+| تفاصيل المواد المرتجعة | Join `t.ReturnOrdersDetails` | Join on (`TransactionYear`, `TransactionNo`) | Items, quantities, reasons |
+| ربط بطلب الموافقة على المرتجع | Join `t.WF_MasterLog` | `m.FunctionID = 22 AND TRY_CAST(m.Ref1 AS int) = r.TransactionYear AND TRY_CAST(m.Ref2 AS numeric) = r.TransactionNo` | Approval state of return order |
+
+**Do not confuse with:**
+- `TransactionsHeaders` (with `TransactionTypeID = 2`): Completed return *invoices* that credit the customer's ledger immediately. Return orders require approval before conversion to return invoices.
+
+## Grain & keys
+- **Composite PK**: (`CompanyID`, `TransactionYear`, `TransactionNo`)
+- **Tenant key**: `CompanyID`
+- **FKs**: `CustomerID` → [[Customers]](ID), `SalesPersonID` → [[SalesPersons]](ID), `RouteID` → [[RoutesInformation]](ID)
+
+## Pipeline (how rows get here)
+Created on mobile devices when returning goods → imported via `OT_ImportReturnOrders` → enters workflow (`FunctionID = 22`). Upon approval, converted to return invoice or processed by warehouse.
+
+## Related
+- [[ReturnOrdersDetails]]
+- [[TransactionsHeaders]]
+- [[Customers]]
+- [[SalesPersons]]
+- [[WF_MasterLog]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -113,14 +132,10 @@ CompanyID, SalesPersonID -> [[SalesPersons]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (20):**
-- [[Alpha_Integ_SendReturnOrder]]
-- [[Awtar_Integ_SendReturnOrder]]
 - [[ConvertReturnOrderToInvoiceDelivery]]
 - [[DEMOSALESPERSON]]
 - [[DEMOSALESPERSON2]]
-- [[Niroukh_Integ_SendReturnOrder]]
 - [[OT_ImportReturnOrder]]
-- [[PrestoSoft_Integ_SendReturnOrders]]
 - [[Pro_CompanyParameters]]
 - [[Rpt_CustomerReturnOrdersDetails]]
 - [[Rpt_ReturnOrder]]
@@ -132,20 +147,11 @@ CompanyID, SalesPersonID -> [[SalesPersons]](CompanyID, ID)
 - [[Rpt_RouteSummaryBySalesman_Suktian_Draft]]
 - [[Rpt_TransactionDateAndTime]]
 - [[Rpt_TransactionsNotes]]
-- [[SAP_Integ_SendReturnOrder_Karadsheh]]
 
 **Writes (13):**
-- [[Alpha_Integ_SendReturnOrder]]
-- [[Awtar_Integ_SendReturnOrder]]
-- [[Bajali_SAP_Integ]]
-- [[ECO_Land_SAP_Integ]]
-- [[GArrow_SAP_Integ]]
-- [[Niroukh_Integ_SendReturnOrder]]
 - [[OT_ImportActionLog]]
 - [[OT_ImportReturnOrder]]
-- [[PrestoSoft_Integ_SendReturnOrders]]
 - [[Pro_ReturnOrdersHeaders]]
-- [[SAP_Integ_SendReturnOrder_Karadsheh]]
 - [[WF_AddWorkFlowLevelOne]]
 - [[WF_AddWorkFlowLevels]]
 

@@ -7,21 +7,12 @@ tags: [#backoffice, #billing]
 foreign_keys:
   - [[Companies]]
 referenced_by:
-  - [[ABS_Integ_SendPayment_Jebrene]]
-  - [[ABS_Integ_SendPayment_Sokhtian]]
-  - [[Bajali_SAP_Integ]]
-  - [[ECO_Land_SAP_Integ]]
-  - [[GArrow_SAP_Integ]]
   - [[OT_ImportReceipts]]
   - [[OT_ImportSalesInvoices]]
-  - [[ProTech_Integration_SendPayment]]
-  - [[ProTech_Integration_SendSalesInvoice]]
   - [[Pro_Checks]]
   - [[Pro_ReceiptPaid]]
   - [[Pro_RptCashTotalOnline_Android]]
   - [[Pro_TransactionsHeaders]]
-  - [[Qetaf_Integ]]
-  - [[RamPharm_SAP_Integ]]
   - [[RptOnlineRpt_CustAging]]
   - [[Rpt_Cashier]]
   - [[Rpt_PrintCollectedReceiptByInvoice]]
@@ -29,10 +20,6 @@ referenced_by:
   - [[Rpt_SalesmanSalesRecStatment]]
   - [[Rpt_Salesman_Collections]]
   - [[Rpt_Salesman_TotalCollections]]
-  - [[SAMA_SAP_Integ]]
-  - [[SAP_Naouri_SendPayment_Integration]]
-  - [[SAP_Tyconz_Integ]]
-  - [[SAP_Tyconz_Integ_SendPayments]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -40,9 +27,39 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+Invoice settlement and payment allocation bridge table — connects collection receipts (`Receipts`) to specific sales invoices or credit transactions (`TransactionsHeaders`) that are settled by the payment.
+- **Join Mechanics**:
+  - `TransactionYear`, `TransactionNo`, `TransactionTypeID`: Identifies the collection receipt (`Receipts`).
+  - `PaidTransYear`, `PaidTransNo`, `PaidTransTypeID`: Identifies the settled invoice (`TransactionsHeaders` where `TransactionTypeID = PaidTransTypeID`, typically `1` for sales invoice).
+- **Payment Distribution**: Records the allocated payment portion (`PaidAmount`) applied against each specific invoice, along with cash settlement discounts (`DiscountAmount`, `DiscountPercent`).
+- **Reconciliation**: `IsManualReconciliation` indicates whether the payment was matched to invoices manually by an accountant or automatically at receipt capture.
 
-Core data table in the Back Office (server-side) — stores receipts paidtrans records.
+## Chatbot semantics
+(Query `t.Receipts_PaidTrans` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| الفواتير المسددة بالسند | `PaidTransNo`, `PaidTransYear`, `PaidAmount` | `TransactionYear = @ReceiptYear AND TransactionNo = @ReceiptNo` |
+| المبالغ المسددة من الفاتورة | `PaidAmount`, `DiscountAmount` | Join `t.TransactionsHeaders inv ON pt.PaidTransYear = inv.TransactionYear AND pt.PaidTransNo = inv.TransactionNo AND pt.PaidTransTypeID = inv.TransactionTypeID` |
+| سندات قبض الفاتورة | `TransactionNo`, `TransactionYear` | `PaidTransYear = @InvYear AND PaidTransNo = @InvNo` |
+| خصم تعجيل الدفع / تسوية | `DiscountAmount` | الخصم الممنوح للعميل عند سداد الفاتورة |
+
+**Do not confuse with:**
+- `t.Receipts` (header summary of collections).
+- `t.Checks` (individual check instruments collected).
+
+## Grain & keys
+- **Grain**: One row per receipt-to-invoice payment allocation (`TransactionYear`, `TransactionNo`, `PaidTransYear`, `PaidTransNo`, `PaidTransTypeID`).
+- **Composite PK**: `CompanyID`, `TransactionYear`, `TransactionNo`, `TransactionTypeID`, `PaidTransYear`, `PaidTransNo`, `PaidTransTypeID`.
+- **Tenant Key**: `CompanyID`.
+
+## Pipeline
+Mobile Salesman Tablet (Invoice Allocation) / BO Cashier → `OT_ImportReceipts` → `Receipts_PaidTrans`.
+
+## Related
+- [[Receipts]]
+- [[TransactionsHeaders]]
+- [[Checks]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -76,10 +93,6 @@ CompanyID -> [[Companies]](ID)
 ## Impact / Procedures Using This Table
 
 **Reads (17):**
-- [[ABS_Integ_SendPayment_Jebrene]]
-- [[ABS_Integ_SendPayment_Sokhtian]]
-- [[ProTech_Integration_SendPayment]]
-- [[ProTech_Integration_SendSalesInvoice]]
 - [[Pro_Checks]]
 - [[Pro_ReceiptPaid]]
 - [[Pro_RptCashTotalOnline_Android]]
@@ -91,19 +104,10 @@ CompanyID -> [[Companies]](ID)
 - [[Rpt_SalesmanSalesRecStatment]]
 - [[Rpt_Salesman_Collections]]
 - [[Rpt_Salesman_TotalCollections]]
-- [[SAP_Naouri_SendPayment_Integration]]
-- [[SAP_Tyconz_Integ_SendPayments]]
 
 **Writes (9):**
-- [[Bajali_SAP_Integ]]
-- [[ECO_Land_SAP_Integ]]
-- [[GArrow_SAP_Integ]]
 - [[OT_ImportReceipts]]
 - [[OT_ImportSalesInvoices]]
-- [[Qetaf_Integ]]
-- [[RamPharm_SAP_Integ]]
-- [[SAMA_SAP_Integ]]
-- [[SAP_Tyconz_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

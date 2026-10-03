@@ -9,7 +9,6 @@ referenced_by:
   - [[Pro_DeliveryAssigning]]
   - [[Pro_DeliveryInvoiceAssigning]]
   - [[Rpt_MasterOrders]]
-  - [[Spartan_SAP_Integ]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -44,7 +43,6 @@ DeliveryProvaNo
 - [[Pro_DeliveryAssigning]]
 - [[Pro_DeliveryInvoiceAssigning]]
 - [[Rpt_MasterOrders]]
-- [[Spartan_SAP_Integ]]
 
 **Writes (1):**
 - [[Pro_DeliveryAssigning]]

@@ -60,8 +60,5 @@ Typical business table
 - [[Olives_BO/Tables/EmpDetails]]
 - [[Olives_BO/Tables/ClientsWFID]]
 - [[Olives_BO/Tables/CustomersFinancialDetails_Old]]
-- [[Olives_BO/Procedures/RunSQLWebAPI_Integ]]
 - [[Olives_BO/Procedures/SMSSEND_ZUMOT]]
 - [[Olives_BO/Procedures/Test_Banks]]
-- [[Olives_BO/Procedures/Alpha_GetCurrRate]]
-- [[Olives_BO/Procedures/Awtar_Integ_GetDataFromAPI]]

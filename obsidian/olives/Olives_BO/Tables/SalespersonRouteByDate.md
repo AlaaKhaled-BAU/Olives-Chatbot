@@ -8,18 +8,38 @@ foreign_keys:
 referenced_by:
   - [[Pro_SalespersonRouteByDate]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 ---
 # SalespersonRouteByDate
 
-
 ## Business Purpose
+Sparse **date-specific route override** table — overrides the standard weekly route template ([[SalesPersonsRoutes]]) for specific calendar dates. Used by certain clients when salesmen are assigned temporary special routes on particular days. Queryable via `t.SalespersonRouteByDate`.
 
-Sparse **date-specific route override** — not the main weekly calendar ([[SalesPersonsRoutes]]).
+## Chatbot semantics
+(Query `t.SalespersonRouteByDate` — scoped by session CompanyID via `t.` views.)
 
-When populated, [[OT_SendSalesmanData]] can merge these rows into the tablet route plan (`OT_SalesmanRoute` / `OT_RouteMF`) for specific clients (e.g. ClientActive=74). Local dev DB: ~12 rows, often no future dates — treat as exception layer only.
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| مسار مخصص لتاريخ معين | `PositionID`, `Date`, `RouteID` | Filter by date and position | Overrides default weekday route |
+| اسم المسار البديل | Join `t.RoutesInformation` | `RoutesInformation.ID = r.RouteID` | Name of override route |
 
-Main planned visits still come from `SalesPersonsRoutes` × `CustomersFinancialDetails.RouteID` + `VisitOrder`.
+**Do not confuse with:**
+- `SalesPersonsRoutes`: The primary weekly recurring route calendar.
+- `LogActionTransaction`: Actual visit logs.
+
+## Grain & keys
+- **Composite PK**: (`CompanyID`, `PositionID`, `RouteID`, `Date`)
+- **Tenant key**: `CompanyID`
+
+## Pipeline
+Maintained via Back Office calendar route screens (`Pro_SalespersonRouteByDate`). Checked by `OT_SendSalesmanData` during mobile sync.
+
+## Related
+- [[SalesPersonsRoutes]]
+- [[RoutesInformation]]
+- [[CustomersFinancialDetails]]
+- [[Positions]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |

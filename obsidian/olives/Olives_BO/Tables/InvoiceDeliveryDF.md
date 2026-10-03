@@ -6,8 +6,6 @@ schema: dbo
 tags: [#backoffice, #billing, #order]
 foreign_keys:
 referenced_by:
-  - [[Alpha_GetItemBalance_Zoumt]]
-  - [[Alpha_InvoiceDeliveryHF_BD]]
   - [[ConvertReturnOrderToInvoiceDelivery]]
   - [[OSFA_MobileDeliveryAPI]]
   - [[Online_RptInvoiceDeliveryByDriver]]
@@ -32,9 +30,6 @@ referenced_by:
   - [[Rpt_MasterOrders]]
   - [[Rpt_SalesmanDeliverySummary]]
   - [[SalesmanInfo]]
-  - [[Spartan_SAP_Integ]]
-  - [[Tablet_GetSalesmanDeliveryTrans]]
-  - [[X3_Integ_DeliveryInvoice]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -79,8 +74,6 @@ UnitCode
 ## Impact / Procedures Using This Table
 
 **Reads (28):**
-- [[Alpha_GetItemBalance_Zoumt]]
-- [[Alpha_InvoiceDeliveryHF_BD]]
 - [[OSFA_MobileDeliveryAPI]]
 - [[Online_RptInvoiceDeliveryByDriver]]
 - [[Online_RptInvoiceDeliveryCountBySalesman]]
@@ -104,13 +97,8 @@ UnitCode
 - [[Rpt_MasterOrders]]
 - [[Rpt_SalesmanDeliverySummary]]
 - [[SalesmanInfo]]
-- [[Spartan_SAP_Integ]]
-- [[Tablet_GetSalesmanDeliveryTrans]]
-- [[X3_Integ_DeliveryInvoice]]
 
 **Writes (4):**
-- [[Alpha_GetItemBalance_Zoumt]]
-- [[Alpha_InvoiceDeliveryHF_BD]]
 - [[ConvertReturnOrderToInvoiceDelivery]]
 - [[OSFA_MobileDeliveryAPI]]
 

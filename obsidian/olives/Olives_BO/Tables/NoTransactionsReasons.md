@@ -7,10 +7,6 @@ tags: [#backoffice]
 foreign_keys:
   - [[Companies]]
 referenced_by:
-  - [[ABS_Integ_SendPayment_Jebrene]]
-  - [[ABS_Integ_SendPayment_Sokhtian]]
-  - [[ECO_Land_SAP_Integ]]
-  - [[Galaxy_Integ_SendSalesInvoices]]
   - [[Online_RptInvoiceDeliveryByDriver]]
   - [[Pro_ApproveImagesApp]]
   - [[Pro_DeliveryCar]]
@@ -28,7 +24,6 @@ referenced_by:
   - [[Rpt_RouteSummaryBySalesmanBushnaqExcel]]
   - [[Rpt_RouteSummaryBySalesman_Delivery]]
   - [[Rpt_RouteSummaryBySalesman_Merchandisers]]
-  - [[Rpt_RouteSummaryBySalesman_Spartan]]
   - [[Rpt_RouteSummaryBySalesman_Sukhtian]]
   - [[Rpt_RouteSummaryBySalesman_Suktian]]
   - [[Rpt_RouteSummaryBySalesman_Suktian_Draft]]
@@ -38,17 +33,51 @@ referenced_by:
   - [[Rpt_SalesmanTimeSpentPerCustomer4]]
   - [[Rpt_SalesmanTimeSpentPerCustomer6_QimaH]]
   - [[Rpt_TimeManagement]]
-  - [[Spartan_SAP_Integ_draft]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 ---
 # NoTransactionsReasons
 
-
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+Master table defining reasons for non-transaction and non-visit field events (e.g., customer closed, no cash available, sufficient stock, postponed visit). Grouped by `ReasonType`, which maps to `SystemCodes.SysCodeTypeID = 'ReasonType'`. Used when salesmen log a no-sale exit, skip a scheduled visit, or record delivery exceptions. Queryable as `t.NoTransactionsReasons`.
 
-Core data table in the Back Office (server-side) — stores notransactionsreasons records.
+## Chatbot semantics
+(Query `t.NoTransactionsReasons` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| أسباب عدم الزيارة | `ReasonType`, `Name` | `ReasonType = 2` | SysCode `2` in `SystemCodes` ("No Visit Reason") |
+| أسباب عدم البيع / خروج بدون بيع | `ReasonType`, `Name` | `ReasonType = 1` | SysCode `1` ("No Sales Reason") |
+| أسباب الإرجاع | `ReasonType`, `Name` | `ReasonType = 3` | SysCode `3` ("Return Reason") |
+| أسباب إلغاء التوصيل | `ReasonType`, `Name` | `ReasonType = 4` | SysCode `4` ("Cancel Invoice Delivery Reason") |
+| التحقق من سبب العملية | `ID`, `Name` | Join on `ReasonID = r.ID AND r.ReasonType = ...` | Matches `NoTransactionsLog.ReasonID` or `RequestSalesmanWillNotVisit.ReasonID` |
+
+**Do not confuse with:**
+- `LogActionTransaction.ActionID`: Action 8 is `NoSaleExit` (Data1=Customer), Action 21 is `RequestSalesmanWillNotVisit`. The text explanation comes from joining `NoTransactionsReasons`.
+- `SystemCodes`: SystemCodes gives the broad category names (`ReasonType` 1..6), while `NoTransactionsReasons` stores the actual customer-facing reason choices shown in tablet dropdowns.
+
+## ReasonType Catalog (Olives_BO Verified)
+- **ReasonType = 1**: No Sales Reason (e.g. 'Cash Unavailability', 'مغلق', 'وجود كميات', 'المحل مغلق')
+- **ReasonType = 2**: No Visit Reason (e.g. 'NO1', skipped store)
+- **ReasonType = 3**: Return Reason (customer return goods)
+- **ReasonType = 4**: Cancel Invoice Delivery Reason (delivery failure)
+- **ReasonType = 5**: Cancel Return Delivery Reason
+- **ReasonType = 6**: Customer Gallery Image Reject Reason
+
+## Grain & keys
+- **Composite PK**: (`CompanyID`, `ID`, `ReasonType`)
+- **Tenant key**: `CompanyID`
+
+## Pipeline
+Configured in Back Office UI (`Pro_NoTransactionsReasons`). Synced to mobile devices so salesmen select from approved reason lists. Stamped onto `NoTransactionsLog`, `RequestSalesmanWillNotVisit`, and `LogActionTransaction` exit notes.
+
+## Related
+- [[SystemCodes]]
+- [[NoTransactionsLog]]
+- [[RequestSalesmanWillNotVisit]]
+- [[LogActionTransaction]]
+- [[LogActions]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -69,9 +98,6 @@ CompanyID -> [[Companies]](ID)
 ## Impact / Procedures Using This Table
 
 **Reads (31):**
-- [[ABS_Integ_SendPayment_Jebrene]]
-- [[ABS_Integ_SendPayment_Sokhtian]]
-- [[Galaxy_Integ_SendSalesInvoices]]
 - [[Online_RptInvoiceDeliveryByDriver]]
 - [[Pro_ApproveImagesApp]]
 - [[Pro_DeliveryCar]]
@@ -89,7 +115,6 @@ CompanyID -> [[Companies]](ID)
 - [[Rpt_RouteSummaryBySalesmanBushnaqExcel]]
 - [[Rpt_RouteSummaryBySalesman_Delivery]]
 - [[Rpt_RouteSummaryBySalesman_Merchandisers]]
-- [[Rpt_RouteSummaryBySalesman_Spartan]]
 - [[Rpt_RouteSummaryBySalesman_Sukhtian]]
 - [[Rpt_RouteSummaryBySalesman_Suktian]]
 - [[Rpt_RouteSummaryBySalesman_Suktian_Draft]]
@@ -99,10 +124,8 @@ CompanyID -> [[Companies]](ID)
 - [[Rpt_SalesmanTimeSpentPerCustomer4]]
 - [[Rpt_SalesmanTimeSpentPerCustomer6_QimaH]]
 - [[Rpt_TimeManagement]]
-- [[Spartan_SAP_Integ_draft]]
 
 **Writes (2):**
-- [[ECO_Land_SAP_Integ]]
 - [[Pro_NoTransactionsReasons]]
 
 ## Estimated Size / Volatility

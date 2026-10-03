@@ -34,7 +34,6 @@ Referenced by 4 procedure(s): 3 writing, 1 reading.
 **Writers (3):**
 - [[Pro_ImportPromotionBudgetData]]
 - [[Pro_PromotionBudget]]
-- [[Pro_UpdatePromotionBudgetFromSAP]]
 **Readers (1):**
 - [[Pro_CheckPromotionBudgetValue]]
 

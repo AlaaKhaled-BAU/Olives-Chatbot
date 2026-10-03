@@ -13,14 +13,40 @@ referenced_by:
   - [[WF_AddWorkFlowLevelOne]]
   - [[WF_AddWorkFlowLevels]]
 support_relevance: high
-last_verified: 2026-07-05
+last_verified: 2026-10-03
 ---
 # RequestToChangeInvoicePaymentType
 
-
 ## Business Purpose
+Stores approval requests submitted when a salesman requests changing an invoice payment type (e.g., from cash to credit or vice versa) during invoicing on a mobile device. Corresponds to workflow `FunctionID = 1` ("Request To Change Invoice Payment Type"). Captures `PaymentTypeID`, `OldPaymentTypeID`, `InvoiceAmount`, customer, salesman, timestamp, and `IsAproved`. Queryable via `t.RequestToChangeInvoicePaymentType`.
 
-Workflow request records for special approvals (credit, discount, exceptions).
+## Chatbot semantics
+(Query `t.RequestToChangeInvoicePaymentType` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule | Notes |
+|----------------------|-----------|---------------|-------|
+| طلبات تغيير طريقة دفع الفاتورة | `CustomerNo`, `SalesPersonNo`, `TrDate` | Direct filter | Lists payment type change requests |
+| طريقة الدفع المطلوبة والسابقة | `PaymentTypeID`, `OldPaymentTypeID` | Links to `PaymentsTypes` | e.g. converting cash sale to credit sale |
+| قيمة الفاتورة | `InvoiceAmount` | Numeric | Invoice financial value |
+| حالة الموافقة | `IsAproved` | `IsAproved = 1` (approved), `0` or `NULL` (pending) | Direct approval status |
+| الربط مع سجل الموافقات العام | Join `t.WF_MasterLog` | `m.FunctionID = 1 AND TRY_CAST(m.Ref1 AS numeric) = req.AutoID AND m.CompanyID = req.CompanyID` | View supervisor decision levels & notes |
+
+## Grain & keys
+- **PK**: `AutoID` (numeric identity, 1 row = 1 payment type change request)
+- **Tenant key**: `CompanyID`
+- **Conventions**: `CustomerNo` → [[Customers]](ID), `SalesPersonNo` → [[SalesPersons]](ID), `PaymentTypeID` → [[PaymentsTypes]](ID)
+
+## Pipeline (how rows get here)
+Salesman requests payment term switch on tablet → `OT_ImportRequestToChangeInvoicePaymentType` inserts into this table (`IsAproved = 0`) → calls `WF_AddWorkFlowLevelOne @CompNo, 1, @NewAutoID` → inserts `WF_MasterLog` (`Ref1 = AutoID`). When supervisor approves, `WF_AddWorkFlowLevels` sets `IsAproved = 1`.
+
+## Related
+- [[WF_MasterLog]]
+- [[WF_SubLog]]
+- [[WF_Functions]]
+- [[PaymentsTypes]]
+- [[TransactionsHeaders]]
+- [[_RequestTo-Join-Conventions]]
+
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -67,4 +93,3 @@ Typical business table
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[OSFA_DB/Procedures/SetRequestCanceled]]

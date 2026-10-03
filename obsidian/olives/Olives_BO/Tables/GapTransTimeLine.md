@@ -56,4 +56,3 @@ Typical business table
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[OSFA_DB/Procedures/GapTransTimeLine_Insert]]

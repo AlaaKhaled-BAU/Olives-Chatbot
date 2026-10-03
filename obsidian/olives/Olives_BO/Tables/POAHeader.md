@@ -5,6 +5,7 @@ name: POAHeader
 schema: dbo
 tags: [#backoffice]
 foreign_keys:
+
 referenced_by:
   - [[POAOnlineReport]]
   - [[POA_Save]]
@@ -30,6 +31,8 @@ Core data table in the Back Office (server-side) — stores poaheader records.
 | POAYear | int | YES |  |  |  |
 | POAMonth | int | YES |  |  |  |
 | Approved | bit | YES |  |  |  |
+| RejectedNotes | varchar | YES |  |  |  |
+
 ## Primary Key
 CompanyID
 POAID

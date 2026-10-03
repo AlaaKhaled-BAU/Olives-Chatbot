@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #order]
 foreign_keys:
 referenced_by:
-  - [[Tablet_GetPendingOrdersTotals]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -39,7 +38,6 @@ Itemcode
 ## Impact / Procedures Using This Table
 
 **Reads (1):**
-- [[Tablet_GetPendingOrdersTotals]]
 
 **Writes (0):**
 _None_

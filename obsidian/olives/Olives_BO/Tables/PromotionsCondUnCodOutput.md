@@ -9,8 +9,6 @@ foreign_keys:
   - [[Items]]
   - [[PromotionsHeaders]]
 referenced_by:
-  - [[Awtar_Integration_GetPromotion]]
-  - [[Niroukh_Integration_GetPromotion]]
   - [[Pro_ImportPromotionData]]
   - [[Pro_PromotionInputOutput]]
   - [[Pro_PromotionItemsSchema]]
@@ -19,11 +17,9 @@ referenced_by:
   - [[Pro_SalesPersonItemBonusTarget_OnlineErrorReporting]]
   - [[RG_Hakkak_CopyPromotions]]
   - [[RG_Rpt_PromotionInformation]]
-  - [[RamPharm_SAP_Integ]]
   - [[Rpt_PromotionOutputItem]]
   - [[Rpt_PromotionsDuplicatedItems]]
   - [[SalesmanPromotion_Excel]]
-  - [[X3_INTEGRATIONPROMOTION_WITHLOG]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -62,8 +58,6 @@ CompanyID, PromotionID -> [[PromotionsHeaders]](CompanyID, ID)
 ## Impact / Procedures Using This Table
 
 **Reads (14):**
-- [[Awtar_Integration_GetPromotion]]
-- [[Niroukh_Integration_GetPromotion]]
 - [[Pro_ImportPromotionData]]
 - [[Pro_PromotionInputOutput]]
 - [[Pro_PromotionItemsSchema]]
@@ -75,15 +69,11 @@ CompanyID, PromotionID -> [[PromotionsHeaders]](CompanyID, ID)
 - [[Rpt_PromotionOutputItem]]
 - [[Rpt_PromotionsDuplicatedItems]]
 - [[SalesmanPromotion_Excel]]
-- [[X3_INTEGRATIONPROMOTION_WITHLOG]]
 
 **Writes (6):**
-- [[Awtar_Integration_GetPromotion]]
-- [[Niroukh_Integration_GetPromotion]]
 - [[Pro_ImportPromotionData]]
 - [[Pro_PromotionsCondUnCodOutput]]
 - [[Pro_PromotionsHeaders]]
-- [[RamPharm_SAP_Integ]]
 
 ## Estimated Size / Volatility
 Typical business table

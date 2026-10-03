@@ -19,7 +19,6 @@ referenced_by:
   - [[Rpt_SurveyCustomersAnswerDetails]]
   - [[Rpt_SurveyCustomersSummary]]
   - [[Rpt_Surveys]]
-  - [[SAP_Tyconz_Integ_SendSurveys]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -66,12 +65,10 @@ CompanyID, Customer_No -> [[Customers]](CompanyID, ID)
 - [[Rpt_SurveyCustomersAnswerDetails]]
 - [[Rpt_SurveyCustomersSummary]]
 - [[Rpt_Surveys]]
-- [[SAP_Tyconz_Integ_SendSurveys]]
 
 **Writes (3):**
 - [[OT_ImportCustomerSurveyAnswers]]
 - [[Pro_SurveyCustomers]]
-- [[SAP_Tyconz_Integ_SendSurveys]]
 
 ## Estimated Size / Volatility
 Typical business table

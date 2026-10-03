@@ -59,7 +59,6 @@ Typical business table
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[Glossary]]
 - [[JoTaxResult]]
 - [[CustomersItemsLog]]
 - [[CatalogMedia]]
@@ -67,7 +66,5 @@ Typical business table
 - [[OWGM_LockLog]]
 - [[LogActionTransaction_]]
 - [[SalesQuotationHeaders]]
-- [[MMS_OrdersHeader]]
 - [[PendingOrdersDetails]]
-- [[Olives_BO/Tables/MMS_DV_ErrorLog]]
 - [[Olives_BO/Tables/LogActions]]

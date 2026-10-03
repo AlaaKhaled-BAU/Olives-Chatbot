@@ -10,46 +10,13 @@ foreign_keys:
   - [[ItemsUnits]]
   - [[OrdersHeaders]]
 referenced_by:
-  - [[ABS_Integ_SendSalesOrder]]
-  - [[ABS_Integ_SendSalesOrder_Jebrene]]
-  - [[AX_INTEG_SENDORDERS]]
-  - [[AbuOda_BonMarrof_Integ]]
-  - [[AbuOda_Comp2_Integ]]
-  - [[AbuOda_Integ]]
-  - [[AccPack_Integ_SendSalesOrders]]
-  - [[AccPack_Integ_SendSalesOrdersLuxuryItemstest]]
-  - [[AccPack_Integ_SendSalesOrders_LuxuryItems]]
-  - [[Awa2el_Integ_SendSalesOrders]]
-  - [[Awtar_Integ_AllUsers]]
-  - [[Awtar_Integ_SendSalesOrder]]
   - [[BO_Online_RptCustomerSalesTargetDetails]]
-  - [[GP_Integ]]
-  - [[GP_Integ_SendBackSalesOrder_Wadi]]
-  - [[GP_Integ_SendSalesOrder_Wadi]]
-  - [[GP_Integ_SendSalesOrder_Zumot]]
-  - [[GP_Integ_SendSalesOrder_Zumot_Aqaba]]
-  - [[GP_Integ_Wadi]]
-  - [[Galaxy_Integ_SendSalesOrder]]
   - [[GetSalesOrdersForEdit]]
   - [[GetSalesOrdersForOnlineReport]]
   - [[GetWF_SalesOrderData]]
-  - [[Integ_Normal_DeliveryOrder]]
-  - [[Integ_SendSalesOrders_CB]]
-  - [[IscoJordan_Integ_SendOrders]]
-  - [[Izhiman_SAP_Integ]]
-  - [[Khobara_Integ]]
-  - [[MeatLand_Integrationnew]]
-  - [[Motakaml_Integ_SendSalesOrders]]
-  - [[NPF_Integ_SendSalesOrders]]
-  - [[Niroukh_Integ_AllUsers]]
-  - [[Niroukh_Integ_SendSalesOrder]]
   - [[OSFA_MobileDeliveryAPI]]
   - [[OT_GetOrderInvoiceLinkHistory]]
   - [[OT_ImportSalesOrders]]
-  - [[PRESTOSOFT_INTEG_SENDORDERS_COMP2]]
-  - [[Phenix_Sukhtian_Integ_SendSalesOrder]]
-  - [[PrestoSoft_Integ_SendOrders]]
-  - [[ProTech_Integration_SendOrders]]
   - [[Pro_BackOrderItems]]
   - [[Pro_Dashboard_Almalak]]
   - [[Pro_DriverDetailsDashboard]]
@@ -64,8 +31,6 @@ referenced_by:
   - [[Pro_SalesOrdersQtyValidation]]
   - [[Pro_SalesmanDetailsDashboard]]
   - [[Pro_SalespersonsTargetDashboard]]
-  - [[Qerat_Integ]]
-  - [[Qetaf_Integ]]
   - [[RouteCoverageSummary_New_Excel]]
   - [[Rpt_ApprovedOrder]]
   - [[Rpt_BackOrder]]
@@ -73,8 +38,6 @@ referenced_by:
   - [[Rpt_CompareCustomerStockWithOrder]]
   - [[Rpt_ConcreteOperationManager]]
   - [[Rpt_ConcreteVehicleTransactions]]
-  - [[Rpt_CustomerSalesOrderByClassTablet]]
-  - [[Rpt_CustomerSalesTablet]]
   - [[Rpt_CustomerStockNotExistByDocType]]
   - [[Rpt_CustomerStockNotExistByDocType_Summary]]
   - [[Rpt_CustomersOrderbyItemReport]]
@@ -92,7 +55,6 @@ referenced_by:
   - [[Rpt_MasterOrders]]
   - [[Rpt_MonthlyCompareSalesTargetWithCustomer]]
   - [[Rpt_MonthlyCompareSalesTargetWithSales]]
-  - [[Rpt_MonthlyCompareSalesTargetWithSales_Spartan]]
   - [[Rpt_NetVisitsTime]]
   - [[Rpt_OrderLink]]
   - [[Rpt_OrderMaster]]
@@ -102,12 +64,10 @@ referenced_by:
   - [[Rpt_PrintOrdersBatches]]
   - [[Rpt_ReceivablesSalesInvoice]]
   - [[Rpt_RoutePerformanceAnalysis]]
-  - [[Rpt_RoutePerformanceAnalysis_Spartan]]
   - [[Rpt_RouteSummaryBySalesman]]
   - [[Rpt_RouteSummaryBySalesmanBushnaqExcel]]
   - [[Rpt_RouteSummaryBySalesmanByCustomerClass]]
   - [[Rpt_RouteSummaryBySalesman_Merchandisers]]
-  - [[Rpt_RouteSummaryBySalesman_Spartan]]
   - [[Rpt_RouteSummaryBySalesman_Sukhtian]]
   - [[Rpt_RouteSummaryBySalesman_Suktian]]
   - [[Rpt_RouteSummaryBySalesman_Suktian_Draft]]
@@ -117,7 +77,6 @@ referenced_by:
   - [[Rpt_SalesOrderPerformance]]
   - [[Rpt_SalesOrdersSummaryBySalesman]]
   - [[Rpt_SalesPersonItemBonusTarget]]
-  - [[Rpt_SalesPersonItemBonusTarget_Tablet]]
   - [[Rpt_Sales_Statistics]]
   - [[Rpt_SalesmanAnalysisDashBoard]]
   - [[Rpt_SalesmanCategorySales]]
@@ -153,24 +112,10 @@ referenced_by:
   - [[Rpt_WFCustomersVisits]]
   - [[Rpt_WF_GeneralSalesByItem]]
   - [[Rpt_WorkFlowAnalysis]]
-  - [[SAP_Tyconz_Integ_SendSalesOrders]]
-  - [[SMS_Almobhiron]]
-  - [[SMS_Bostangy]]
-  - [[SMS_Lamis]]
-  - [[SMS_SpartenNew]]
-  - [[SMS_Wales]]
-  - [[SN_Integ_SendOrders]]
-  - [[Salbeshian_SAP_Integ]]
-  - [[Shamel_Integ_SendSalesOrders]]
-  - [[Shini_Integ]]
-  - [[Spartan_SAP_Integ_draft]]
   - [[TECHNICAL_CHECKMISSINGSERIAL_OLIVES_BO_ORDER_RECEIPT_INV_RETINV]]
-  - [[Tablet_GetPendingOrdersTotals]]
   - [[WF_AddRequestToIncreaseCustomerCreditlimit]]
   - [[WF_AddWorkFlowLevelOne]]
   - [[WF_AddWorkFlowLevels]]
-  - [[Wings_Integ_SendSalesOrder]]
-  - [[Zedan_SAP_Integ]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -178,8 +123,40 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
+Line-item detail for pre-sales customer orders (`OrdersHeaders`). Each row records an ordered item (`ItemCode`), packaging unit (`UnitID`), ordered quantity (`Quantity`), promotional free items / bonus (`Bonus`), unit selling price (`Price`), and line discount (`DiscountAmount`, `DiscountPercent`).
+- **Header Link**: Pairs with `OrdersHeaders` on `OrderYear` and `OrderNo`.
+- **Pre-sales vs Delivery**: Represents requested customer demand taken on mobile devices by pre-sales representatives prior to warehouse picking, dispatch, or invoicing.
+- **Bonus & Net Totals**: Line total before tax is `(Quantity * Price) - DiscountAmount`. Free goods given via promotion appear in `Bonus` or `QtyAsBonus`.
 
-Line-item details for sales orders — products, quantities, prices, and discounts per order.
+## Chatbot semantics
+(Query `t.OrdersDetails` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| أصناف الطلبية / تفاصيل الطلب | `ItemCode`, `Quantity`, `Bonus`, `Price` | Join `t.OrdersHeaders h ON d.OrderYear = h.OrderYear AND d.OrderNo = h.OrderNo` |
+| الكمية المطلوبة | `Quantity` | `Quantity > 0` (كمية البيع الفعلي) |
+| البونص / العينات المجانية | `Bonus`, `QtyAsBonus` | البضاعة المجانية الممنوحة للعميل مع الطلبية |
+| سعر البيع والخصم | `Price`, `DiscountAmount`, `DiscountPercent` | سعر الصنف ونسبة الخصم الممنوحة على السطر |
+| إجمالي السطر الصافي | Calculated | `(d.Quantity * d.Price) - ISNULL(d.DiscountAmount, 0)` |
+| اسم الصنف والوحدة | Join `t.Items`, `t.ItemsUnits` | `d.ItemCode = i.ItemCode`, `d.UnitID = u.UnitID` |
+
+**Do not confuse with:**
+- `t.TransactionsDetails` (line items of executed / posted invoices and delivery notes).
+- `t.ReturnOrdersDetails` (line items of customer return requests).
+
+## Grain & keys
+- **Grain**: One row per item and unit within a specific order (`OrderYear`, `OrderNo`, `ItemCode`, `UnitID`).
+- **Composite PK**: `CompanyID`, `OrderYear`, `OrderNo`, `ItemCode`, `UnitID`.
+- **Tenant Key**: `CompanyID`.
+
+## Pipeline
+Mobile Pre-sales Tablet → `OT_ImportSalesOrders` (or OSFA sync) → `OrdersHeaders` + `OrdersDetails`.
+
+## Related
+- [[OrdersHeaders]]
+- [[Items]]
+- [[ItemsUnits]]
+- [[TransactionsDetails]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -243,45 +220,12 @@ CompanyID, OrderYear, OrderNo -> [[OrdersHeaders]](CompanyID, OrderYear, OrderNo
 ## Impact / Procedures Using This Table
 
 **Reads (160):**
-- [[ABS_Integ_SendSalesOrder]]
-- [[ABS_Integ_SendSalesOrder_Jebrene]]
-- [[AX_INTEG_SENDORDERS]]
-- [[AbuOda_BonMarrof_Integ]]
-- [[AbuOda_Comp2_Integ]]
-- [[AbuOda_Integ]]
-- [[AccPack_Integ_SendSalesOrders]]
-- [[AccPack_Integ_SendSalesOrdersLuxuryItemstest]]
-- [[AccPack_Integ_SendSalesOrders_LuxuryItems]]
-- [[Awa2el_Integ_SendSalesOrders]]
-- [[Awtar_Integ_AllUsers]]
-- [[Awtar_Integ_SendSalesOrder]]
 - [[BO_Online_RptCustomerSalesTargetDetails]]
-- [[GP_Integ]]
-- [[GP_Integ_SendBackSalesOrder_Wadi]]
-- [[GP_Integ_SendSalesOrder_Wadi]]
-- [[GP_Integ_SendSalesOrder_Zumot]]
-- [[GP_Integ_SendSalesOrder_Zumot_Aqaba]]
-- [[GP_Integ_Wadi]]
-- [[Galaxy_Integ_SendSalesOrder]]
 - [[GetSalesOrdersForEdit]]
 - [[GetSalesOrdersForOnlineReport]]
 - [[GetWF_SalesOrderData]]
-- [[Integ_Normal_DeliveryOrder]]
-- [[Integ_SendSalesOrders_CB]]
-- [[IscoJordan_Integ_SendOrders]]
-- [[Izhiman_SAP_Integ]]
-- [[Khobara_Integ]]
-- [[MeatLand_Integrationnew]]
-- [[Motakaml_Integ_SendSalesOrders]]
-- [[NPF_Integ_SendSalesOrders]]
-- [[Niroukh_Integ_AllUsers]]
-- [[Niroukh_Integ_SendSalesOrder]]
 - [[OSFA_MobileDeliveryAPI]]
 - [[OT_GetOrderInvoiceLinkHistory]]
-- [[PRESTOSOFT_INTEG_SENDORDERS_COMP2]]
-- [[Phenix_Sukhtian_Integ_SendSalesOrder]]
-- [[PrestoSoft_Integ_SendOrders]]
-- [[ProTech_Integration_SendOrders]]
 - [[Pro_BackOrderItems]]
 - [[Pro_Dashboard_Almalak]]
 - [[Pro_DriverDetailsDashboard]]
@@ -296,8 +240,6 @@ CompanyID, OrderYear, OrderNo -> [[OrdersHeaders]](CompanyID, OrderYear, OrderNo
 - [[Pro_SalesOrdersQtyValidation]]
 - [[Pro_SalesmanDetailsDashboard]]
 - [[Pro_SalespersonsTargetDashboard]]
-- [[Qerat_Integ]]
-- [[Qetaf_Integ]]
 - [[RouteCoverageSummary_New_Excel]]
 - [[Rpt_ApprovedOrder]]
 - [[Rpt_BackOrder]]
@@ -305,8 +247,6 @@ CompanyID, OrderYear, OrderNo -> [[OrdersHeaders]](CompanyID, OrderYear, OrderNo
 - [[Rpt_CompareCustomerStockWithOrder]]
 - [[Rpt_ConcreteOperationManager]]
 - [[Rpt_ConcreteVehicleTransactions]]
-- [[Rpt_CustomerSalesOrderByClassTablet]]
-- [[Rpt_CustomerSalesTablet]]
 - [[Rpt_CustomerStockNotExistByDocType]]
 - [[Rpt_CustomerStockNotExistByDocType_Summary]]
 - [[Rpt_CustomersOrderbyItemReport]]
@@ -324,7 +264,6 @@ CompanyID, OrderYear, OrderNo -> [[OrdersHeaders]](CompanyID, OrderYear, OrderNo
 - [[Rpt_MasterOrders]]
 - [[Rpt_MonthlyCompareSalesTargetWithCustomer]]
 - [[Rpt_MonthlyCompareSalesTargetWithSales]]
-- [[Rpt_MonthlyCompareSalesTargetWithSales_Spartan]]
 - [[Rpt_NetVisitsTime]]
 - [[Rpt_OrderLink]]
 - [[Rpt_OrderMaster]]
@@ -334,12 +273,10 @@ CompanyID, OrderYear, OrderNo -> [[OrdersHeaders]](CompanyID, OrderYear, OrderNo
 - [[Rpt_PrintOrdersBatches]]
 - [[Rpt_ReceivablesSalesInvoice]]
 - [[Rpt_RoutePerformanceAnalysis]]
-- [[Rpt_RoutePerformanceAnalysis_Spartan]]
 - [[Rpt_RouteSummaryBySalesman]]
 - [[Rpt_RouteSummaryBySalesmanBushnaqExcel]]
 - [[Rpt_RouteSummaryBySalesmanByCustomerClass]]
 - [[Rpt_RouteSummaryBySalesman_Merchandisers]]
-- [[Rpt_RouteSummaryBySalesman_Spartan]]
 - [[Rpt_RouteSummaryBySalesman_Sukhtian]]
 - [[Rpt_RouteSummaryBySalesman_Suktian]]
 - [[Rpt_RouteSummaryBySalesman_Suktian_Draft]]
@@ -349,7 +286,6 @@ CompanyID, OrderYear, OrderNo -> [[OrdersHeaders]](CompanyID, OrderYear, OrderNo
 - [[Rpt_SalesOrderPerformance]]
 - [[Rpt_SalesOrdersSummaryBySalesman]]
 - [[Rpt_SalesPersonItemBonusTarget]]
-- [[Rpt_SalesPersonItemBonusTarget_Tablet]]
 - [[Rpt_Sales_Statistics]]
 - [[Rpt_SalesmanAnalysisDashBoard]]
 - [[Rpt_SalesmanCategorySales]]
@@ -385,24 +321,10 @@ CompanyID, OrderYear, OrderNo -> [[OrdersHeaders]](CompanyID, OrderYear, OrderNo
 - [[Rpt_WFCustomersVisits]]
 - [[Rpt_WF_GeneralSalesByItem]]
 - [[Rpt_WorkFlowAnalysis]]
-- [[SAP_Tyconz_Integ_SendSalesOrders]]
-- [[SMS_Almobhiron]]
-- [[SMS_Bostangy]]
-- [[SMS_Lamis]]
-- [[SMS_SpartenNew]]
-- [[SMS_Wales]]
-- [[SN_Integ_SendOrders]]
-- [[Salbeshian_SAP_Integ]]
-- [[Shamel_Integ_SendSalesOrders]]
-- [[Shini_Integ]]
-- [[Spartan_SAP_Integ_draft]]
 - [[TECHNICAL_CHECKMISSINGSERIAL_OLIVES_BO_ORDER_RECEIPT_INV_RETINV]]
-- [[Tablet_GetPendingOrdersTotals]]
 - [[WF_AddRequestToIncreaseCustomerCreditlimit]]
 - [[WF_AddWorkFlowLevelOne]]
 - [[WF_AddWorkFlowLevels]]
-- [[Wings_Integ_SendSalesOrder]]
-- [[Zedan_SAP_Integ]]
 
 **Writes (2):**
 - [[OT_ImportSalesOrders]]

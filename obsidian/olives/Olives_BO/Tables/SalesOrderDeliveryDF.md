@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #order, #sales]
 foreign_keys:
 referenced_by:
-  - [[Integ_Normal_DeliveryOrder]]
   - [[Pro_DeliveryCarSummaryReport]]
 support_relevance: high
 last_verified: 2026-07-05
@@ -56,11 +55,9 @@ UnitCode
 ## Impact / Procedures Using This Table
 
 **Reads (2):**
-- [[Integ_Normal_DeliveryOrder]]
 - [[Pro_DeliveryCarSummaryReport]]
 
 **Writes (1):**
-- [[Integ_Normal_DeliveryOrder]]
 
 ## Estimated Size / Volatility
 Typical business table

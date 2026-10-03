@@ -68,6 +68,4 @@ Typical business table
 ## Related
 
 - [[_MOC-Olives_BO|Olives_BO MOC]]
-- [[Olives_BO/Procedures/RunSQLWebAPI_Integ]]
 - [[Olives_BO/Procedures/EncodeArabicToUTF8DataFromOSFA_API]]
-- [[Olives_BO/Procedures/Awtar_Integ_GetDataFromAPI]]

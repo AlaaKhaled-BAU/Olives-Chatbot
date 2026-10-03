@@ -6,23 +6,16 @@ schema: dbo
 tags: [#backoffice, #log, #order, #sales]
 foreign_keys:
 referenced_by:
-  - [[Alpha_Integ]]
-  - [[Alpha_Integ_HistData]]
-  - [[Alpha_updateRoute]]
-  - [[Awtar_Integ_AllUsers]]
   - [[BO_Online_RptCustomerSalesTargetDetails]]
   - [[GetSalesOrdersForApiReport_GCI]]
   - [[GetSalesOrdersForOnlineReport]]
   - [[GetSalesOrdersForOnlineReport_GCI]]
-  - [[NPF_IntegrationHisData]]
-  - [[Niroukh_Integ_AllUsers]]
   - [[Online_RptSalesOrderStatusInERP]]
   - [[Pro_DeliveryAssigning]]
   - [[Rpt_DailyDriver]]
   - [[Rpt_DailyUnit]]
   - [[Rpt_MasterOrders]]
   - [[Rpt_NumericDistribution]]
-  - [[SAP_Integ_Lamis]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -30,9 +23,36 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+Historical sales order line-item archive detail table in Olives_BO. Stores archived order line items, ordered quantities (`OrderdQty`), delivered quantities (`DeliveredQty`), open / outstanding quantities (`OutstandingQty`), invoiced quantities (`InvQty`), and line pricing (`UPrice`, `SellValue`).
+- **Difference from `OrdersDetails`**:
+  - `OrdersDetails` is the **live, operational** pre-sales order line-item table recording current demands taken on tablets for fulfillment.
+  - `SalesOrderHistoryDF` is an **historical / archived order line repository** tracking historical order delivery fulfillment, picked quantities (`PickedQty`), and legacy demand history.
+- **Header Link**: Pairs with `SalesOrderHistoryHF` on `CompNo`, `OrderYear`, and `OrderNo`.
 
-Core data table in the Back Office (server-side) — stores salesorderhistorydf records.
+## Chatbot semantics
+(Query `t.SalesOrderHistoryDF` — scoped by session CompNo/CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| تفاصيل أصناف الطلبيات التاريخية | `ItemNo`, `OrderdQty`, `DeliveredQty`, `UPrice` | Join `t.SalesOrderHistoryHF h ON df.OrderYear = h.OrderYear AND df.OrderNo = h.OrderNo` |
+| الكمية المطلوبة مقابل المسلمة تاريخياً | `OrderdQty`, `DeliveredQty`, `OutstandingQty` | مقارنة الكمية المطلوبة بالكمية المسلمة فعلياً |
+| الكمية المفوترة من الطلبية | `InvQty` | الكمية التي تم تحويلها لفاتورة في النظام القديم |
+
+**CRITICAL RULE FOR CHATBOT:**
+For any questions regarding **current order lines, active orders, or live requested quantities**, ALWAYS query `t.OrdersDetails`. Query `t.SalesOrderHistoryDF` only when specifically asked about historical order archives.
+
+## Grain & keys
+- **Grain**: One row per item and unit within an archived order header (`OrderYear`, `OrderNo`, `ItemNo`, `UnitCode`).
+- **Composite PK**: `CompNo`, `OrderYear`, `OrderNo`, `ItemNo`, `UnitCode`.
+- **Tenant Key**: `CompNo`.
+
+## Pipeline
+Legacy ERP Migration / Historical Archival → `SalesOrderHistoryDF` → Used in historical order analysis.
+
+## Related
+- [[SalesOrderHistoryHF]]
+- [[OrdersDetails]]
+- [[Items]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -71,14 +91,10 @@ UnitCode
 ## Impact / Procedures Using This Table
 
 **Reads (14):**
-- [[Alpha_Integ_HistData]]
-- [[Awtar_Integ_AllUsers]]
 - [[BO_Online_RptCustomerSalesTargetDetails]]
 - [[GetSalesOrdersForApiReport_GCI]]
 - [[GetSalesOrdersForOnlineReport]]
 - [[GetSalesOrdersForOnlineReport_GCI]]
-- [[NPF_IntegrationHisData]]
-- [[Niroukh_Integ_AllUsers]]
 - [[Online_RptSalesOrderStatusInERP]]
 - [[Pro_DeliveryAssigning]]
 - [[Rpt_DailyDriver]]
@@ -87,12 +103,6 @@ UnitCode
 - [[Rpt_NumericDistribution]]
 
 **Writes (6):**
-- [[Alpha_Integ]]
-- [[Alpha_Integ_HistData]]
-- [[Alpha_updateRoute]]
-- [[Awtar_Integ_AllUsers]]
-- [[Niroukh_Integ_AllUsers]]
-- [[SAP_Integ_Lamis]]
 
 ## Estimated Size / Volatility
 Typical business table

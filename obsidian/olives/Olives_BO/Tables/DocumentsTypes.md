@@ -8,11 +8,7 @@ foreign_keys:
   - [[Companies]]
   - [[TransactionsTypes]]
 referenced_by:
-  - [[AX_INTEG_SENDRECEIPTS]]
   - [[OT_SendCompData]]
-  - [[ProTech_Integration]]
-  - [[ProTech_Integration_SendReturnInvoice]]
-  - [[ProTech_Integration_SendSalesInvoice]]
   - [[Pro_ConvertLoadOrderToTransaction]]
   - [[Pro_ConvertUnloadOrderToTransaction]]
   - [[Pro_DocumentsTypes]]
@@ -27,8 +23,6 @@ referenced_by:
   - [[Rpt_SalesmanCashSales]]
   - [[Rpt_SalesmanSalesRecStatment]]
   - [[Rpt_TotalInvoiceByDocTypes]]
-  - [[SAP_Tyconz_Integ_SendPayments]]
-  - [[X3_Integ_SendSalesOrders]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -64,11 +58,7 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 ## Impact / Procedures Using This Table
 
 **Reads (19):**
-- [[AX_INTEG_SENDRECEIPTS]]
 - [[OT_SendCompData]]
-- [[ProTech_Integration]]
-- [[ProTech_Integration_SendReturnInvoice]]
-- [[ProTech_Integration_SendSalesInvoice]]
 - [[Pro_DocumentsTypes]]
 - [[Pro_GetCashCloseTotals]]
 - [[Pro_Receipts]]
@@ -81,11 +71,8 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 - [[Rpt_SalesmanCashSales]]
 - [[Rpt_SalesmanSalesRecStatment]]
 - [[Rpt_TotalInvoiceByDocTypes]]
-- [[SAP_Tyconz_Integ_SendPayments]]
-- [[X3_Integ_SendSalesOrders]]
 
 **Writes (4):**
-- [[ProTech_Integration]]
 - [[Pro_ConvertLoadOrderToTransaction]]
 - [[Pro_ConvertUnloadOrderToTransaction]]
 - [[Pro_DocumentsTypes]]

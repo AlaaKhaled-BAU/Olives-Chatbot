@@ -11,7 +11,6 @@ foreign_keys:
   - [[TargetsReferences]]
 referenced_by:
   - [[BO_Online_RptCustomerSalesTargetDetails]]
-  - [[Niroukh_SalesPerTeamQ]]
   - [[Pro_CustomerTargets]]
   - [[Pro_CustomerTargetsDetails]]
   - [[RPT_CUSTOMERSMAIN_SUBTARGETREPORT_COLLECTIONS]]
@@ -19,7 +18,6 @@ referenced_by:
   - [[RPT_NIROUKHCUSTOMERSMAIN_SUBTARGETREPORT]]
   - [[Rpt_CompareCustSalesByCategAndTargetRef]]
   - [[Rpt_MonthlyCompareSalesTargetWithCustomer]]
-  - [[Rpt_Niroukh_SalesPerTeamQ]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -56,7 +54,6 @@ CompanyID, TargetReferenceID -> [[TargetsReferences]](CompanyID, ID)
 
 **Reads (10):**
 - [[BO_Online_RptCustomerSalesTargetDetails]]
-- [[Niroukh_SalesPerTeamQ]]
 - [[Pro_CustomerTargets]]
 - [[Pro_CustomerTargetsDetails]]
 - [[RPT_CUSTOMERSMAIN_SUBTARGETREPORT_COLLECTIONS]]
@@ -64,7 +61,6 @@ CompanyID, TargetReferenceID -> [[TargetsReferences]](CompanyID, ID)
 - [[RPT_NIROUKHCUSTOMERSMAIN_SUBTARGETREPORT]]
 - [[Rpt_CompareCustSalesByCategAndTargetRef]]
 - [[Rpt_MonthlyCompareSalesTargetWithCustomer]]
-- [[Rpt_Niroukh_SalesPerTeamQ]]
 
 **Writes (2):**
 - [[Pro_CustomerTargets]]

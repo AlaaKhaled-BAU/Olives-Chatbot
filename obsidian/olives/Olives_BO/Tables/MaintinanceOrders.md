@@ -5,6 +5,7 @@ name: MaintinanceOrders
 schema: dbo
 tags: [#backoffice, #order]
 foreign_keys:
+
 referenced_by:
   - [[MaintinanceOrdersImages_Insert]]
   - [[MaintinanceOrders_Insert]]
@@ -23,7 +24,7 @@ Core data table in the Back Office (server-side) — stores maintinanceorders re
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
 |--------|------|----------|----|----|------------|
-| AutoID | numeric | YES | ✓ |  |  |
+| AutoID | numeric | NO | ✓ |  |  |
 | CompanyID | smallint | YES |  |  |  |
 | SalesmanNo | int | YES |  |  |  |
 | CustomerID | bigint | YES |  |  |  |
@@ -51,6 +52,7 @@ Core data table in the Back Office (server-side) — stores maintinanceorders re
 | CustomerHasBeenVisited | bit | YES |  |  |  |
 | SupervisorNotes | nvarchar | YES |  |  |  |
 | EvaluatingCustomerSite | nvarchar | YES |  |  |  |
+| EvaluatingCustomerWithdrawals | nvarchar | YES |  |  |  |
 | EvaluatingCustomerFinancialPosition | nvarchar | YES |  |  |  |
 | CustomerAgreement | nvarchar | YES |  |  |  |
 | FirstApproval | bit | YES |  |  |  |
@@ -60,6 +62,7 @@ Core data table in the Back Office (server-side) — stores maintinanceorders re
 | SecondApprovalDescription | nvarchar | YES |  |  |  |
 | SecondApprovalUserID | varchar | YES |  |  |  |
 | SendToUserID | nvarchar | YES |  |  |  |
+
 ## Primary Key
 AutoID
 ## Foreign Keys

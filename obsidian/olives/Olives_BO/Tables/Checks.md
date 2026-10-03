@@ -14,41 +14,8 @@ foreign_keys:
   - [[Receipts]]
   - [[TransactionsTypes]]
 referenced_by:
-  - [[ABS_Integ_SendPayment_Jebrene]]
-  - [[ABS_Integ_SendPayment_Sokhtian]]
-  - [[AX_INTEG_SENDRECEIPTS]]
-  - [[AX_Integ_SendPayments_AbuTawileh]]
-  - [[AbuOda_BonMarrof_Integ]]
-  - [[AbuOda_Comp2_Integ]]
-  - [[AbuOda_Integ]]
-  - [[Acback_Integ_SendPayments]]
-  - [[AccPack_Integ_SendReceipts]]
-  - [[AccPack_Integ_SendReceipts_LuxuryItems]]
-  - [[Awtar_Integ_SendReceipts]]
-  - [[Bajali_SAP_Integ]]
-  - [[Bonanza_Integ_SendReceipts_SmokingCenter]]
-  - [[Bonanza_Integ_SendReceipts_Yasmeen]]
-  - [[CL_Integ_SendAllTransactions]]
-  - [[Darwaza_Integ_SendReceipts]]
-  - [[Defaf_Integration]]
-  - [[ECO_Land_SAP_Integ]]
-  - [[Ejabi_Integ_SendPayments]]
-  - [[Falcons_GetItemBalance]]
-  - [[GArrow_SAP_Integ]]
-  - [[GP_Integ_SendReceipt_Wadi]]
-  - [[IscoJordan_Integ_SendReceipts]]
-  - [[Izhiman_SAP_Integ]]
-  - [[Khobara_Integ]]
-  - [[MeatLand_Integration]]
-  - [[MeatLand_Integrationnew]]
-  - [[Motakaml_Integ_SendReceipts]]
-  - [[NPF_Integ_SendReceipts]]
-  - [[Niroukh_Integ_SendReceipts]]
   - [[OT_ImportReceipts]]
   - [[PRO_GETRECEIPTSFOREMAIL]]
-  - [[PrestoSoft_Integ_SendReceipts]]
-  - [[Presto_Integ]]
-  - [[ProTech_Integration_SendPayment]]
   - [[Pro_Checks]]
   - [[Pro_ChecksByStatusDetails]]
   - [[Pro_Dashboard_Almalak]]
@@ -58,10 +25,7 @@ referenced_by:
   - [[Pro_Receipts]]
   - [[Pro_RptCashTotalOnline_Android]]
   - [[Pro_RptCashTotalOnline_Android_Naqi]]
-  - [[Qerat_Integ]]
-  - [[Qetaf_Integ]]
   - [[RPT_SUMMARYSALESAND]]
-  - [[RamPharm_SAP_Integ]]
   - [[Rpt_ALLReturnChecks]]
   - [[Rpt_CashInvoiceAndReciept]]
   - [[Rpt_CashOnlyReceipts]]
@@ -87,9 +51,6 @@ referenced_by:
   - [[Rpt_ReceiptsDetails]]
   - [[Rpt_ReceivablesSalesInvoice]]
   - [[Rpt_RoutePerformanceAnalysis]]
-  - [[Rpt_RoutePerformanceAnalysis_Spartan]]
-  - [[Rpt_RouteSummaryBySalesmanCombine_Spartan]]
-  - [[Rpt_RouteSummaryBySalesman_Spartan]]
   - [[Rpt_SalesAndOrders]]
   - [[Rpt_SalesmanCashAndChequesSales]]
   - [[Rpt_SalesmanCashPayments]]
@@ -100,27 +61,7 @@ referenced_by:
   - [[Rpt_UsersKPI]]
   - [[Rpt_WorkFlowAnalysis]]
   - [[Rpt_WorkFlowExceeds]]
-  - [[SAMA_SAP_Integ]]
-  - [[SAP_Integ_SendPayments]]
-  - [[SAP_Integ_SendPayments_Amazing]]
-  - [[SAP_Integ_SendPayments_Hammoudeh]]
-  - [[SAP_Integ_SendPayments_Karadsheh]]
-  - [[SAP_Integ_SendPayments_Kaylani]]
-  - [[SAP_Integ_SendPayments_Lamis]]
-  - [[SAP_Integ_SendPayments_Malak]]
-  - [[SAP_Integ_SendPayments_Meri]]
-  - [[SAP_Integ_SendPayments_UniCharm]]
-  - [[SAP_Naouri_SendPayment_Integration]]
-  - [[SAP_Tyconz_Integ_SendPayments]]
-  - [[SN_Integ_SendPayments]]
-  - [[Salbeshian_SAP_Integ]]
   - [[SalesmanInfo]]
-  - [[Shamel_Integ_SendReciepts]]
-  - [[Shini_Integ]]
-  - [[Tahona_Integ_SendReceipts]]
-  - [[Wings_Integ_SendReceipts]]
-  - [[Yolande_Integ_SendReceipts]]
-  - [[Zedan_SAP_Integ]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -128,9 +69,40 @@ last_verified: 2026-07-05
 
 
 ## Business Purpose
-> [!warning] AUTO-GENERATED — verify before trusting
+Stores bank checks received from customers as payment instruments attached to collection receipts (`Receipts`). Records issuing bank (`BankID`), branch (`BranchID`), check number (`ChequeNo`), maturity / due date (`DueDate`), face amount (`Amount`), and check collection status (`CheckStatus`).
+- **Header Link**: Pairs with collection receipts (`Receipts`) via `TransactionYear` and `TransactionNo` (with `TransactionTypeID`).
+- **Check Status**: `CheckStatus` tracks check maturity and lifecycle in Olives (e.g. In Portfolio / في الصندوق, Deposited / برسم التحصيل, Collected / محصل, Bounced / راجع).
+- **Due Date Aging**: `DueDate` determines whether a check is current or post-dated (شيكات مؤجلة / برسم التحصيل).
 
-Core data table in the Back Office (server-side) — stores checks records.
+## Chatbot semantics
+(Query `t.Checks` — scoped by session CompanyID via `t.` views.)
+
+| User / Arabic intent | Column(s) | Filter / rule |
+|----------------------|-----------|---------------|
+| الشيكات المستلمة من العميل | `ChequeNo`, `Amount`, `DueDate`, `BankID` | Join `t.Customers c ON ch.CustomerID = c.ID` |
+| شيكات سند القبض | `TransactionYear`, `TransactionNo`, `Amount` | Join `t.Receipts r ON ch.TransactionYear = r.TransactionYear AND ch.TransactionNo = r.TransactionNo` |
+| تاريخ استحقاق الشيك | `DueDate` | `DueDate <= GETDATE()` (مستحق) أو `DueDate > GETDATE()` (مؤجل) |
+| حالة الشيك | `CheckStatus` | حالة الشيك (محصل، راجع، برسم التحصيل) |
+| البنك والفرع | `BankID`, `BranchID` | Join `t.Banks`, `t.Branches` |
+| قيمة الشيك بالعملة | `Amount`, `ForeignAmount`, `CurrencyID` | قيمة الشيك المودع |
+
+**Do not confuse with:**
+- `t.Receipts` (the overall collection receipt header, which includes total cash and total check amounts).
+- `t.Receipts_PaidTrans` (reconciliation / allocation of receipt amounts against specific sales invoices).
+
+## Grain & keys
+- **Grain**: One row per physical check attached to a receipt (`BankID`, `BranchID`, `TransactionYear`, `TransactionNo`, `CustomerID`, `ChequeNo`).
+- **Composite PK**: `CompanyID`, `BankID`, `BranchID`, `TransactionYear`, `TransactionNo`, `TransactionTypeID`, `CustomerID`, `ChequeNo`.
+- **Tenant Key**: `CompanyID`.
+
+## Pipeline
+Mobile Salesman / Cashier Tablet → `OT_ImportReceipts` → `Receipts` + `Checks`.
+
+## Related
+- [[Receipts]]
+- [[Customers]]
+- [[Banks]]
+- [[Receipts_PaidTrans]]
 
 ## Columns
 | Column | Type | Nullable | PK | FK | References |
@@ -177,40 +149,7 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 ## Impact / Procedures Using This Table
 
 **Reads (105):**
-- [[ABS_Integ_SendPayment_Jebrene]]
-- [[ABS_Integ_SendPayment_Sokhtian]]
-- [[AX_INTEG_SENDRECEIPTS]]
-- [[AX_Integ_SendPayments_AbuTawileh]]
-- [[AbuOda_BonMarrof_Integ]]
-- [[AbuOda_Comp2_Integ]]
-- [[AbuOda_Integ]]
-- [[Acback_Integ_SendPayments]]
-- [[AccPack_Integ_SendReceipts]]
-- [[AccPack_Integ_SendReceipts_LuxuryItems]]
-- [[Awtar_Integ_SendReceipts]]
-- [[Bajali_SAP_Integ]]
-- [[Bonanza_Integ_SendReceipts_SmokingCenter]]
-- [[Bonanza_Integ_SendReceipts_Yasmeen]]
-- [[CL_Integ_SendAllTransactions]]
-- [[Darwaza_Integ_SendReceipts]]
-- [[Defaf_Integration]]
-- [[ECO_Land_SAP_Integ]]
-- [[Ejabi_Integ_SendPayments]]
-- [[Falcons_GetItemBalance]]
-- [[GArrow_SAP_Integ]]
-- [[GP_Integ_SendReceipt_Wadi]]
-- [[IscoJordan_Integ_SendReceipts]]
-- [[Izhiman_SAP_Integ]]
-- [[Khobara_Integ]]
-- [[MeatLand_Integration]]
-- [[MeatLand_Integrationnew]]
-- [[Motakaml_Integ_SendReceipts]]
-- [[NPF_Integ_SendReceipts]]
-- [[Niroukh_Integ_SendReceipts]]
 - [[PRO_GETRECEIPTSFOREMAIL]]
-- [[PrestoSoft_Integ_SendReceipts]]
-- [[Presto_Integ]]
-- [[ProTech_Integration_SendPayment]]
 - [[Pro_Checks]]
 - [[Pro_ChecksByStatusDetails]]
 - [[Pro_Dashboard_Almalak]]
@@ -220,10 +159,7 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 - [[Pro_Receipts]]
 - [[Pro_RptCashTotalOnline_Android]]
 - [[Pro_RptCashTotalOnline_Android_Naqi]]
-- [[Qerat_Integ]]
-- [[Qetaf_Integ]]
 - [[RPT_SUMMARYSALESAND]]
-- [[RamPharm_SAP_Integ]]
 - [[Rpt_ALLReturnChecks]]
 - [[Rpt_CashInvoiceAndReciept]]
 - [[Rpt_CashOnlyReceipts]]
@@ -249,9 +185,6 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 - [[Rpt_ReceiptsDetails]]
 - [[Rpt_ReceivablesSalesInvoice]]
 - [[Rpt_RoutePerformanceAnalysis]]
-- [[Rpt_RoutePerformanceAnalysis_Spartan]]
-- [[Rpt_RouteSummaryBySalesmanCombine_Spartan]]
-- [[Rpt_RouteSummaryBySalesman_Spartan]]
 - [[Rpt_SalesAndOrders]]
 - [[Rpt_SalesmanCashAndChequesSales]]
 - [[Rpt_SalesmanCashPayments]]
@@ -262,41 +195,12 @@ TransactionTypeID -> [[TransactionsTypes]](ID)
 - [[Rpt_UsersKPI]]
 - [[Rpt_WorkFlowAnalysis]]
 - [[Rpt_WorkFlowExceeds]]
-- [[SAMA_SAP_Integ]]
-- [[SAP_Integ_SendPayments]]
-- [[SAP_Integ_SendPayments_Amazing]]
-- [[SAP_Integ_SendPayments_Hammoudeh]]
-- [[SAP_Integ_SendPayments_Karadsheh]]
-- [[SAP_Integ_SendPayments_Kaylani]]
-- [[SAP_Integ_SendPayments_Lamis]]
-- [[SAP_Integ_SendPayments_Malak]]
-- [[SAP_Integ_SendPayments_Meri]]
-- [[SAP_Integ_SendPayments_UniCharm]]
-- [[SAP_Naouri_SendPayment_Integration]]
-- [[SAP_Tyconz_Integ_SendPayments]]
-- [[SN_Integ_SendPayments]]
-- [[Salbeshian_SAP_Integ]]
 - [[SalesmanInfo]]
-- [[Shamel_Integ_SendReciepts]]
-- [[Shini_Integ]]
-- [[Tahona_Integ_SendReceipts]]
-- [[Wings_Integ_SendReceipts]]
-- [[Zedan_SAP_Integ]]
 
 **Writes (13):**
 - [[OT_ImportReceipts]]
 - [[Pro_Checks]]
 - [[Pro_ReceiptPaid]]
-- [[SAP_Integ_SendPayments]]
-- [[SAP_Integ_SendPayments_Amazing]]
-- [[SAP_Integ_SendPayments_Hammoudeh]]
-- [[SAP_Integ_SendPayments_Karadsheh]]
-- [[SAP_Integ_SendPayments_Kaylani]]
-- [[SAP_Integ_SendPayments_Lamis]]
-- [[SAP_Integ_SendPayments_Malak]]
-- [[SAP_Integ_SendPayments_Meri]]
-- [[SAP_Integ_SendPayments_UniCharm]]
-- [[Yolande_Integ_SendReceipts]]
 
 ## Estimated Size / Volatility
 Typical business table

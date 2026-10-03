@@ -6,7 +6,6 @@ schema: dbo
 tags: [#backoffice, #billing, #legal, #reference]
 foreign_keys:
 referenced_by:
-  - [[Ejabi_Integration]]
 support_relevance: high
 last_verified: 2026-07-05
 ---
@@ -35,10 +34,8 @@ TaxID
 ## Impact / Procedures Using This Table
 
 **Reads (1):**
-- [[Ejabi_Integration]]
 
 **Writes (1):**
-- [[Ejabi_Integration]]
 
 ## Estimated Size / Volatility
 Typical business table
