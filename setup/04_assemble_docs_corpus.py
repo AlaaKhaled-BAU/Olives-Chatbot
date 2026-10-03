@@ -4,6 +4,7 @@ docs_corpus/ (gitignored -- a derived/assembled view, not new content).
 No MinerU needed for these: per PLAN.md's own repo inventory (client-chatbot/PLAN.md
 Sec 1.5.A), the user-guide and SQL-doc PDFs/DOCXs were already converted
 to markdown by hand before this project started."""
+import shutil
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -41,10 +42,21 @@ def main():
             missing.append(str(target))
             continue
         link = OUT_DIR / link_name
-        if link.is_symlink() or link.exists():
+        if link.is_symlink():
             link.unlink()
-        link.symlink_to(target)
-        print(f"linked {link_name} -> {target}")
+        elif link.is_dir():
+            shutil.rmtree(link)
+        elif link.exists():
+            link.unlink()
+        try:
+            link.symlink_to(target, target_is_directory=target.is_dir())
+            print(f"linked {link_name} -> {target}")
+        except OSError:
+            if target.is_dir():
+                shutil.copytree(target, link, dirs_exist_ok=True)
+            else:
+                shutil.copy2(target, link)
+            print(f"copied (fallback) {link_name} -> {target}")
     if missing:
         print(f"WARNING: {len(missing)} source(s) not found: {missing}")
 

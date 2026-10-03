@@ -67,9 +67,7 @@ def test_connection(server: str, user: str, password: str,
         server=host, port=resolved_port,
         timeout=timeout, login_timeout=max(3, int(timeout)),
     )
-    if trusted:
-        kwargs["trusted"] = {"yes"}  # NTLM best-effort on Linux stacks
-    else:
+    if not trusted:
         if not user:
             return {"ok": False, "error": "اسم المستخدم مطلوب"}
         kwargs.update(user=user, password=password or "")

@@ -318,13 +318,23 @@ header {
   gap: 8px; font-size: var(--fs-xs); text-align: right;
   color: var(--text-dim);
 }
-.settings-btn, .settings-btn {
+.settings-btn {
   font: inherit; font-size: var(--fs-xs); font-weight: 600;
+  display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 12px; border-radius: 8px; cursor: pointer;
   background: var(--surface-2, #182338); color: var(--text, #e6edf6);
   border: 1px solid var(--border-strong, #ffffff2b);
+  transition: all 0.2s ease;
 }
-.settings-btn:hover, .settings-btn:hover { border-color: var(--accent, #10b981); color: var(--accent, #10b981); }
+.settings-btn:hover {
+  border-color: var(--accent, #10b981);
+  color: var(--accent, #10b981);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+.settings-btn svg {
+  display: block;
+  flex-shrink: 0;
+}
 
 .modal {
   position: fixed; inset: 0; z-index: 80;
@@ -702,8 +712,14 @@ main#messages, main#messages {
   border: 1px solid var(--border-strong); background: transparent;
   color: var(--text-dim); border-radius: var(--r-sm);
   font-size: 11px; padding: 3px 9px; cursor: pointer; font-family: inherit;
+  transition: all .16s ease;
 }
 .csv-btn:hover { color: var(--text); border-color: var(--accent); }
+.csv-btn.btn-downloaded {
+  border-color: #10b981 !important;
+  color: #10b981 !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+}
 
 /* ---------- typing skeleton ---------- */
 .typing {

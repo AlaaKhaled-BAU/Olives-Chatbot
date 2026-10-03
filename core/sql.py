@@ -47,9 +47,7 @@ def get_conn(client: str):
             database=override.get("database") or db_name,
             timeout=30, login_timeout=10,
         )
-        if override.get("trusted"):
-            conn_kwargs["trusted"] = {"yes"}  # Windows auth, best-effort on Linux
-        else:
+        if not override.get("trusted"):
             conn_kwargs["user"] = override.get("user", "")
             conn_kwargs["password"] = override.get("password", "")
         return pymssql.connect(**conn_kwargs)

@@ -9,7 +9,7 @@ _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 METRICS = {
     "sales": {
-        "aliases": ["مبيعات", "sales"],
+        "aliases": ["مبيعات", "sales", "إجمالي المبيعات", "اجمالي المبيعات"],
         "description": (
             "Parameterized sales scan: gross_sales, returns, net_of_returns, "
             "invoice_count, return_count (types 1/2, single SELECT)."
@@ -20,7 +20,15 @@ METRICS = {
         "description": "Non-void sales invoices (TransactionTypeID=1) with optional gross from line items.",
     },
     "net_sales_by_salesperson": {
-        "aliases": ["أفضل مندوب", "best salesman", "sales_by_salesperson"],
+        "aliases": [
+            "أفضل مندوب",
+            "best salesman",
+            "sales_by_salesperson",
+            "أعلى مندوب",
+            "اعلى مندوب",
+            "أعلى المناديب",
+            "ترتيب المناديب",
+        ],
         "description": (
             "Net sales invoices grouped by SalesPersonID (type 1 non-void) with salesperson name."
         ),
@@ -34,7 +42,14 @@ METRICS = {
         "description": "Sales orders in OrdersHeaders (not invoices); includes undelivered count.",
     },
     "van_stock": {
-        "aliases": ["رصيد السيارة", "van_balance"],
+        "aliases": [
+            "رصيد السيارة",
+            "van_balance",
+            "بضاعة سيارات",
+            "بضاعة السيارات",
+            "رصيد سيارات",
+            "رصيد السيارات",
+        ],
         "description": "Salesperson van stock from SalesPersonItemsBalance.",
     },
     "cfd_assignment": {

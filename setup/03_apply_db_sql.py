@@ -69,13 +69,13 @@ def main():
     cur = conn.cursor()
 
     log(f"[{db_name}] applying 01_readonly_login.sql (chatbot_ro login, no base-table grants)")
-    run_script(cur, (DB_DIR / "01_readonly_login.sql").read_text(), {
+    run_script(cur, (DB_DIR / "01_readonly_login.sql").read_text(encoding="utf-8"), {
         "__CHATBOT_RO_PASSWORD__": password,
         "__DB_NAME__": db_name,
     })
 
     log(f"[{db_name}] applying 02_tenant_views.sql (schema t, SESSION_CONTEXT-scoped views)")
-    run_script(cur, (DB_DIR / "02_tenant_views.sql").read_text(), {
+    run_script(cur, (DB_DIR / "02_tenant_views.sql").read_text(encoding="utf-8"), {
         "__DB_NAME__": db_name,
     })
 

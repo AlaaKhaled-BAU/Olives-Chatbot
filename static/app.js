@@ -405,19 +405,37 @@ function addFeedbackRow(bot, turnId) {
 }
 
 function _csvCell(v) {
-  const s = (v ?? "").toString();
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  let s = (v ?? "").toString();
+  // Neutralize spreadsheet formula injection (=, +, -, @)
+  if (/^[=\-+@]/.test(s)) {
+    s = "'" + s;
+  }
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-function downloadTableCsv(table) {
+function downloadTableCsv(table, btn) {
   const lines = [table.columns.map(_csvCell).join(",")];
   table.rows.forEach((r) => lines.push(r.map(_csvCell).join(",")));
-  const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+  // Prepend UTF-8 BOM (\uFEFF) for Excel on Windows compatibility
+  const bom = "\uFEFF";
+  const csvContent = bom + lines.join("\r\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const a = document.createElement("a");
+  const dateStr = new Date().toISOString().slice(0, 10);
   a.href = URL.createObjectURL(blob);
-  a.download = "results.csv";
+  a.download = `olives_report_${dateStr}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
+
+  if (btn) {
+    const prevText = btn.textContent;
+    btn.textContent = "✓ تم التحميل";
+    btn.classList.add("btn-downloaded");
+    setTimeout(() => {
+      btn.textContent = prevText;
+      btn.classList.remove("btn-downloaded");
+    }, 1800);
+  }
 }
 
 function addResultTable(bot, table) {
@@ -446,7 +464,7 @@ function addResultTable(bot, table) {
   csvBtn.type = "button";
   csvBtn.className = "ghost csv-btn";
   csvBtn.textContent = "⭳ CSV";
-  csvBtn.addEventListener("click", () => downloadTableCsv(table));
+  csvBtn.addEventListener("click", () => downloadTableCsv(table, csvBtn));
   wrap.appendChild(csvBtn);
   bot.appendChild(wrap);
 }

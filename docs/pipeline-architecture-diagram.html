@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise Read-Only Chatbot — End-to-End Execution Pipeline</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #111827;
+      --bg-card: #162032;
+      --border-subtle: #1f2d44;
+      --border-focus: #38bdf8;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-purple: #c084fc;
+      --accent-emerald: #34d399;
+      --accent-amber: #fbbf24;
+      --accent-rose: #f43f5e;
+      --accent-orange: #fb923c;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Header */
+    header {
+      background: rgba(17, 24, 39, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #0284c7, #7c3aed);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      background: linear-gradient(to right, #ffffff, #93c5fd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-subtitle {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 0.5rem 0.95rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn:hover {
+      background: #1e293b;
+      border-color: var(--accent-blue);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+      border-color: #7dd3fc;
+    }
+
+    /* Sub-header Legend */
+    .legend-bar {
+      background: rgba(15, 23, 42, 0.85);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.6rem 1.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+      align-items: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+    }
+
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 4px;
+    }
+
+    /* Viewport Area */
+    main {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 20%, #111a2e 0%, #0a0e17 100%);
+    }
+
+    .canvas-container {
+      flex: 1;
+      overflow: auto;
+      padding: 3rem 2rem;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      position: relative;
+    }
+
+    #diagram-wrap {
+      width: 100%;
+      max-width: 1800px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: center;
+    }
+
+    #diagram-wrap svg {
+      width: 100% !important;
+      height: auto !important;
+      max-width: 100% !important;
+      filter: drop-shadow(0 15px 35px rgba(0, 0, 0, 0.5));
+    }
+
+    /* Custom Styling for rendered SVG elements */
+    .node rect, .node polygon {
+      stroke-width: 2px !important;
+      transition: all 0.25s ease !important;
+    }
+
+    .node:hover rect, .node:hover polygon {
+      stroke: #38bdf8 !important;
+      stroke-width: 3px !important;
+      filter: brightness(1.25) drop-shadow(0 0 10px rgba(56, 189, 248, 0.6)) !important;
+    }
+
+    .edgePath path {
+      stroke: #64748b !important;
+      stroke-width: 2px !important;
+    }
+
+    .cluster rect {
+      fill: rgba(30, 41, 59, 0.45) !important;
+      stroke: #334155 !important;
+      stroke-width: 1.5px !important;
+      rx: 12px !important;
+    }
+
+    .cluster span.nodeLabel {
+      color: #94a3b8 !important;
+      font-weight: 700 !important;
+      font-size: 0.95rem !important;
+      letter-spacing: 0.05em !important;
+      text-transform: uppercase !important;
+    }
+
+    /* Floating Navigation Controls */
+    .viewport-controls {
+      position: absolute;
+      bottom: 28px;
+      right: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 8px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+      z-index: 30;
+    }
+
+    .btn-icon {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      justify-content: center;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    /* Slide-out Inspector Drawer */
+    .drawer {
+      position: absolute;
+      top: 0;
+      right: -450px;
+      width: 430px;
+      height: 100%;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border-subtle);
+      box-shadow: -15px 0 35px rgba(0, 0, 0, 0.7);
+      transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+
+    .drawer.open {
+      right: 0;
+    }
+
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .drawer-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .drawer-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.6rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .drawer-close:hover {
+      color: #fff;
+    }
+
+    .drawer-body {
+      font-size: 0.92rem;
+      line-height: 1.6;
+      color: #cbd5e1;
+    }
+
+    .drawer-body h4 {
+      color: var(--accent-blue);
+      margin: 1.25rem 0 0.4rem;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+    }
+
+    .drawer-body p {
+      margin-bottom: 0.75rem;
+    }
+
+    .drawer-badge {
+      display: inline-block;
+      padding: 0.3rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .code-pill {
+      background: #1e293b;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      color: #38bdf8;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-title">Enterprise Read-Only Chatbot</div>
+        <div class="brand-subtitle">End-to-End Query & Reasoning Pipeline</div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <button class="btn" id="btn-top">
+        <span>↑</span> Top
+      </button>
+      <button class="btn btn-primary" id="btn-guide">
+        <span>ℹ</span> Architecture Guide
+      </button>
+    </div>
+  </header>
+
+  <div class="legend-bar">
+    <div class="legend-item">
+      <div class="legend-dot" style="background: #0284c7;"></div>
+      <span>1. Client & Ingress</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background: #d97706;"></div>
+      <span>2. Deterministic Gate</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background: #16a34a;"></div>
+      <span>3. Memory & Fast Cache</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background: #7e22ce;"></div>
+      <span>4. Thinking Agent Core</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background: #db2777;"></div>
+      <span>5. Specialized Tools</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background: #ea580c;"></div>
+      <span>6. Database Layer</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background: #475569;"></div>
+      <span>7. Delivery Envelope</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="canvas-container" id="canvas-container">
+      <div id="diagram-wrap">
+        <pre class="mermaid" id="mermaid-code">
+flowchart TD
+    %% Class Styles
+    classDef client fill:#0369a1,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef gate fill:#b45309,stroke:#fbbf24,stroke-width:2px,color:#ffffff;
+    classDef cache fill:#15803d,stroke:#4ade80,stroke-width:2px,color:#ffffff;
+    classDef llm fill:#6b21a8,stroke:#c084fc,stroke-width:2px,color:#ffffff;
+    classDef tool fill:#be185d,stroke:#f472b6,stroke-width:2px,color:#ffffff;
+    classDef db fill:#c2410c,stroke:#fb923c,stroke-width:2px,color:#ffffff;
+    classDef output fill:#334155,stroke:#94a3b8,stroke-width:2px,color:#ffffff;
+
+    %% Subgraph 1: Ingress & Context Normalization
+    subgraph S1 ["1. Ingress & Context Normalization"]
+        A["User Question & Session ID"]:::client --> B["Rate Limiter & Tenant Validator"]:::client
+        B --> C["Tenant Context Resolution & Dropdown Pinning"]:::client
+        C --> D["Session State & Rolling History Loader"]:::client
+    end
+
+    %% Subgraph 2: Deterministic Interceptors & Caching
+    subgraph S2 ["2. Deterministic Interceptors & Caching"]
+        D --> E{"Calendar Period Guard"}:::gate
+        E -- "Empty / Stale Period" --> E_Clarify["Clarification Required Event"]:::gate
+        E -- "Valid / Passed" --> F{"Query Plan Cache Check"}:::cache
+        F -- "Exact Hit (Static Dates)" --> G["Replay Pre-Compiled Query Plan"]:::cache
+        G --> H["Execute Certified Queries on Database"]:::db
+        H --> I["Format Replayed Evidence"]:::output
+        I --> Z_Out["Streaming Output Assembly"]:::output
+    end
+
+    %% Subgraph 3: Context Assembly & Dynamic Prompting
+    subgraph S3 ["3. Context Assembly & Dynamic Prompting"]
+        F -- "Cache Miss / Relative Intent" --> J["Byte-Stable System Foundation"]:::cache
+        J --> K1["Verified Positive & Negative Query Few-Shots"]:::cache
+        J --> K2["Domain Semantic Knowledge Cards"]:::cache
+        J --> K3["Certified Report & Metric Templates"]:::cache
+        J --> K4["Rolling Conversation History & Session Index"]:::cache
+        K1 & K2 & K3 & K4 --> L["Compiled Agent Context"]:::cache
+    end
+
+    %% Subgraph 4: Dynamic Reasoning & Tool Execution Loop
+    subgraph S4 ["4. Dynamic Reasoning & Tool Execution Loop"]
+        L --> M["Thinking Model Inference (Adjustable Gear)"]:::llm
+        M --> N{"Decision Point"}:::llm
+        
+        N -- "Clarification Needed" --> N_User["Ask User Question"]:::gate
+        N_User --> Z_Out
+        
+        N -- "Direct Synthesis" --> R["Draft Response Generation"]:::llm
+        
+        N -- "Tool Call Requested" --> O{"Tool Category"}:::tool
+        
+        %% Tool Paths
+        O -- "FTS Document Search" --> T_Doc["Documentation Index Search"]:::tool
+        O -- "L1 Master Data" --> T_Hot["In-Memory Master Cache"]:::tool
+        O -- "Analytical Trend" --> T_Calc["Deterministic Trend/Ratio Engine"]:::tool
+        O -- "Vault Knowledge & Relations" --> T_Vault["Schema Vault & FK Relationships"]:::tool
+        O -- "Certified Business Metric" --> T_Metric["Pre-Defined Certified Metric Builder"]:::tool
+        O -- "Custom Business SQL" --> T_SQL["SQL Synthesis Pipeline"]:::tool
+    end
+
+    %% Subgraph 5: Security Enforcement & Database Execution
+    subgraph S5 ["5. Security Enforcement & Database Execution"]
+        T_Metric --> U_Gate["SQL Security & AST Gatekeeper"]:::gate
+        T_SQL --> U_Gate
+        
+        U_Gate -- "Syntax / DDL / Cross-Grain Violation" --> U_Err["Gate Rejection Notice & Escalation"]:::gate
+        U_Err -- "Feedback for Correction" --> M
+        
+        U_Gate -- "Approved Safe Read" --> V["Tenant-Scoped Read-Only Database Connection"]:::db
+        V --> W["Database Engine Execution (t.* Views)"]:::db
+        W --> X["Result Truncation & Context Budget Filter"]:::tool
+        X --> Y["Post-Query Verification & Grain Verification"]:::gate
+        Y --> M
+    end
+
+    %% Subgraph 6: Final Contract Verification & Ingress Delivery
+    subgraph S6 ["6. Final Contract Verification & Ingress Delivery"]
+        R --> AA{"Grain & Aggregation Verifier"}:::gate
+        AA --> BB["Structured Output Finalizer (JSON Contract)"]:::output
+        BB --> CC["Follow-Up Question Generator (3 Plausible Actions)"]:::output
+        BB --> DD["Dynamic Data Table & Visual Chart Builder"]:::output
+        BB --> EE["Evidence Citer (Tables & Documents Referenced)"]:::output
+        CC & DD & EE --> FF["Structured Response Envelope"]:::output
+        FF --> GG["Store Plan in Exact Query Cache"]:::cache
+        GG --> HH["SSE Stream Packet Delivery to Client"]:::output
+    end
+        </pre>
+      </div>
+    </div>
+
+    <!-- Inspector Drawer -->
+    <div class="drawer" id="details-drawer">
+      <div class="drawer-header">
+        <div class="drawer-title" id="drawer-title">Pipeline Stage</div>
+        <button class="drawer-close" id="drawer-close">&times;</button>
+      </div>
+      <div class="drawer-body" id="drawer-body">
+        <p>Click on any node in the diagram to inspect its role, security guarantees, and execution logic.</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const NODE_METADATA = {
+      "A": {
+        title: "User Question & Session ID",
+        category: "Client & Ingress",
+        badge: "CLIENT-INGRESS",
+        color: "#0284c7",
+        desc: "Entry point for browser requests via POST /ask. Carries the natural Arabic prompt, session token, and company selector header."
+      },
+      "B": {
+        title: "Rate Limiter & Tenant Validator",
+        category: "Network Defense",
+        badge: "RATE-LIMITER",
+        color: "#0284c7",
+        desc: "Applies session-bucket rate limits (30 requests/minute) and validates the client against the environment-pinned tenant profile."
+      },
+      "C": {
+        title: "Tenant Context Resolution & Dropdown Pinning",
+        category: "Tenant Isolation",
+        badge: "TENANT-PINNING",
+        color: "#0284c7",
+        desc: "Pins the active CompanyID strictly via server session context and the UI selector. Chat model is never allowed to ask or switch company in chat."
+      },
+      "D": {
+        title: "Session State & Rolling History Loader",
+        category: "Memory Management",
+        badge: "SESSION-MEMORY",
+        color: "#0284c7",
+        desc: "Loads active session state from SQLite backing store. Recovers the rolling history buffer (last 4 turns) and transcript question index."
+      },
+      "E": {
+        title: "Calendar Period Guard",
+        category: "Deterministic Defense",
+        badge: "CALENDAR-GUARD",
+        color: "#d97706",
+        desc: "Intercepts relative date questions ('this month', 'today') to prevent querying empty or unclosed periods when recent business records are sealed."
+      },
+      "F": {
+        title: "Query Plan Cache Check",
+        category: "Fast-Path Cache",
+        badge: "PLAN-CACHE",
+        color: "#16a34a",
+        desc: "Evaluates exact cryptographic cache key matching tenant, company, role, schema version, and question. Bypasses LLM reasoning on hits."
+      },
+      "G": {
+        title: "Replay Pre-Compiled Query Plan",
+        category: "Execution Acceleration",
+        badge: "PLAN-REPLAY",
+        color: "#16a34a",
+        desc: "Executes pre-tested ordered SQL queries directly against the database, eliminating LLM generation delay and token burn."
+      },
+      "M": {
+        title: "Thinking Model Inference (Adjustable Gear)",
+        category: "Cognitive Engine",
+        badge: "AGENT-CORE",
+        color: "#7e22ce",
+        desc: "DeepSeek reasoning engine running with dynamic gear selection (Fast Flash for lookups, Think-Low for standard SQL, Think-High for multi-table joins and analytical trends)."
+      },
+      "U_Gate": {
+        title: "SQL Security & AST Gatekeeper",
+        category: "Zero-Trust Security",
+        badge: "SECURITY-GATE",
+        color: "#d97706",
+        desc: "Enforces strict SQL AST analysis: permits only SELECT, injects TOP 200 row caps, enforces tenant t.* schema views, blocks procedure execution, and rejects cross-grain queries."
+      },
+      "V": {
+        title: "Tenant-Scoped Read-Only Database Connection",
+        category: "Database Isolation",
+        badge: "DB-SECURITY",
+        color: "#ea580c",
+        desc: "Opens connection using restricted credentials (chatbot_ro) and sets SQL Server SESSION_CONTEXT('CompanyID') to isolate client rows at the engine level."
+      },
+      "W": {
+        title: "Database Engine Execution (t.* Views)",
+        category: "Data Engine",
+        badge: "SQL-SERVER",
+        color: "#ea580c",
+        desc: "Executes validated queries across Olives_BO tenant views. Never accesses base tables directly, preventing data leakage across companies."
+      },
+      "Y": {
+        title: "Post-Query Verification & Grain Verification",
+        category: "Accuracy Guardrail",
+        badge: "GRAIN-VERIFIER",
+        color: "#d97706",
+        desc: "Inspects returned row counts. If the query counted line items when the user asked for transaction headers, automatically triggers an entity recount."
+      },
+      "BB": {
+        title: "Structured Output Finalizer (JSON Contract)",
+        category: "Output Standardization",
+        badge: "FINAL-CONTRACT",
+        color: "#475569",
+        desc: "Enforces a zero-tool JSON contract on the final completion to preserve exact numbers verbatim while formatting clean prose, confidence, and refusal status."
+      },
+      "CC": {
+        title: "Follow-Up Question Generator",
+        category: "Conversational Polish",
+        badge: "FOLLOW-UPS",
+        color: "#475569",
+        desc: "Produces exactly 3 natural, highly context-relevant Arabic follow-up actions (e.g. breakdown by salesman, prior period comparison, top items)."
+      },
+      "DD": {
+        title: "Dynamic Data Table & Visual Chart Builder",
+        category: "Rich Visualization",
+        badge: "DATA-TABLE-CHART",
+        color: "#475569",
+        desc: "Automatically extracts tabular results from SQL outputs and generates time-series line or comparative bar charts without re-asking the LLM."
+      },
+      "HH": {
+        title: "SSE Stream Packet Delivery to Client",
+        category: "Streaming Delivery",
+        badge: "SSE-STREAM",
+        color: "#475569",
+        desc: "Streams answer tokens, tool execution indicators, and keep-alive heartbeats to the client over Server-Sent Events with instant disconnect handling."
+      }
+    };
+
+    const canvasContainer = document.getElementById('canvas-container');
+    const diagramWrap = document.getElementById('diagram-wrap');
+
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: 'transparent',
+        primaryColor: '#0284c7',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#38bdf8',
+        lineColor: '#64748b',
+        secondaryColor: '#1e293b',
+        tertiaryColor: '#0f172a'
+      },
+      flowchart: {
+        curve: 'basis',
+        htmlLabels: true
+      }
+    });
+
+    async function renderDiagram() {
+      const code = document.getElementById('mermaid-code').textContent;
+      const { svg } = await mermaid.render('rendered-mermaid', code);
+      diagramWrap.innerHTML = svg;
+
+      const svgEl = diagramWrap.querySelector('svg');
+      if (svgEl) {
+        attachNodeInteractions(svgEl);
+      }
+    }
+
+    function attachNodeInteractions(svgEl) {
+      const nodes = svgEl.querySelectorAll('.node');
+      nodes.forEach(node => {
+        node.style.cursor = 'pointer';
+        node.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = node.id.replace(/^flowchart-/, '').split('-')[0];
+          showNodeDetails(id, node);
+        });
+      });
+    }
+
+    function showNodeDetails(nodeId, element) {
+      const data = NODE_METADATA[nodeId] || {
+        title: element.querySelector('.nodeLabel')?.textContent || nodeId,
+        category: "Pipeline Component",
+        badge: "ACTIVE-STAGE",
+        color: "#38bdf8",
+        desc: "Essential pipeline component participating in enterprise query parsing, security verification, or final response delivery."
+      };
+
+      const drawer = document.getElementById('details-drawer');
+      const title = document.getElementById('drawer-title');
+      const body = document.getElementById('drawer-body');
+
+      title.textContent = data.title;
+      body.innerHTML = `
+        <div class="drawer-badge" style="background: ${data.color}22; color: ${data.color}; border: 1px solid ${data.color}55;">
+          ${data.badge}
+        </div>
+        <h4>Component Role</h4>
+        <p>${data.desc}</p>
+        <h4>Architecture Category</h4>
+        <p><span class="code-pill">${data.category}</span></p>
+        <h4>Safety & Enterprise Guarantees</h4>
+        <p>Enforces zero base-table direct access, tenant parameter isolation, strict row caps, and client-side protection against schema disclosure.</p>
+      `;
+
+      drawer.classList.add('open');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderDiagram();
+
+      document.getElementById('btn-top').addEventListener('click', () => {
+        canvasContainer.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+
+      document.getElementById('drawer-close').addEventListener('click', () => {
+        document.getElementById('details-drawer').classList.remove('open');
+      });
+
+      document.getElementById('btn-guide').addEventListener('click', () => {
+        showNodeDetails('U_Gate', document.createElement('div'));
+      });
+    });
+  </script>
+</body>
+</html>

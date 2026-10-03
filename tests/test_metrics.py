@@ -13,7 +13,10 @@ COMPANY_ID = 2
 def test_resolve_metric_aliases():
     assert metrics.resolve_metric("net_sales") == "net_sales"
     assert metrics.resolve_metric("مبيعات") == "sales"
+    assert metrics.resolve_metric("إجمالي المبيعات") == "sales"
     assert metrics.resolve_metric("أفضل مندوب") == "net_sales_by_salesperson"
+    assert metrics.resolve_metric("أعلى مندوب") == "net_sales_by_salesperson"
+    assert metrics.resolve_metric("أعلى المناديب") == "net_sales_by_salesperson"
     assert metrics.resolve_metric("best salesman") == "net_sales_by_salesperson"
     assert metrics.resolve_metric("محصلة يومية") == "daily_sales_pack"
     assert metrics.resolve_metric("daily sales") == "daily_sales_pack"
@@ -21,6 +24,8 @@ def test_resolve_metric_aliases():
     assert metrics.resolve_metric("مرتجعات") == "returns"
     assert metrics.resolve_metric("طلبات") == "orders"
     assert metrics.resolve_metric("van_stock") == "van_stock"
+    assert metrics.resolve_metric("بضاعة سيارات") == "van_stock"
+    assert metrics.resolve_metric("رصيد السيارات") == "van_stock"
     assert metrics.resolve_metric("عملاء المندوب") == "cfd_assignment"
     assert metrics.resolve_metric("unknown_metric") is None
 

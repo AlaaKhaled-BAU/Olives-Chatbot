@@ -63,7 +63,14 @@
           <select id="company-select" class="hidden" aria-label="Company"></select>
           <span id="client-label"></span>
           <span id="as-of-label" class="as-of-label hidden" aria-label="As-of dates"></span>
-          <button type="button" id="db-open-btn" class="settings-btn settings-btn" title="الإعدادات" aria-label="الإعدادات">إعدادات</button>
+          <button type="button" id="db-open-btn" class="settings-btn" title="إعدادات الاتصال بقاعدة البيانات" aria-label="إعدادات الاتصال">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+            </svg>
+            <span>الاتصال</span>
+          </button>
         </div>
       </header>
 
@@ -118,12 +125,12 @@
               </svg>
             </span>
             <h2>اسأل بياناتك مباشرة</h2>
-            <p>أجيب بالأرقام مع الاستعلام الذي أنتجها — الشركة من القائمة أعلاه.</p>
+            <p>مساعدك الذكي للاستعلام والتقارير وتحليل البيانات التشغيلية.</p>
             <div class="hero-chips">
-              <button type="button" class="chip-btn" data-q="كم عدد الزبائن النشطين؟">كم عدد الزبائن النشطين؟</button>
-              <button type="button" class="chip-btn" data-q="كم مبيعات يوليو 2025؟">مبيعات يوليو 2025؟</button>
-              <button type="button" class="chip-btn" data-q="مين أفضل مندوب عندنا؟">أفضل مندوب؟</button>
-              <button type="button" class="chip-btn" data-q="كيف أضيف عميل جديد؟">كيف أضيف عميل جديد؟</button>
+              <button type="button" class="chip-btn" data-q="من هو أعلى مندوب مبيعاً؟">أعلى المناديب مبيعاً</button>
+              <button type="button" class="chip-btn" data-q="ما هي أعلى 5 أصناف مبيعاً؟">أعلى 5 أصناف مبيعاً</button>
+              <button type="button" class="chip-btn" data-q="كم عدد العملاء النشطين؟">العملاء النشطون</button>
+              <button type="button" class="chip-btn" data-q="كيف أضيف عميل جديد في النظام؟">دليل: إضافة عميل</button>
             </div>
           </section>
 
@@ -132,7 +139,7 @@
 
         <div class="ask-form-wrap">
           <form id="ask-form">
-            <input id="question" type="text" placeholder="اسأل عن بياناتك..." autocomplete="off" required>
+            <input id="question" type="text" placeholder="اطرح سؤالك حول المبيعات، العملاء، الأصناف، أو وثائق النظام..." autocomplete="off" required>
             <button type="submit">إرسال</button>
           </form>
         </div>

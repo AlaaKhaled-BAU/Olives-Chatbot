@@ -143,7 +143,7 @@ def iter_corpus_chunks(corpus_dir: Path = CORPUS_DIR):
     corpus_dir -- walks symlinked back-office/front-office trees set up by
     04_assemble_docs_corpus.py."""
     for path in sorted(_iter_corpus_md_files(corpus_dir)):
-        text = path.read_text(errors="replace")
+        text = path.read_text(encoding="utf-8", errors="replace")
         rel = path.relative_to(corpus_dir)
         for heading_path, body in _chunks(text):
             yield str(rel), heading_path, body
