@@ -324,6 +324,7 @@ async function ask(question) {
         if (data.sources && data.sources.length) addSources(bot, data.sources);
         if (data.followups && data.followups.length) addFollowups(bot, data.followups);
         if (lastAnswerSql) addSqlPanel(bot, lastAnswerSql, data.table);
+        if (data.prompt_tokens != null) addUsagePanel(bot, data);
         if (data.report_name) addReportPanel(bot, data.report_name);
         const asOfLine = formatAsOfLine(
           asOf.calendar_today || contextAsOf.calendar_today,
@@ -373,6 +374,59 @@ function addAsOfPanel(bot, asOfLine) {
   div.className = "as-of-panel";
   div.textContent = asOfLine;
   bot.appendChild(div);
+}
+
+// DeepSeek pricing per 1M tokens — deepseek-flash (DeepSeek-V4.1-Flash)
+// Peak hours (UTC, Mon–Fri only): 01:00–04:00 and 06:00–10:00
+// Weekends and Chinese public holidays are always off-peak.
+// Source: https://api-docs.deepseek.com/quick_start/pricing
+const DS_PRICE = {
+  peak:    { cached: 0.006, input: 0.30,  output: 1.20 },
+  offpeak: { cached: 0.003, input: 0.15,  output: 0.60 },
+};
+
+function _isPeakUtc(d) {
+  const day = d.getUTCDay(); // 0=Sun, 6=Sat
+  if (day === 0 || day === 6) return false; // weekends always off-peak
+  const h = d.getUTCHours();
+  return (h >= 1 && h < 4) || (h >= 6 && h < 10);
+}
+
+function addUsagePanel(bot, data) {
+  const prompt   = data.prompt_tokens      || 0;
+  const out      = data.completion_tokens  || 0;
+  const cached   = data.cache_hit_tokens   || 0;
+  const uncached = prompt - cached;
+  const tier     = _isPeakUtc(new Date());
+  const p        = tier ? DS_PRICE.peak : DS_PRICE.offpeak;
+  const cost     = (uncached * p.input + cached * p.cached + out * p.output) / 1e6;
+  const costStr  = cost < 0.0001 ? "< $0.0001" : `$${cost.toFixed(4)}`;
+  const tierLbl  = tier ? "⚡ peak" : "🌙 off-peak";
+
+  const details = document.createElement("details");
+  details.className = "sql-panel usage-panel";
+  const summary = document.createElement("summary");
+  summary.textContent = "الاستهلاك";
+  details.appendChild(summary);
+
+  const hint = document.createElement("div");
+  hint.className = "sql-hint";
+  hint.textContent = `${prompt.toLocaleString()} in · ${out.toLocaleString()} out · ${costStr} · ${tierLbl}`;
+  details.appendChild(hint);
+
+  const grid = document.createElement("div");
+  grid.className = "usage-grid en";
+  grid.innerHTML = [
+    `<span>Prompt tokens</span><span>${prompt.toLocaleString()}</span>`,
+    `<span>&nbsp;&nbsp;— cached</span><span>${cached.toLocaleString()}</span>`,
+    `<span>&nbsp;&nbsp;— uncached</span><span>${uncached.toLocaleString()}</span>`,
+    `<span>Completion tokens</span><span>${out.toLocaleString()}</span>`,
+    `<span>LLM calls</span><span>${data.llm_calls || 1}</span>`,
+    `<span>Rate tier</span><span>${tierLbl}</span>`,
+    `<span>Estimated cost</span><span>${costStr}</span>`,
+  ].join("");
+  details.appendChild(grid);
+  bot.appendChild(details);
 }
 
 function addReportPanel(bot, reportName) {

@@ -84,6 +84,7 @@ def test_get_conn_trusted_omits_user_password(tmp_path, monkeypatch):
                 sql.get_conn("morec")
             except RuntimeError:
                 pass
+    assert "trusted" in captured
     assert "user" not in captured and "password" not in captured
 
 

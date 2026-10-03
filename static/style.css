@@ -673,6 +673,18 @@ main#messages, main#messages {
 }
 .copy-btn:hover { color: var(--text); border-color: var(--accent); }
 
+.usage-panel .sql-hint { color: var(--text-dim); }
+.usage-grid {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 0; padding: var(--sp-2) var(--sp-3);
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim);
+  direction: ltr; text-align: left;
+}
+.usage-grid span:nth-child(even) {
+  text-align: right; color: var(--text); font-weight: 500;
+}
+.usage-grid span { padding: 2px 0; }
+
 /* ---------- sources / followups / feedback / csv ---------- */
 .sources-row {
   display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
