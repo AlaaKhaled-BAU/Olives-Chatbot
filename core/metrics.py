@@ -70,6 +70,10 @@ METRICS = {
             "booked sales orders (OrdersHeaders with approved and undelivered status)."
         ),
     },
+    "unsold_items": {
+        "aliases": ["unsold_items", "never_sold", "مواد راكدة", "أصناف راكدة"],
+        "description": "Active items with zero sales invoices in the period (count + sample).",
+    },
 }
 
 
@@ -256,8 +260,22 @@ def build_sales_sql(company_id: int, filters: dict | None = None) -> str:
             select_dims = "th.TransactionDate AS sale_day, "
             group_by = " GROUP BY th.TransactionDate"
 
+    order = (filters.get("order") or "").strip().lower()
+    top = ""
+    order_by = ""
+    if order:
+        if order not in ("asc", "desc") or not group_key:
+            raise ValueError("order needs group_by and must be asc or desc")
+        limit = int(filters.get("limit") or 10)
+        if not 1 <= limit <= 50:
+            raise ValueError("limit must be between 1 and 50")
+        measure = "net_of_returns" if _returns == "net" else "gross_sales"
+        top = f"TOP {limit} "
+        order_by = f" ORDER BY {measure} {order.upper()}"
+
     return (
         "SELECT "
+        + top
         + select_dims
         + f"ISNULL({gross_expr}, 0) AS gross_sales, "
         + f"ISNULL({returns_expr}, 0) AS returns, "
@@ -271,6 +289,7 @@ def build_sales_sql(company_id: int, filters: dict | None = None) -> str:
         + _company_id_filter(cid, "th", "td")
         + _sales_half_open_dates(filters)
         + group_by
+        + order_by
     )
 
 
@@ -419,6 +438,22 @@ def build_sql(metric: str, filters: dict | None = None, *, company_id: int) -> s
             + f" GROUP BY td.ItemCode, i.Name ORDER BY SUM({line_amount_sql('td')}) DESC"
             + ") top_val"
         )
+    if metric == "unsold_items":
+        dates = _sales_half_open_dates(filters)
+        limit = int(filters.get("limit") or 20)
+        if not 1 <= limit <= 50:
+            raise ValueError("limit must be between 1 and 50")
+        return (
+            f"SELECT TOP {limit} COUNT(*) OVER () AS unsold_count, i.ItemCode, i.Name AS ItemName "
+            "FROM t.Items i WHERE ISNULL(i.IsSuspended, 0) = 0"
+            + _company_id_filter(cid, "i")
+            + " AND NOT EXISTS (SELECT 1 FROM t.TransactionsHeaders th "
+            + _detail_join()
+            + "WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0"
+            + _company_id_filter(cid, "th", "td")
+            + dates
+            + " AND td.ItemCode = i.ItemCode) ORDER BY i.ItemCode"
+        )
     raise ValueError(f"unknown metric {metric!r}")
 
 
@@ -439,9 +474,9 @@ def run_metric(
     if canonical == "sales":
         try:
             tax, returns = _sales_filter_basis(filters)
+            sql_text = build_sales_sql(company_id, filters)
         except ValueError as exc:
             return {"error": str(exc)}
-        sql_text = build_sales_sql(company_id, filters)
         rows = sql.run_select(sql_text, company_id, client, allowed_procs=allowed_procs)
         primary_measure = "net_of_returns" if returns == "net" else "gross_sales"
         return {
@@ -463,6 +498,9 @@ def run_metric(
         )
         if rows and rows[0].get("d") is not None:
             filters["date"] = str(rows[0]["d"])[:10]
-    sql_text = build_sql(canonical, filters, company_id=company_id)
+    try:
+        sql_text = build_sql(canonical, filters, company_id=company_id)
+    except ValueError as exc:
+        return {"error": str(exc)}
     rows = sql.run_select(sql_text, company_id, client, allowed_procs=allowed_procs)
     return {"metric": canonical, "sql": sql_text, "rows": rows}

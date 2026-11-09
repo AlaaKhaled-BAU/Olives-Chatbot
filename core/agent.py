@@ -747,7 +747,10 @@ TOOLS = [
             "description": (
                 "Run a named business metric with the correct grain — prefer over run_select for "
                 "sales, salesperson rank, returns, orders, van stock, or customer-to-salesperson "
-                "assignment. Counts against the query budget."
+                "assignment. Counts against the query budget. "
+                "Ranked questions over any dimension (best/worst/top/bottom salesman, customer, item, day): "
+                "metric=sales with group_by + order (desc for best, asc for worst) + limit, so the database ranks. "
+                "For worst/bottom items also call unsold_items for the same period."
             ),
             "parameters": {
                 "type": "object",
@@ -758,7 +761,8 @@ TOOLS = [
                             "Prefer sales (مبيعات) with filters tax and returns. "
                             "Also: net_sales_by_salesperson (أفضل مندوب), "
                             "daily_sales_pack (محصلة يومية), returns (مرتجعات), orders (طلبات), "
-                            "van_stock (رصيد السيارة), cfd_assignment (عملاء المندوب). "
+                            "van_stock (رصيد السيارة), cfd_assignment (عملاء المندوب), "
+                            "unsold_items (مواد راكدة: active items with no sales in the period). "
                             "Legacy net_sales remains for old plans only."
                         ),
                     },
@@ -780,6 +784,15 @@ TOOLS = [
                             "group_by": {
                                 "type": "string",
                                 "enum": ["salesperson", "customer", "item", "day"],
+                            },
+                            "order": {
+                                "type": "string",
+                                "enum": ["asc", "desc"],
+                                "description": "With group_by: rank by the primary measure (asc = lowest first).",
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "With order: top N rows, 1-50 (default 10).",
                             },
                             "sales_person_id": {"type": "integer"},
                             "undelivered_only": {"type": "boolean"},

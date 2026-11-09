@@ -1,11 +1,14 @@
 """Unit tests for core/metrics.py — mocked sql.run_select, no live DB."""
+import json
 import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core import metrics
+from core import config, gate, metrics
 
 COMPANY_ID = 2
 
@@ -249,3 +252,96 @@ def test_run_metric_sales_returns_basis_and_primary_measure():
     assert net["basis"]["returns"] == "net"
     assert net["primary_measure"] == "net_of_returns"
     assert "TransactionTypeID IN (1, 2)" in gross["sql"]
+
+
+@pytest.mark.parametrize("group_by", ("salesperson", "customer", "item", "day"))
+def test_sales_by_dimension_can_be_ranked_and_limited(group_by):
+    s = metrics.build_sales_sql(
+        COMPANY_ID,
+        {
+            "from_date": "2026-10-01",
+            "to_date": "2026-11-01",
+            "group_by": group_by,
+            "order": "asc",
+            "limit": 10,
+        },
+    )
+    assert s.startswith("SELECT TOP 10 ")
+    assert s.rstrip().endswith("ORDER BY gross_sales ASC")
+
+
+def test_sales_rank_uses_net_measure_when_returns_net():
+    s = metrics.build_sales_sql(
+        COMPANY_ID, {"group_by": "item", "order": "desc", "returns": "net"}
+    )
+    assert s.rstrip().endswith("ORDER BY net_of_returns DESC")
+
+
+def test_sales_rank_rejects_bad_limit_via_run_metric():
+    with patch.object(metrics.sql, "run_select"):
+        result = metrics.run_metric(
+            "sales",
+            COMPANY_ID,
+            "105",
+            filters={"group_by": "item", "order": "asc", "limit": 500},
+        )
+    assert result.get("error") == "limit must be between 1 and 50"
+
+
+def test_sales_rank_rejects_order_without_group_by():
+    with patch.object(metrics.sql, "run_select"):
+        result = metrics.run_metric(
+            "sales",
+            COMPANY_ID,
+            "105",
+            filters={"order": "desc", "limit": 10},
+        )
+    assert "error" in result
+    assert "group_by" in result["error"]
+
+
+def test_unsold_items_metric_sql():
+    s = metrics.build_sql(
+        "unsold_items",
+        {"from_date": "2026-10-01", "to_date": "2026-11-01"},
+        company_id=COMPANY_ID,
+    )
+    assert "NOT EXISTS" in s
+    assert "ISNULL(i.IsSuspended, 0) = 0" in s
+    assert "TransactionDate < '2026-11-01'" in s
+    assert "COUNT(*) OVER () AS unsold_count" in s
+    assert metrics.resolve_metric("مواد راكدة") == "unsold_items"
+    assert metrics.resolve_metric("أصناف راكدة") == "unsold_items"
+    assert metrics.resolve_metric("never_sold") == "unsold_items"
+
+
+def test_unsold_items_gate_injects_tenant_inside_not_exists():
+    path = config.work_dir("105") / "schema_cache.json"
+    if not path.is_file():
+        pytest.skip("work/105/schema_cache.json required")
+    schema_cache = json.loads(path.read_text(encoding="utf-8"))
+    raw = metrics.build_sql(
+        "unsold_items",
+        {"from_date": "2026-10-01", "to_date": "2026-11-01"},
+        company_id=1,
+    )
+    gated = gate.validate(raw, company_id=1, schema_cache=schema_cache)
+    assert "th.CompanyID = 1" in gated
+    assert "td.CompanyID = 1" in gated
+    assert "i.CompanyID = 1" in gated
+
+
+def test_unsold_items_live_unsold_count_oct_2026():
+    from core import sql as sql_mod
+
+    q = metrics.build_sql(
+        "unsold_items",
+        {"from_date": "2026-10-01", "to_date": "2026-11-01"},
+        company_id=1,
+    )
+    try:
+        rows = sql_mod.run_select(q, company_id=1, client="105")
+    except Exception as exc:
+        pytest.skip(f"SQL Server unavailable: {exc}")
+    assert rows
+    assert int(rows[0]["unsold_count"]) == 1987
