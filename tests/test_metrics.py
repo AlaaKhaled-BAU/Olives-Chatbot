@@ -65,8 +65,8 @@ def test_net_sales_by_salesperson_groups_and_filters():
     assert "SalesPersons sp" in sql_text
     assert "TransactionTypeID = 1" in sql_text
     assert f"sp.CompanyID = {COMPANY_ID}" in sql_text
-    assert "COUNT(DISTINCT th.TransactionNo)" not in sql_text
-    assert "COUNT(*) AS invoice_count" in sql_text
+    assert "COUNT(DISTINCT CAST(th.TransactionYear" in sql_text
+    assert "th2" not in sql_text
 
 
 def test_returns_sql_has_type_2_and_void_filter():
@@ -113,12 +113,35 @@ def test_run_metric_unknown_returns_error():
 def test_run_metric_date_and_salesperson_filters():
     sql_text = metrics.build_sql(
         "net_sales",
-        {"from_date": "2025-06-01", "to_date": "2025-06-30", "sales_person_id": 3},
+        {"from_date": "2025-06-01", "to_date": "2025-07-01", "sales_person_id": 3},
         company_id=COMPANY_ID,
     )
     assert "TransactionDate >= '2025-06-01'" in sql_text
-    assert "TransactionDate <= '2025-06-30'" in sql_text
+    assert "TransactionDate < '2025-07-01'" in sql_text
+    assert "TransactionDate <=" not in sql_text
     assert "SalesPersonID = 3" in sql_text
+
+
+def test_best_salesperson_is_half_open_and_has_no_correlated_subquery():
+    sql_text = metrics.build_sql(
+        "net_sales_by_salesperson",
+        {"from_date": "2026-10-01", "to_date": "2026-11-01"},
+        company_id=COMPANY_ID,
+    )
+    assert "TransactionDate < '2026-11-01'" in sql_text
+    assert "<=" not in sql_text
+    assert "th2" not in sql_text
+    assert "COUNT(DISTINCT" in sql_text
+
+
+def test_orders_metric_is_half_open():
+    sql_text = metrics.build_sql(
+        "orders",
+        {"from_date": "2026-10-01", "to_date": "2026-11-01"},
+        company_id=COMPANY_ID,
+    )
+    assert "OrderDate < '2026-11-01'" in sql_text
+    assert "OrderDate <=" not in sql_text
 
 
 def test_van_stock_optional_salesperson_filter():

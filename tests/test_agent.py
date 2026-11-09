@@ -9,6 +9,7 @@ The one live, un-mocked path (an actual "how many companies" question
 against the real gateway) is exercised manually -- see the Phase 6 commit
 message -- not here, since CI-style runs shouldn't depend on a live LLM
 quota."""
+import datetime
 import sys
 import types
 from pathlib import Path
@@ -814,6 +815,17 @@ def test_empty_calendar_month_needs_ask_before_tools(monkeypatch, tmp_path):
     assert str(today.year) in result["needs_ask"]
     assert "2025" in result["needs_ask"] or "يوليو" in result["needs_ask"]
     assert "هل أحسب" in result["needs_ask"]
+
+
+def test_calendar_confirm_system_note_uses_half_open_to_date():
+    with patch.object(
+        agent, "_fetch_max_invoice_date", return_value=datetime.date(2025, 7, 15),
+    ):
+        note = agent._calendar_confirm_system_note("morec", 1)
+    assert note is not None
+    assert "from_date=2025-07-01" in note
+    assert "to_date=2025-08-01" in note
+    assert "to_date=2025-07-31" not in note
 
 
 def test_calendar_confirm_skips_empty_month_gate(monkeypatch, tmp_path):

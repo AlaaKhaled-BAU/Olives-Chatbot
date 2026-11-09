@@ -32,7 +32,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 MAX_TURNS = 12
 MODEL_ALIAS = "chatbot"  # cache-key namespace for plan/result keys (kept stable deliberately)
 # Bump when playbook/metric meaning changes; pair with setup/clear_plan_cache.py (I1).
-PLAN_SEMANTIC_VERSION = "2"
+PLAN_SEMANTIC_VERSION = "3"
 # DeepSeek gears (core/llm.GEARS): f0 = flash non-thinking (docs/envelope/fast
 # paths), t1 = flash think-low (standard NL2SQL), t2 = flash think-high
 # (escalated joins/compound), p = pro think-high — rescue path ONLY
@@ -1025,6 +1025,12 @@ def _month_bounds(year: int, month: int) -> tuple[datetime.date, datetime.date]:
     return first, last
 
 
+def _half_open_month_end(year: int, month: int) -> datetime.date:
+    if month == 12:
+        return datetime.date(year + 1, 1, 1)
+    return datetime.date(year, month + 1, 1)
+
+
 def _asks_this_month(question: str) -> bool:
     q = question.lower()
     return any(p.lower() in q for p in _THIS_MONTH_PHRASES)
@@ -1100,10 +1106,11 @@ def _calendar_confirm_system_note(client: str, company_id: int) -> str | None:
     max_invoice = _fetch_max_invoice_date(client, company_id)
     if max_invoice is None:
         return None
-    first, last = _month_bounds(max_invoice.year, max_invoice.month)
+    first, _last = _month_bounds(max_invoice.year, max_invoice.month)
+    to_exclusive = _half_open_month_end(max_invoice.year, max_invoice.month)
     return (
         f"User confirmed last posting month. Use run_metric(net_sales, "
-        f"from_date={first.isoformat()}, to_date={last.isoformat()}). "
+        f"from_date={first.isoformat()}, to_date={to_exclusive.isoformat()}). "
         "Do not label that period as هذا الشهر or the current calendar month."
     )
 

@@ -141,7 +141,7 @@ def _invoice_date_filters(filters: dict, alias: str = "th") -> str:
     if from_date:
         parts.append(f"{alias}.TransactionDate >= '{from_date}'")
     if to_date:
-        parts.append(f"{alias}.TransactionDate <= '{to_date}'")
+        parts.append(f"{alias}.TransactionDate < '{to_date}'")
     sp = _safe_int(filters.get("sales_person_id"))
     if sp is not None:
         parts.append(f"{alias}.SalesPersonID = {sp}")
@@ -155,7 +155,7 @@ def _order_date_filters(filters: dict, alias: str = "oh") -> str:
     if from_date:
         parts.append(f"{alias}.OrderDate >= '{from_date}'")
     if to_date:
-        parts.append(f"{alias}.OrderDate <= '{to_date}'")
+        parts.append(f"{alias}.OrderDate < '{to_date}'")
     sp = _safe_int(filters.get("sales_person_id"))
     if sp is not None:
         parts.append(f"{alias}.SalesPersonID = {sp}")
@@ -297,23 +297,16 @@ def build_sql(metric: str, filters: dict | None = None, *, company_id: int) -> s
         )
     if metric == "net_sales_by_salesperson":
         extra = _invoice_date_filters(filters)
-        extra_gross = extra.replace("th.", "th2.")
         return (
             "SELECT th.SalesPersonID, sp.Name AS SalesPersonName, "
-            "COUNT(*) AS invoice_count, "
-            f"(SELECT SUM({line_amount_sql('td')}) FROM t.TransactionsHeaders th2 "
-            "INNER JOIN t.TransactionsDetails td ON "
-            "th2.CompanyID = td.CompanyID AND th2.TransactionTypeID = td.TransactionTypeID "
-            "AND th2.TransactionYear = td.TransactionYear AND th2.TransactionNo = td.TransactionNo "
-            "WHERE th2.SalesPersonID = th.SalesPersonID "
-            "AND th2.TransactionTypeID = 1 AND ISNULL(th2.IsVoid, 0) = 0"
-            + _company_id_filter(cid, "th2", "td")
-            + extra_gross
-            + ") AS gross_amount "
+            "COUNT(DISTINCT CAST(th.TransactionYear AS varchar(4)) + '-' + "
+            "CAST(th.TransactionNo AS varchar(20))) AS invoice_count, "
+            f"SUM({line_amount_sql('td')}) AS gross_amount "
             "FROM t.TransactionsHeaders th "
-            "INNER JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID AND sp.CompanyID = th.CompanyID "
+            + _detail_join()
+            + "INNER JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID AND sp.CompanyID = th.CompanyID "
             "WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0"
-            + _company_id_filter(cid, "th", "sp")
+            + _company_id_filter(cid, "th", "td", "sp")
             + extra
             + " GROUP BY th.SalesPersonID, sp.Name "
             "ORDER BY gross_amount DESC"
