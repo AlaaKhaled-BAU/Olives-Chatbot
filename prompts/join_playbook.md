@@ -75,7 +75,7 @@ Never hardcode or memorize which salesperson is Cash Van or Order Taking. Deduce
     - Sales live in `t.OrdersHeaders` + `t.OrdersDetails` (check `WFApproved = 1` and `Approved = 1`).
     - Available stock lives in `t.StoresBalances` (Central Warehouse) — they do NOT carry van custody stock.
   - **Hybrid (مندوب مزدوج)**: `MakeSalesInvoice = 1` AND `MakeOrderTaking = 1`.
-    - When asked for "sales", report BOTH: direct field invoices (`TransactionsHeaders`) AND booked sales orders (`OrdersHeaders`).
+    - When asked for "sales", lead with direct field invoices (`TransactionsHeaders`); if booked sales orders (`OrdersHeaders`) matter, show them as a separate labelled line. Never add the two amounts together.
 
 ## Transfers Orders Lifecycle & TransactionsHeaders Types Warning
 `TransfersOrdersHeaders` records movements between warehouse stores and mobile vans (synced from mobile `OT_ConsOrderHF/DF` via `OT_ImportUploadOrders`):
