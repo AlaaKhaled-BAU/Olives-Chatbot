@@ -6,9 +6,11 @@ import sys
 from pathlib import Path
 
 import pytest
+import sqlglot
+from sqlglot import exp
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from core import config
+from core import config, gate
 from core.gate import GateError, invoice_grain_error, validate
 
 # Reconstructed from trace.jsonl (2026-11-09, client 105): derived-table aggregate
@@ -50,6 +52,11 @@ def schema_cache():
             "dbo.Customers": [
                 {"column": "ID", "type": "int"},
                 {"column": "CompanyID", "type": "int"},
+                {"column": "ManagerID", "type": "int"},
+            ],
+            "dbo.LogActions": [
+                {"column": "ActionId", "type": "nvarchar"},
+                {"column": "ActionDesc", "type": "nvarchar"},
             ],
             "dbo.DeliveryRoute": [
                 {"column": "RouteID", "type": "int"},
@@ -97,6 +104,42 @@ def schema_cache_105():
     if not path.is_file():
         pytest.skip("work/105/schema_cache.json required")
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _assert_tenant_scopes(out: str, company_id: int, schema_cache: dict) -> None:
+    """Each scoped t. table has exactly one tenant EQ predicate in its own SELECT."""
+    stmt = sqlglot.parse_one(out, read="tsql")
+    cid = int(company_id)
+    for select in stmt.find_all(exp.Select):
+        tables = gate._tables_in_from(select)
+        where = select.args.get("where")
+        where_expr = where.this if where is not None else None
+        for table in tables:
+            bare = table.name
+            alias = table.alias_or_name
+            cols = gate._schema_columns(schema_cache, bare, fail_unknown=True)
+            for tcol in gate._tenant_column_names(bare, cols):
+                assert gate._tenant_pred_satisfied(where_expr, alias, tcol, cid, bare), (
+                    f"missing {alias}.{tcol}={cid} in {select.sql(dialect='tsql')[:180]}"
+                )
+                pred_count = sum(
+                    1
+                    for eq in (where_expr.find_all(exp.EQ) if where_expr else [])
+                    if isinstance(eq.this, exp.Column)
+                    and gate._col_matches(eq.this, alias, tcol, bare)
+                    and isinstance(eq.expression, exp.Literal)
+                    and eq.expression.is_int
+                    and int(eq.expression.this) == cid
+                )
+                assert pred_count == 1, (
+                    f"expected one {alias}.{tcol}={cid}, got {pred_count}"
+                )
+
+
+def _assert_outer_has_no_aliases(out: str, forbidden_aliases: tuple[str, ...]) -> None:
+    outer = _outer_where(out)
+    for alias in forbidden_aliases:
+        assert not re.search(rf"\b{re.escape(alias)}\.", outer, re.I), outer
 
 
 def _outer_where(sql: str) -> str:
@@ -382,3 +425,88 @@ def test_trace_failing_sql_runs_on_sql_server(schema_cache_105):
         v2 = rows_c2[0].get("total") or rows_c2[0].get("Col_1")
         if v1 is not None and v2 is not None and float(v1) != 0 and float(v2) != 0:
             assert float(v1) != float(v2)
+
+
+SCOPE_SHAPE_CASES = [
+    (
+        "cross_apply",
+        "SELECT c.ID FROM t.Customers c CROSS APPLY ("
+        "SELECT TOP 1 oh.OrderDate FROM t.OrdersHeaders oh WHERE oh.CustomerID = c.ID) a",
+        ("oh",),
+    ),
+    (
+        "outer_apply",
+        "SELECT c.ID FROM t.Customers c OUTER APPLY ("
+        "SELECT COUNT(*) AS n FROM t.OrdersHeaders oh WHERE oh.CustomerID = c.ID) a",
+        ("oh",),
+    ),
+    (
+        "having_exists",
+        "SELECT c.ID FROM t.Customers c GROUP BY c.ID "
+        "HAVING EXISTS (SELECT 1 FROM t.OrdersHeaders oh WHERE oh.CustomerID = c.ID)",
+        ("oh",),
+    ),
+    (
+        "recursive_cte",
+        "WITH cte AS ("
+        "SELECT ID FROM t.Customers WHERE ManagerID IS NOT NULL "
+        "UNION ALL "
+        "SELECT c.ID FROM t.Customers c INNER JOIN cte p ON c.ManagerID = p.ID"
+        ") SELECT ID FROM cte",
+        (),
+    ),
+    (
+        "cte_referenced_twice",
+        "WITH x AS (SELECT ID FROM t.Customers) "
+        "SELECT ID FROM x UNION ALL SELECT ID FROM x",
+        ("Customers",),
+    ),
+    (
+        "scalar_subquery_in_join_on",
+        "SELECT c.ID FROM t.Customers c "
+        "JOIN t.OrdersHeaders oh ON oh.CustomerID = c.ID AND oh.OrderDate > "
+        "(SELECT MIN(OrderDate) FROM t.OrdersHeaders)",
+        (),
+    ),
+    (
+        "intersect",
+        "SELECT Name FROM t.Customers INTERSECT SELECT Name FROM t.Suppliers",
+        (),
+    ),
+    (
+        "except",
+        "SELECT Name FROM t.Customers EXCEPT SELECT Name FROM t.Suppliers",
+        (),
+    ),
+]
+
+
+@pytest.mark.parametrize("name,sql,forbidden_outer_aliases", SCOPE_SHAPE_CASES)
+def test_scope_shapes_tenant_predicates_per_select(
+    name, sql, forbidden_outer_aliases, schema_cache
+):
+    out = validate(sql, company_id=1, schema_cache=schema_cache)
+    _assert_tenant_scopes(out, 1, schema_cache)
+    if forbidden_outer_aliases:
+        _assert_outer_has_no_aliases(out, forbidden_outer_aliases)
+
+
+def test_unknown_t_table_fail_closed(schema_cache):
+    with pytest.raises(GateError, match=r"unknown table t\.NotInCache"):
+        validate("SELECT * FROM t.NotInCache", company_id=1, schema_cache=schema_cache)
+
+
+def test_known_global_reference_table_allowed_without_tenant_predicate(schema_cache):
+    out = validate("SELECT * FROM t.Currencies", company_id=1, schema_cache=schema_cache)
+    assert "CompanyID" not in out
+    assert "CompNo" not in out
+
+
+def test_known_cached_table_without_tenant_column_allowed(schema_cache):
+    out = validate(
+        "SELECT ActionId FROM t.LogActions",
+        company_id=1,
+        schema_cache=schema_cache,
+    )
+    assert "CompanyID" not in out
+    assert "CompNo" not in out

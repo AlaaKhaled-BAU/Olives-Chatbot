@@ -101,8 +101,16 @@ def _ensure_column_aliases(stmt):
                 col_idx += 1
 
 
-def _schema_columns(schema_cache: dict, bare_name: str) -> list | None:
-    return schema_cache.get("tables", {}).get(f"dbo.{bare_name}")
+def _schema_columns(
+    schema_cache: dict, bare_name: str, *, fail_unknown: bool = False
+) -> list | None:
+    key = f"dbo.{bare_name}"
+    tables = schema_cache.get("tables", {})
+    if key not in tables:
+        if fail_unknown:
+            raise GateError(f"unknown table t.{bare_name}")
+        return None
+    return tables[key]
 
 
 def _tenant_column_names(bare_name: str, columns: list | None) -> list[str]:
@@ -150,7 +158,7 @@ def _verify_tenant_coverage(stmt, company_id: int, schema_cache: dict):
         for table in _tables_in_from(select):
             bare = table.name
             alias = table.alias_or_name
-            columns = _schema_columns(schema_cache, bare)
+            columns = _schema_columns(schema_cache, bare, fail_unknown=True)
             for tcol in _tenant_column_names(bare, columns):
                 if not _tenant_pred_satisfied(where_expr, alias, tcol, cid, bare):
                     raise GateError(
@@ -182,7 +190,7 @@ def _reject_cross_company_literals(stmt, company_id: int, schema_cache: dict):
             val = int(eq.expression.this)
             col = eq.this
             for _table, bare, alias in refs:
-                columns = _schema_columns(schema_cache, bare)
+                columns = _schema_columns(schema_cache, bare, fail_unknown=True)
                 for tcol in _tenant_column_names(bare, columns):
                     if _col_matches(col, alias, tcol, bare):
                         if val != cid:
@@ -233,7 +241,7 @@ def _inject_tenant_on_select(select: exp.Select, company_id: int, schema_cache: 
     for table in _tables_in_from(select):
         bare = table.name
         alias = table.alias_or_name
-        columns = _schema_columns(schema_cache, bare)
+        columns = _schema_columns(schema_cache, bare, fail_unknown=True)
         for tcol in _tenant_column_names(bare, columns):
             if not _tenant_pred_satisfied(where_expr, alias, tcol, company_id, bare):
                 missing.append(_eq_predicate(alias, tcol, company_id))
