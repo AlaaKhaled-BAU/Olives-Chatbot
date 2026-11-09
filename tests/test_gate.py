@@ -510,3 +510,31 @@ def test_known_cached_table_without_tenant_column_allowed(schema_cache):
     )
     assert "CompanyID" not in out
     assert "CompNo" not in out
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT ID FROM t.Customers",
+        "SELECT ID FROM t.customers",
+        "SELECT ID FROM [t].[CUSTOMERS]",
+    ],
+)
+def test_tenant_table_resolution_case_insensitive(sql, schema_cache):
+    out = validate(sql, company_id=1, schema_cache=schema_cache)
+    _assert_tenant_scopes(out, 1, schema_cache)
+
+
+@pytest.mark.parametrize(
+    "sql",
+    ["SELECT ID FROM t.Currencies", "SELECT ID FROM t.currencies"],
+)
+def test_global_reference_table_case_insensitive(sql, schema_cache):
+    out = validate(sql, company_id=1, schema_cache=schema_cache)
+    assert "CompanyID" not in out
+    assert "CompNo" not in out
+
+
+def test_unknown_t_table_nope_fail_closed(schema_cache):
+    with pytest.raises(GateError, match=r"unknown table t\.Nope"):
+        validate("SELECT * FROM t.Nope", company_id=1, schema_cache=schema_cache)

@@ -30,6 +30,8 @@ _REFERENCE_TABLES = {
     "OlivesMenu", "OlivesPages", "PromotionTypes", "SystemCodes",
     "TargetsTypes", "TransactionsTypes", "WF_Functions",
 }
+_REFERENCE_TABLES_FOLD = frozenset(t.casefold() for t in _REFERENCE_TABLES)
+_CASEFOLD_INDEX_KEY = "__gate_casefold_table_index"
 
 _COMPNO_VARIANTS = ("compno",)
 
@@ -101,23 +103,45 @@ def _ensure_column_aliases(stmt):
                 col_idx += 1
 
 
+def _casefold_table_index(schema_cache: dict) -> dict[str, str]:
+    """Bare table name (casefolded) -> canonical dbo key in schema_cache['tables']."""
+    cached = schema_cache.get(_CASEFOLD_INDEX_KEY)
+    if cached is not None:
+        return cached
+    index: dict[str, str] = {}
+    for key in schema_cache.get("tables", {}):
+        if not key.startswith("dbo."):
+            continue
+        bare = key[4:]
+        fold = bare.casefold()
+        prev = index.get(fold)
+        if prev is not None and prev != key:
+            raise GateError(f"ambiguous table case variants: {prev!r} vs {key!r}")
+        index[fold] = key
+    schema_cache[_CASEFOLD_INDEX_KEY] = index
+    return index
+
+
+def _resolve_dbo_table_key(schema_cache: dict, bare_name: str) -> str | None:
+    return _casefold_table_index(schema_cache).get(bare_name.casefold())
+
+
 def _schema_columns(
     schema_cache: dict, bare_name: str, *, fail_unknown: bool = False
 ) -> list | None:
-    key = f"dbo.{bare_name}"
-    tables = schema_cache.get("tables", {})
-    if key not in tables:
+    key = _resolve_dbo_table_key(schema_cache, bare_name)
+    if key is None:
         if fail_unknown:
             raise GateError(f"unknown table t.{bare_name}")
         return None
-    return tables[key]
+    return schema_cache.get("tables", {}).get(key)
 
 
 def _tenant_column_names(bare_name: str, columns: list | None) -> list[str]:
-    if not columns or bare_name in _REFERENCE_TABLES:
+    if not columns or bare_name.casefold() in _REFERENCE_TABLES_FOLD:
         return []
     col_map = {c["column"].lower(): c["column"] for c in columns}
-    if bare_name == "Companies":
+    if bare_name.casefold() == "companies":
         return [col_map["id"]] if "id" in col_map else []
     names: list[str] = []
     if "companyid" in col_map:
