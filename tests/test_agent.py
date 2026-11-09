@@ -577,6 +577,16 @@ def test_system_prompt_documents_invoice_grain_and_isvoid():
     assert "Receipts" in prompt
 
 
+def test_system_prompt_fixes_sales_basis_and_ranking_rules():
+    text = (Path(__file__).resolve().parent.parent / "prompts" / "system.md").read_text(
+        encoding="utf-8"
+    )
+    assert "Never add invoice and order amounts together" in text
+    assert "Primary basis" in text
+    assert "Ranking rule" in text
+    assert "state both invoiced sales" not in text
+
+
 def test_malformed_tool_syntax_does_not_false_positive_on_prose_mentioning_it():
     """C9: the old check was `"tool_calls" in content or "｜" in content` --
     a legitimate answer that merely discusses tool-calling in English prose
