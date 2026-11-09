@@ -248,7 +248,6 @@ def test_cost_usd_offpeak_matches_published_flash_rates():
 def _golden_ref():
     """Inline fixture matching task-2 tightened-check table."""
     items = [{"code": "0103022", "net": 1841.65}]
-  # worst-to-best so list is net DESC like live SQL
     items += [{"code": f"A{i:02d}", "net": 13 - i} for i in range(1, 13)]
     return {
         "reps": [
@@ -257,7 +256,11 @@ def _golden_ref():
         ],
         "items": items,
         "summary": {"net": 57251.853534, "inv": 381, "custs": 298},
-        "visit_days": [{"visited": 4, "sold": 4, "inv": 4}, {"visited": 1, "sold": 1, "inv": 1}],
+        "visit_days": [
+            {"visited": 4, "sold": 4, "inv": 4},
+            {"visited": 1, "sold": 1, "inv": 1},
+            {"visited": 6, "sold": 5, "inv": 5},
+        ],
         "unsold": 1987,
     }
 
@@ -362,3 +365,43 @@ def test_golden_check_code_fence_always_fails():
 
 def test_golden_check_howto_keyword():
     _assert_check("howto", "MakeOrderTaking", True)
+
+
+def test_golden_check_visits_single_pipe_four_fails():
+    _assert_check("visits", "محمد مصطفى جميل\n| 4 |", False)
+
+
+def test_golden_check_visits_single_pipe_one_fails():
+    _assert_check("visits", "محمد مصطفى جميل\n| 1 |", False)
+
+
+def test_golden_check_visits_prose_three_fours_on_line():
+    _assert_check(
+        "visits",
+        "محمد مصطفى جميل زار 4 عملاء وباع لـ 4 منهم بـ 4 فواتير",
+        True,
+    )
+
+
+def test_golden_check_visits_unequal_day_six_five_five_ok():
+    _assert_check(
+        "visits",
+        "محمد مصطفى جميل: 6 زيارات، 5 عملاء اشتروا، 5 فواتير",
+        True,
+    )
+
+
+def test_golden_check_visits_unequal_day_incomplete_fails():
+    _assert_check("visits", "محمد مصطفى جميل: 6 زيارات، 5 عملاء", False)
+
+
+def test_baseline_passes_uses_pass_final_when_present():
+    from evals.run_golden_session import baseline_passes
+    data = {"cases": [{"name": "a", "pass": False, "pass_final": True}]}
+    assert baseline_passes(data) == {"a": True}
+
+
+def test_baseline_passes_falls_back_to_pass():
+    from evals.run_golden_session import baseline_passes
+    data = {"cases": [{"name": "b", "pass": True}]}
+    assert baseline_passes(data) == {"b": True}

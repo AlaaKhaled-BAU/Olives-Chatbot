@@ -1,10 +1,12 @@
 #!/usr/bin/env python3.13
 """Golden one-session eval for client 105 / CompanyID 1. Reference values
 come from live SQL through core.sql.run_select (same gate as the bot), so
-expectations follow the data. Requires the API running on :8100."""
+expectations follow the data. Requires the API running on :8100.
+For --baseline regression, compare against pass_final when present, else pass."""
 import argparse
 import json
 import re
+from collections import Counter
 import sys
 import time
 import urllib.request
@@ -66,6 +68,16 @@ def cost_usd(call: dict, rates: dict) -> float:
             + (call.get("completion") or 0) * rates["out"]) / 1e6
 
 
+def baseline_passes(results: dict) -> dict[str, bool]:
+    out: dict[str, bool] = {}
+    for row in results.get("cases") or []:
+        if "pass_final" in row:
+            out[row["name"]] = bool(row["pass_final"])
+        else:
+            out[row["name"]] = bool(row["pass"])
+    return out
+
+
 def regressions(
     baseline_pass: dict[str, bool],
     run1: dict[str, bool],
@@ -121,14 +133,14 @@ def references() -> dict:
     return {"reps": reps, "items": items, "summary": summary, "visit_days": visit_days, "unsold": unsold}
 
 
+def _line_token_counts(line: str) -> Counter:
+    return Counter(m.replace(",", "") for m in _NUM_RE.findall(_norm(line)))
+
+
 def _line_visit_match(line: str, d: dict) -> bool:
-    nums = [m.replace(",", "") for m in _NUM_RE.findall(_norm(line))]
-    v, s, i = str(d["visited"]), str(d["sold"]), str(d["inv"])
-    if not nums:
-        return False
-    if v == s == i:
-        return v in nums and (len(nums) >= 3 or "|" in line)
-    return v in nums and s in nums and i in nums
+    need = Counter([str(d["visited"]), str(d["sold"]), str(d["inv"])])
+    have = _line_token_counts(line)
+    return all(have[t] >= need[t] for t in need)
 
 
 def _visits_pass(answer: str, ref: dict) -> bool:
@@ -200,8 +212,10 @@ def trace_for(question: str, since: float) -> dict:
 
 def _summary(rows: list[dict]) -> dict:
     n = len(rows)
+    final_key = lambda r: r.get("pass_final", r["pass"])
     return {
         "accuracy": sum(r["pass"] for r in rows) / n,
+        "accuracy_final": sum(final_key(r) for r in rows) / n,
         "usd_per_q_offpeak": round(sum(r["usd_offpeak"] for r in rows) / n, 5),
         "usd_per_q_peak": round(sum(r["usd_peak"] for r in rows) / n, 5),
         "p50_latency_ms": sorted(r["latency_ms"] or 0 for r in rows)[n // 2],
@@ -275,13 +289,13 @@ def main() -> int:
     cases = load_cases()
     ref = references()
     rows = run_session(cases, ref)
+    for r in rows:
+        r["pass_final"] = r["pass"]
     _print_rows(rows)
-    summary = _summary(rows)
-    print(json.dumps(summary, indent=1))
 
     regressed: list[str] = []
     if args.baseline:
-        base = {r["name"]: r["pass"] for r in json.loads(Path(args.baseline).read_text(encoding="utf-8"))["cases"]}
+        base = baseline_passes(json.loads(Path(args.baseline).read_text(encoding="utf-8")))
         run1 = {r["name"]: r["pass"] for r in rows}
         need_rerun = any(base.get(n) and not run1.get(n) for n in base)
         run2_map = None
@@ -291,11 +305,15 @@ def main() -> int:
             for r, r2 in zip(rows, rows2, strict=True):
                 r["pass_rerun"] = r2["pass"]
                 r["answer_rerun"] = r2.get("answer")
+                r["pass_final"] = r["pass"] or r2["pass"]
         regressed, flaky = regressions(base, run1, run2_map)
         if flaky:
             print("FLAKY:", flaky)
         if regressed:
             print("REGRESSED:", regressed)
+
+    summary = _summary(rows)
+    print(json.dumps(summary, indent=1))
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out = BASE_DIR / "evals" / f"golden_session_105_results_{stamp}.json"
