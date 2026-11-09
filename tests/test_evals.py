@@ -243,3 +243,122 @@ def test_cost_usd_offpeak_matches_published_flash_rates():
     from evals.run_golden_session import cost_usd, OFFPEAK
     call = {"cache_hit": 1_000_000, "cache_miss": 1_000_000, "completion": 1_000_000}
     assert round(cost_usd(call, OFFPEAK), 6) == round(0.003 + 0.15 + 0.60, 6)
+
+
+def _golden_ref():
+    """Inline fixture matching task-2 tightened-check table."""
+    items = [{"code": "0103022", "net": 1841.65}]
+  # worst-to-best so list is net DESC like live SQL
+    items += [{"code": f"A{i:02d}", "net": 13 - i} for i in range(1, 13)]
+    return {
+        "reps": [
+            {"id": 8, "name": "محمد مصطفى جميل", "net": 15355.228256},
+            {"id": 210, "name": "زكريا حمزاوي", "net": 15185.23},
+        ],
+        "items": items,
+        "summary": {"net": 57251.853534, "inv": 381, "custs": 298},
+        "visit_days": [{"visited": 4, "sold": 4, "inv": 4}, {"visited": 1, "sold": 1, "inv": 1}],
+        "unsold": 1987,
+    }
+
+
+def test_num_tokens_strips_commas_and_parses_standalone():
+    from evals.run_golden_session import num_tokens
+    assert num_tokens("57,251.85 و 381") == {"57251.85", "381"}
+
+
+def test_regressions_baseline_pass_fail_fail_is_regressed():
+    from evals.run_golden_session import regressions
+    base = {"x": True}
+    assert regressions(base, {"x": False}, {"x": False}) == (["x"], [])
+
+
+def test_regressions_baseline_pass_fail_pass_is_flaky():
+    from evals.run_golden_session import regressions
+    base = {"x": True}
+    assert regressions(base, {"x": False}, {"x": True}) == ([], ["x"])
+
+
+def test_regressions_baseline_fail_not_counted():
+    from evals.run_golden_session import regressions
+    base = {"x": False}
+    assert regressions(base, {"x": False}, {"x": False}) == ([], [])
+
+
+def test_regressions_run2_none_when_run1_all_pass():
+    from evals.run_golden_session import regressions
+    base = {"x": True}
+    assert regressions(base, {"x": True}, None) == ([], [])
+
+
+def _assert_check(kind, answer, expected):
+    from evals.run_golden_session import check
+    assert check(kind, answer, _golden_ref()) is expected
+
+
+def test_golden_check_visits_baseline_false_pass_text():
+    _assert_check(
+        "visits",
+        "| سامح أبو عرمانة (125) | 2 | 2 | 0 |\n| زكريا حمزاوي (210) | 1 | 4 | 0 |",
+        False,
+    )
+
+
+def test_golden_check_visits_correct_table_row():
+    _assert_check("visits", "محمد مصطفى جميل\n| 2026-11-07 | 4 | 4 | 4 |", True)
+
+
+def test_golden_check_visits_numbers_without_name():
+    _assert_check("visits", "| 2026-11-07 | 4 | 4 | 4 |", False)
+
+
+def test_golden_check_visits_numbers_split_across_lines():
+    _assert_check("visits", "محمد مصطفى جميل زار 4\nباع 4\nفواتير 4", False)
+
+
+def test_golden_check_summary_ok():
+    _assert_check("summary", "صافي 57,251.85 من 381 فاتورة و 298 عميل", True)
+
+
+def test_golden_check_summary_rejects_rounded_net():
+    _assert_check("summary", "57,252 من فواتير و 381 فاتورة و 298 عميل", False)
+
+
+def test_golden_check_summary_rejects_inv_substring():
+    _assert_check("summary", "57,251.85 و 13810 و 298", False)
+
+
+def test_golden_check_summary_arabic_indic_digits():
+    _assert_check("summary", "٥٧٬٢٥١٫٨٥ و ٣٨١ و ٢٩٨", True)
+
+
+def test_golden_check_top_item_code_only_fails():
+    _assert_check("top_item", "0103022", False)
+
+
+def test_golden_check_top_item_code_and_amount():
+    _assert_check("top_item", "0103022 بقيمة 1,841.65", True)
+
+
+def test_golden_check_top_rep_name_and_amount():
+    _assert_check("top_rep", "محمد مصطفى جميل صافي 15,355.23", True)
+
+
+def test_golden_check_top_rep_rejects_integer_rounded_amount():
+    _assert_check("top_rep", "محمد مصطفى جميل صافي 15,355", False)
+
+
+def test_golden_check_bottom10_with_unsold():
+    _assert_check("bottom10", "A08 A09 A10 A11 A12 و 1,987", True)
+
+
+def test_golden_check_bottom10_without_unsold():
+    _assert_check("bottom10", "A08 A09 A10 A11 A12", False)
+
+
+def test_golden_check_code_fence_always_fails():
+    _assert_check("howto", "foo ```sql\nx\n```", False)
+
+
+def test_golden_check_howto_keyword():
+    _assert_check("howto", "MakeOrderTaking", True)

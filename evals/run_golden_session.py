@@ -4,6 +4,7 @@ come from live SQL through core.sql.run_select (same gate as the bot), so
 expectations follow the data. Requires the API running on :8100."""
 import argparse
 import json
+import re
 import sys
 import time
 import urllib.request
@@ -18,12 +19,41 @@ from core import metrics, sql  # noqa: E402
 
 CLIENT, COMPANY = "105", 1
 TRACE = BASE_DIR / "work" / "trace.jsonl"
+CASES_PATH = BASE_DIR / "evals" / "golden_session_105.jsonl"
 OFFPEAK = {"hit": 0.003, "miss": 0.15, "out": 0.60}   # USD per 1M, deepseek-flash
 PEAK = {"hit": 0.006, "miss": 0.30, "out": 1.20}
 NET = metrics.line_amount_sql("td")
 JOIN = ("FROM t.TransactionsHeaders th JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID "
         "AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear "
         "AND th.TransactionNo = td.TransactionNo")
+
+_ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
+_NUM_RE = re.compile(
+    r"(?<![\d.,])\d{1,3}(?:,\d{3})+(?:\.\d+)?(?![\d.,])"
+    r"|(?<![\d.,])\d+(?:\.\d+)?(?![\d.,])"
+)
+
+
+def _norm(text: str) -> str:
+    t = (text or "").translate(_ARABIC_DIGITS)
+    return t.replace("\u066c", ",").replace("\u066b", ".")
+
+
+def num_tokens(text: str) -> set[str]:
+    return {m.replace(",", "") for m in _NUM_RE.findall(_norm(text))}
+
+
+def amount_matches(x: float, text: str) -> bool:
+    target = f"{x:.2f}"
+    for tok in num_tokens(text):
+        if "." in tok and tok == target:
+            return True
+        try:
+            if abs(float(tok) - x) < 0.006:
+                return True
+        except ValueError:
+            continue
+    return False
 
 
 def number_variants(x: float) -> set[str]:
@@ -34,6 +64,24 @@ def cost_usd(call: dict, rates: dict) -> float:
     return ((call.get("cache_hit") or 0) * rates["hit"]
             + (call.get("cache_miss") or 0) * rates["miss"]
             + (call.get("completion") or 0) * rates["out"]) / 1e6
+
+
+def regressions(
+    baseline_pass: dict[str, bool],
+    run1: dict[str, bool],
+    run2: dict[str, bool] | None,
+) -> tuple[list[str], list[str]]:
+    if run2 is None:
+        return [], []
+    regressed, flaky = [], []
+    for name, base_ok in baseline_pass.items():
+        if not base_ok:
+            continue
+        if not run1.get(name) and not run2.get(name):
+            regressed.append(name)
+        elif not run1.get(name) and run2.get(name):
+            flaky.append(name)
+    return regressed, flaky
 
 
 def _q(text: str) -> list[dict]:
@@ -73,31 +121,59 @@ def references() -> dict:
     return {"reps": reps, "items": items, "summary": summary, "visit_days": visit_days, "unsold": unsold}
 
 
-def check(kind: str, answer: str, ref: dict) -> bool:
-    a = (answer or "").replace("\u066c", ",")
-    has = lambda x: any(v in a for v in number_variants(float(x)))  # noqa: E731
-    if "```" in a:
+def _line_visit_match(line: str, d: dict) -> bool:
+    nums = [m.replace(",", "") for m in _NUM_RE.findall(_norm(line))]
+    v, s, i = str(d["visited"]), str(d["sold"]), str(d["inv"])
+    if not nums:
         return False
+    if v == s == i:
+        return v in nums and (len(nums) >= 3 or "|" in line)
+    return v in nums and s in nums and i in nums
+
+
+def _visits_pass(answer: str, ref: dict) -> bool:
+    a = _norm(answer)
+    top_name = ref["reps"][0]["name"].strip()
+    if top_name not in a:
+        return False
+    return any(
+        _line_visit_match(line, d)
+        for d in ref["visit_days"]
+        for line in a.splitlines()
+    )
+
+
+def check(kind: str, answer: str, ref: dict) -> bool:
+    if "```" in (answer or ""):
+        return False
+    a = _norm(answer)
     if kind == "top_rep":
         top = ref["reps"][0]
-        return top["name"].strip() in a and has(top["net"])
+        return top["name"].strip() in a and amount_matches(float(top["net"]), answer)
     if kind == "top_item":
         top = ref["items"][0]
-        return top["code"] in a or has(top["net"])
+        return top["code"] in a and amount_matches(float(top["net"]), answer)
     if kind == "bottom10":
-        # Product decision 2026-11-09: show lowest sold items AND the never-sold count.
         bottom = [r["code"] for r in ref["items"][-10:]]
-        return sum(code in a for code in bottom) >= 5 and has(ref["unsold"])
+        unsold_tok = str(int(ref["unsold"]))
+        return sum(code in a for code in bottom) >= 5 and unsold_tok in num_tokens(a)
     if kind == "visits":
-        # Small integers are weak evidence on their own; this case also gets a manual read.
-        return any(str(d["visited"]) in a and str(d["sold"]) in a and str(d["inv"]) in a
-                   for d in ref["visit_days"])
+        return _visits_pass(answer, ref)
     if kind == "summary":
         s = ref["summary"]
-        return has(s["net"]) and str(s["inv"]) in a and str(s["custs"]) in a
+        toks = num_tokens(a)
+        return (
+            amount_matches(float(s["net"]), answer)
+            and str(s["inv"]) in toks
+            and str(s["custs"]) in toks
+        )
     if kind == "howto":
         return any(k in a for k in ("MakeOrderTaking", "طلب بيع", "الموقف الوظيفي", "وظيف"))
     raise ValueError(kind)
+
+
+def load_cases() -> list[dict]:
+    return [json.loads(l) for l in CASES_PATH.read_text(encoding="utf-8").splitlines() if l.strip()]
 
 
 def ask(question: str, session_id: str) -> dict:
@@ -122,14 +198,25 @@ def trace_for(question: str, since: float) -> dict:
     return {}
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--baseline", help="previous results json; fail if any baseline pass now fails")
-    args = ap.parse_args()
-    cases = [json.loads(l) for l in (BASE_DIR / "evals" / "golden_session_105.jsonl")
-             .read_text(encoding="utf-8").splitlines() if l.strip()]
-    ref = references()
-    sid = f"golden-{uuid.uuid4().hex[:8]}"
+def _summary(rows: list[dict]) -> dict:
+    n = len(rows)
+    return {
+        "accuracy": sum(r["pass"] for r in rows) / n,
+        "usd_per_q_offpeak": round(sum(r["usd_offpeak"] for r in rows) / n, 5),
+        "usd_per_q_peak": round(sum(r["usd_peak"] for r in rows) / n, 5),
+        "p50_latency_ms": sorted(r["latency_ms"] or 0 for r in rows)[n // 2],
+        "calls_per_q": round(sum(r["llm_calls"] for r in rows) / n, 2),
+    }
+
+
+def _print_rows(rows: list[dict]) -> None:
+    for r in rows:
+        print(f"{r['name']:<28} pass={r['pass']} {r['latency_ms']}ms "
+              f"calls={r['llm_calls']} ${r['usd_offpeak']}", flush=True)
+
+
+def run_session(cases: list[dict], ref: dict, session_id: str | None = None) -> list[dict]:
+    sid = session_id or f"golden-{uuid.uuid4().hex[:8]}"
     rows = []
     for c in cases:
         t0 = time.time()
@@ -137,34 +224,85 @@ def main() -> int:
         tr = trace_for(c["question"], t0 - 1)
         calls = tr.get("calls") or []
         rows.append({
-            "name": c["name"], "pass": check(c["check"], res.get("answer") or "", ref),
-            "latency_ms": tr.get("latency_ms"), "ttft_ms": tr.get("ttft_ms"),
-            "llm_calls": len(calls), "tool_errors": tr.get("tool_errors"),
+            "name": c["name"],
+            "pass": check(c["check"], res.get("answer") or "", ref),
+            "latency_ms": tr.get("latency_ms"),
+            "ttft_ms": tr.get("ttft_ms"),
+            "llm_calls": len(calls),
+            "tool_errors": tr.get("tool_errors"),
             "usd_offpeak": round(sum(cost_usd(x, OFFPEAK) for x in calls), 5),
             "usd_peak": round(sum(cost_usd(x, PEAK) for x in calls), 5),
             "answer": res.get("answer"),
         })
-        print(f"{c['name']:<28} pass={rows[-1]['pass']} {rows[-1]['latency_ms']}ms "
-              f"calls={rows[-1]['llm_calls']} ${rows[-1]['usd_offpeak']}", flush=True)
-    n = len(rows)
-    summary = {
-        "accuracy": sum(r["pass"] for r in rows) / n,
-        "usd_per_q_offpeak": round(sum(r["usd_offpeak"] for r in rows) / n, 5),
-        "usd_per_q_peak": round(sum(r["usd_peak"] for r in rows) / n, 5),
-        "p50_latency_ms": sorted(r["latency_ms"] or 0 for r in rows)[n // 2],
-        "calls_per_q": round(sum(r["llm_calls"] for r in rows) / n, 2),
-    }
+    return rows
+
+
+def rescore_results(src: Path) -> int:
+    data = json.loads(src.read_text(encoding="utf-8"))
+    ref = references()
+    kinds = {c["name"]: c["check"] for c in load_cases()}
+    rows = []
+    for old in data["cases"]:
+        kind = kinds[old["name"]]
+        row = dict(old)
+        row["pass"] = check(kind, old.get("answer") or "", ref)
+        rows.append(row)
+    summary = _summary(rows)
+    _print_rows(rows)
     print(json.dumps(summary, indent=1))
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    out = BASE_DIR / "evals" / f"golden_session_105_results_{stamp}_rescored.json"
+    payload = {
+        "rescored_from": str(src),
+        "summary": summary,
+        "cases": rows,
+    }
+    out.write_text(json.dumps(payload, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+    return out
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--baseline", help="previous results json; fail if any baseline pass now fails")
+    ap.add_argument("--rescore", metavar="RESULTS_JSON",
+                    help="re-score stored answers with live references (no API)")
+    args = ap.parse_args()
+
+    if args.rescore:
+        rescore_results(Path(args.rescore))
+        return 0
+
+    cases = load_cases()
+    ref = references()
+    rows = run_session(cases, ref)
+    _print_rows(rows)
+    summary = _summary(rows)
+    print(json.dumps(summary, indent=1))
+
+    regressed: list[str] = []
+    if args.baseline:
+        base = {r["name"]: r["pass"] for r in json.loads(Path(args.baseline).read_text(encoding="utf-8"))["cases"]}
+        run1 = {r["name"]: r["pass"] for r in rows}
+        need_rerun = any(base.get(n) and not run1.get(n) for n in base)
+        run2_map = None
+        if need_rerun:
+            rows2 = run_session(cases, ref)
+            run2_map = {r["name"]: r["pass"] for r in rows2}
+            for r, r2 in zip(rows, rows2, strict=True):
+                r["pass_rerun"] = r2["pass"]
+                r["answer_rerun"] = r2.get("answer")
+        regressed, flaky = regressions(base, run1, run2_map)
+        if flaky:
+            print("FLAKY:", flaky)
+        if regressed:
+            print("REGRESSED:", regressed)
+
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out = BASE_DIR / "evals" / f"golden_session_105_results_{stamp}.json"
     out.write_text(json.dumps({"summary": summary, "cases": rows}, ensure_ascii=False, indent=1, default=str),
                    encoding="utf-8")
-    if args.baseline:
-        base = {r["name"]: r["pass"] for r in json.loads(Path(args.baseline).read_text(encoding="utf-8"))["cases"]}
-        regressed = [r["name"] for r in rows if base.get(r["name"]) and not r["pass"]]
-        if regressed:
-            print("REGRESSED:", regressed)
-            return 1
+    if regressed:
+        return 1
     return 0
 
 
