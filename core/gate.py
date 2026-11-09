@@ -121,17 +121,41 @@ def _tenant_column_names(bare_name: str, columns: list | None) -> list[str]:
 
 
 def _tables_in_from(select: exp.Select) -> list[exp.Table]:
-    tables: list[exp.Table] = []
+    """t.* tables whose nearest enclosing SELECT is `select` — tables inside
+    derived tables belong to the inner SELECT and are handled when
+    find_all(exp.Select) reaches it."""
+    sources = []
     from_ = select.args.get("from_")
     if from_:
-        for node in from_.walk():
-            if isinstance(node, exp.Table) and (node.db or "").lower() == "t":
-                tables.append(node)
-    for join in select.args.get("joins") or []:
-        for node in join.walk():
-            if isinstance(node, exp.Table) and (node.db or "").lower() == "t":
+        sources.append(from_)
+    sources.extend(select.args.get("joins") or [])
+    tables: list[exp.Table] = []
+    for src in sources:
+        for node in src.walk():
+            if (
+                isinstance(node, exp.Table)
+                and (node.db or "").lower() == "t"
+                and node.find_ancestor(exp.Select) is select
+            ):
                 tables.append(node)
     return tables
+
+
+def _verify_tenant_coverage(stmt, company_id: int, schema_cache: dict):
+    """Fail closed if any scoped t. table is still missing a tenant predicate."""
+    cid = int(company_id)
+    for select in stmt.find_all(exp.Select):
+        where = select.args.get("where")
+        where_expr = where.this if where is not None else None
+        for table in _tables_in_from(select):
+            bare = table.name
+            alias = table.alias_or_name
+            columns = _schema_columns(schema_cache, bare)
+            for tcol in _tenant_column_names(bare, columns):
+                if not _tenant_pred_satisfied(where_expr, alias, tcol, cid, bare):
+                    raise GateError(
+                        f"missing tenant predicate {alias}.{tcol} = {cid} after rewrite"
+                    )
 
 
 def _col_matches(col: exp.Column, alias: str, col_name: str, bare: str = "") -> bool:
@@ -220,6 +244,7 @@ def _inject_tenant_on_select(select: exp.Select, company_id: int, schema_cache: 
 def _inject_tenant_predicates(stmt, company_id: int, schema_cache: dict):
     for select in stmt.find_all(exp.Select):
         _inject_tenant_on_select(select, company_id, schema_cache)
+    _verify_tenant_coverage(stmt, company_id, schema_cache)
 
 
 def _skip_tenant_rewrite(raw: str) -> bool:
