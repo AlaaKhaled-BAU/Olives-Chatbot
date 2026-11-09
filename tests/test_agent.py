@@ -582,9 +582,17 @@ def test_system_prompt_fixes_sales_basis_and_ranking_rules():
     text = (Path(__file__).resolve().parent.parent / "prompts" / "system.md").read_text(
         encoding="utf-8"
     )
-    assert "Never add invoice and order amounts together" in text
-    assert "Primary basis" in text
-    assert "Ranking rule" in text
+    required = (
+        "Primary basis",
+        "Ranking rule",
+        "Never add invoice and order amounts together",
+        "unsold_items",
+        "TOP",
+        "order",
+        "limit",
+    )
+    for fragment in required:
+        assert fragment in text
     assert "state both invoiced sales" not in text
 
 
