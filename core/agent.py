@@ -2014,6 +2014,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                               fast_count=fast_count,
                               analysis_intent=bool(_ANALYSIS_HINT_RE.search(question))),
         "gate_errors": 0,
+        "tool_errors": [],
         "_user_id": _user_id(client, company_id, subject),
         "tools_ms": {},
         "_usage": usage_acc,
@@ -2031,6 +2032,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             queries=len(state.get("queries") or []),
             result_rows=len(rows) if isinstance(rows, list) else 0,
             path=state.get("_path_flags"),
+            tool_errors=state.get("tool_errors") or [],
             **_timing_fields(),
             **usage_acc.totals(),
             **fields,
@@ -2118,6 +2120,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                 state["tools_ms"][name] = state["tools_ms"].get(name, 0) + ms
 
             if isinstance(result, dict) and result.get("error"):
+                state["tool_errors"].append({"tool": name, "error": str(result["error"])[:300]})
                 # A3: a failed tool attempt means the current gear is not
                 # coping — escalate once interactively (t1→t2). Gear p stays
                 # reserved for the empty-final rescue (C5).

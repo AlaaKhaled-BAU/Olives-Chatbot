@@ -1115,3 +1115,19 @@ def test_visit_plan_ask_salesman_singular():
     assert not agent._visit_plan_ask_salesman("الزيارات القادمة للاسبوع الجاي")
     assert not agent._visit_plan_ask_salesman("خطة المسار لكل المناديب")
     assert not agent._visit_plan_ask_salesman("تقرير ملخص المسار للمندوب عثمان القدسي")
+
+
+def test_tool_errors_are_written_to_the_trace(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    logged = {}
+    monkeypatch.setattr(agent.trace, "log_event",
+                        lambda *a, **kw: logged.update(kw))
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call("c1", "run_select", '{"sql": "SELECT 1 FROM t.Nope"}')])),
+        _resp(_msg(content="لا توجد بيانات")),
+    ]
+    with patch.object(agent.llm, "complete", side_effect=calls + [_plain_resp("{}")]), \
+         patch.object(agent.sql, "run_select", side_effect=RuntimeError("Invalid object name")):
+        agent.ask("morec", "كم عدد الأصناف المباعة أمس؟", conversation=dict(SCOPE))
+    assert logged["tool_errors"][0]["tool"] == "run_select"
+    assert "Invalid object name" in logged["tool_errors"][0]["error"]

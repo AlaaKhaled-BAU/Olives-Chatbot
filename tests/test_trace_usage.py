@@ -73,6 +73,15 @@ def test_trace_line_accepts_latency_and_ttft(tmp_path, monkeypatch):
     assert '"ttft_ms": 340' in line
 
 
+def test_log_usage_prints_model_name(capsys):
+    from types import SimpleNamespace
+    from core import llm
+    u = SimpleNamespace(prompt_tokens=10, completion_tokens=2,
+                        prompt_cache_hit_tokens=8, prompt_cache_miss_tokens=2)
+    llm._log_usage("t1", u, 0.5, model="deepseek-flash")
+    assert "model=deepseek-flash" in capsys.readouterr().out
+
+
 def test_complete_non_stream_records_usage():
     usage = Usage()
 
