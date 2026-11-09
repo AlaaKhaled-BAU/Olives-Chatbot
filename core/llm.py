@@ -166,6 +166,8 @@ def stream_create_kwargs(cfg: dict, messages, *, tools=None, response_format=Non
         kwargs["tools"] = tools
     if response_format is not None:
         kwargs["response_format"] = response_format
+    if not cfg["thinking"]:
+        kwargs["temperature"] = 0
     return kwargs
 
 
