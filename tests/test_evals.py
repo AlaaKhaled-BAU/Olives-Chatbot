@@ -405,3 +405,57 @@ def test_baseline_passes_falls_back_to_pass():
     from evals.run_golden_session import baseline_passes
     data = {"cases": [{"name": "b", "pass": True}]}
     assert baseline_passes(data) == {"b": True}
+
+
+def test_expect_holds_name_and_amount_true():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": "ACME", "net": 15355.228256}]
+    ans = "ACME صافي 15,355.23"
+    assert expect_holds(["name:name", "amount:net"], rows, ans)
+
+
+def test_expect_holds_amount_rejects_rounded():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": "ACME", "net": 15355.228256}]
+    assert not expect_holds(["name:name", "amount:net"], rows, "ACME صافي 15,355")
+
+
+def test_expect_holds_int_whole_token_not_substring():
+    from evals.run_golden_session import expect_holds
+    rows = [{"inv": 381}]
+    assert expect_holds(["int:inv"], rows, "381 فاتورة")
+    assert not expect_holds(["int:inv"], rows, "13810 و 298")
+
+
+def test_expect_holds_rows_five_name_three_present():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": f"N{i}"} for i in range(5)]
+    assert expect_holds(["rows:5:name"], rows, "N0 N2 N4")
+
+
+def test_expect_holds_rows_five_name_two_present_fails():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": f"N{i}"} for i in range(5)]
+    assert not expect_holds(["rows:5:name"], rows, "N0 N1")
+
+
+def test_expect_holds_unknown_kind_raises():
+    from evals.run_golden_session import expect_holds
+    import pytest
+    with pytest.raises(ValueError):
+        expect_holds(["bogus:col"], [{"col": 1}], "x")
+
+
+def test_load_cases_reads_custom_path(tmp_path):
+    from evals.run_golden_session import load_cases
+    p = tmp_path / "cases.jsonl"
+    p.write_text('{"name": "a", "question": "q"}\n', encoding="utf-8")
+    assert load_cases(p) == [{"name": "a", "question": "q"}]
+
+
+def test_render_ref_sql_substitutes_placeholders():
+    from evals.run_golden_session import render_ref_sql, JOIN, NET
+    sql = "SELECT {NET} {JOIN} WHERE {W} AND d >= '{f}' AND d < '{t}'"
+    out = render_ref_sql(sql, "2025-10-01", "2025-11-01")
+    assert "{f}" not in out and JOIN in out and NET in out
+    assert "2025-10-01" in out and "TransactionTypeID = 1" in out

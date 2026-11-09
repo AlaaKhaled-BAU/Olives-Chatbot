@@ -5,6 +5,7 @@ expectations follow the data. Requires the API running on :8100.
 For --baseline regression, compare against pass_final when present, else pass."""
 import argparse
 import json
+import math
 import re
 from collections import Counter
 import sys
@@ -184,8 +185,42 @@ def check(kind: str, answer: str, ref: dict) -> bool:
     raise ValueError(kind)
 
 
-def load_cases() -> list[dict]:
-    return [json.loads(l) for l in CASES_PATH.read_text(encoding="utf-8").splitlines() if l.strip()]
+def render_ref_sql(text: str, f: str, t: str) -> str:
+    w = (f"th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 "
+         f"AND th.TransactionDate >= '{f}' AND th.TransactionDate < '{t}'")
+    return text.format(f=f, t=t, JOIN=JOIN, NET=NET, W=w)
+
+
+def expect_holds(expect: list[str], rows: list[dict], answer: str) -> bool:
+    if "```" in (answer or ""):
+        return False
+    a = _norm(answer)
+    toks = num_tokens(answer)
+    for item in expect:
+        kind, _, rest = item.partition(":")
+        if kind == "name":
+            if not rows or str(rows[0][rest]).strip() not in a:
+                return False
+        elif kind == "amount":
+            if not rows or not amount_matches(float(rows[0][rest]), answer):
+                return False
+        elif kind == "int":
+            if not rows or str(int(rows[0][rest])) not in toks:
+                return False
+        elif kind == "rows":
+            n_s, _, col = rest.partition(":")
+            n, need = int(n_s), math.ceil(int(n_s) / 2)
+            hit = sum(1 for i in range(min(n, len(rows))) if str(rows[i][col]).strip() in a)
+            if hit < need:
+                return False
+        else:
+            raise ValueError(item)
+    return True
+
+
+def load_cases(path: Path | None = None) -> list[dict]:
+    p = path or CASES_PATH
+    return [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
 
 
 def ask(question: str, session_id: str) -> dict:
@@ -229,17 +264,26 @@ def _print_rows(rows: list[dict]) -> None:
               f"calls={r['llm_calls']} ${r['usd_offpeak']}", flush=True)
 
 
+def _pass_case(c: dict, answer: str, ref: dict) -> bool:
+    if c.get("ref_sql"):
+        f, t = _last_month()
+        ref_rows = _q(render_ref_sql(c["ref_sql"], f, t))
+        return expect_holds(c["expect"], ref_rows, answer)
+    return check(c["check"], answer, ref)
+
+
 def run_session(cases: list[dict], ref: dict, session_id: str | None = None) -> list[dict]:
     sid = session_id or f"golden-{uuid.uuid4().hex[:8]}"
     rows = []
     for c in cases:
+        use_sid = f"heldout-{c['name']}-{uuid.uuid4().hex[:8]}" if c.get("ref_sql") else sid
         t0 = time.time()
-        res = ask(c["question"], sid)
+        res = ask(c["question"], use_sid)
         tr = trace_for(c["question"], t0 - 1)
         calls = tr.get("calls") or []
         rows.append({
             "name": c["name"],
-            "pass": check(c["check"], res.get("answer") or "", ref),
+            "pass": _pass_case(c, res.get("answer") or "", ref),
             "latency_ms": tr.get("latency_ms"),
             "ttft_ms": tr.get("ttft_ms"),
             "llm_calls": len(calls),
@@ -251,21 +295,22 @@ def run_session(cases: list[dict], ref: dict, session_id: str | None = None) -> 
     return rows
 
 
-def rescore_results(src: Path) -> int:
+def rescore_results(src: Path, cases_path: Path | None = None) -> int:
+    cases_path = cases_path or CASES_PATH
     data = json.loads(src.read_text(encoding="utf-8"))
     ref = references()
-    kinds = {c["name"]: c["check"] for c in load_cases()}
+    by_name = {c["name"]: c for c in load_cases(cases_path)}
     rows = []
     for old in data["cases"]:
-        kind = kinds[old["name"]]
+        c = by_name[old["name"]]
         row = dict(old)
-        row["pass"] = check(kind, old.get("answer") or "", ref)
+        row["pass"] = _pass_case(c, old.get("answer") or "", ref)
         rows.append(row)
     summary = _summary(rows)
     _print_rows(rows)
     print(json.dumps(summary, indent=1))
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    out = BASE_DIR / "evals" / f"golden_session_105_results_{stamp}_rescored.json"
+    out = BASE_DIR / "evals" / f"{cases_path.stem}_results_{stamp}_rescored.json"
     payload = {
         "rescored_from": str(src),
         "summary": summary,
@@ -277,16 +322,22 @@ def rescore_results(src: Path) -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--cases", default=str(CASES_PATH.relative_to(BASE_DIR)),
+                    help="jsonl case file (default: evals/golden_session_105.jsonl)")
     ap.add_argument("--baseline", help="previous results json; fail if any baseline pass now fails")
     ap.add_argument("--rescore", metavar="RESULTS_JSON",
                     help="re-score stored answers with live references (no API)")
     args = ap.parse_args()
 
+    cases_path = Path(args.cases)
+    if not cases_path.is_absolute():
+        cases_path = BASE_DIR / cases_path
+
     if args.rescore:
-        rescore_results(Path(args.rescore))
+        rescore_results(Path(args.rescore), cases_path)
         return 0
 
-    cases = load_cases()
+    cases = load_cases(cases_path)
     ref = references()
     rows = run_session(cases, ref)
     for r in rows:
@@ -316,7 +367,7 @@ def main() -> int:
     print(json.dumps(summary, indent=1))
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    out = BASE_DIR / "evals" / f"golden_session_105_results_{stamp}.json"
+    out = BASE_DIR / "evals" / f"{cases_path.stem}_results_{stamp}.json"
     out.write_text(json.dumps({"summary": summary, "cases": rows}, ensure_ascii=False, indent=1, default=str),
                    encoding="utf-8")
     if regressed:
