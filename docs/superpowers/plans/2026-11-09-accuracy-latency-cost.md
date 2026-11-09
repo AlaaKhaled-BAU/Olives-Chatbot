@@ -44,6 +44,126 @@ Evidence: `work/manual_eval.json` (answers + SQL), `work/session_trace.json` (pe
 
 Business decisions (product owner, 2026-11-09): "best rep" = invoiced sales (unchanged); "lowest-selling items" = both the lowest sold items and the never-sold count (Task 14).
 
+## Plan revision R1 (2026-11-09, product owner review) — generalize, don't fit the six questions
+
+Self-audit after Task 2: several planned fixes were *static* (keyword lists and tests copied from the six session questions) instead of *directions* that make the model handle any phrasing. Rules from now on, binding on every task:
+
+1. **Directions over data.** A fix teaches the model or the router a general rule (definition, grammar, structure). No fix may add a word list or alias whose only justification is one of the six golden questions.
+2. **No test may use a golden question verbatim as its only case.** Router/classifier tests are tables of ≥6 varied phrasings (MSA, Levantine/Gulf dialect, typos without spaces, English), positives and negatives.
+3. **Held-out set.** Generalization is measured on `evals/heldout_105.jsonl` (Task 2c) — different questions, dimensions and wording than the golden six. A change must not lower held-out accuracy.
+4. **Determinism.** Non-thinking calls run at `temperature=0` (Task 2b). Thinking gears ignore sampling params, so consistency comes from structure: deterministic metric tools for ranked/aggregate questions, one fixed definition per business term (Task 3b), stable gear per turn (Task 9).
+5. **Eval spend.** Per task: unit tests only — no live API calls. Live golden + held-out runs happen only at checkpoints: **C1** after Task 6, **C2** after Task 11, **C3** final (Task 15). `evals/run_evals.py` runs only at C3. Every "Golden `--baseline` → exit 0" / "run_evals" line inside a task below is replaced by this checkpoint rule.
+
+Task order: 1, 2, 2b, 2c, 3, 3b, 4, 5, 6, **C1**, 7, 8, 9, 10, 11, **C2**, 12, 14, 15 (**C3**). Task 13 skipped.
+
+---
+
+### Task 2b: Deterministic sampling for non-thinking calls
+
+**Files:** Modify `core/llm.py` (`stream_create_kwargs`); Test `tests/test_llm.py`.
+
+- [ ] **Step 1: Failing tests**
+
+```python
+def test_non_thinking_gear_is_greedy():
+    kw = llm.stream_create_kwargs(llm.gear_cfg("f0"), [{"role": "user", "content": "x"}])
+    assert kw["temperature"] == 0
+
+
+def test_thinking_gear_sends_no_sampling_params():
+    kw = llm.stream_create_kwargs(llm.gear_cfg("t1"), [{"role": "user", "content": "x"}])
+    assert "temperature" not in kw and "top_p" not in kw
+```
+
+(Use whatever the existing per-gear config accessor in `core/llm.py` is called — the function around line 94 documented "Per-request gear config"; adapt the test to its real name.)
+
+- [ ] **Step 2:** run → first FAILS.
+- [ ] **Step 3: Implement** in `stream_create_kwargs`, after building `kwargs`:
+
+```python
+    if not cfg["thinking"]:
+        kwargs["temperature"] = 0
+```
+
+- [ ] **Step 4:** `py -3.13 -m pytest -q tests/test_llm.py tests/test_agent.py` → PASS. Commit `feat(llm): temperature 0 on non-thinking gears`.
+
+---
+
+### Task 2c: Held-out generalization set (generic, data-relative checks)
+
+**Files:** Create `evals/heldout_105.jsonl`; Modify `evals/run_golden_session.py`; Test `tests/test_evals.py`.
+
+Each held-out case is asked in a **fresh session** and carries its own reference SQL and expectations, so the runner stays generic (no per-question Python).
+
+Case schema: `{"name", "question", "ref_sql", "expect": [..]}`. `ref_sql` may use `{f}` / `{t}` (last-month half-open bounds from `_last_month()`), `{JOIN}`, `{NET}`, `{W}` (type-1 non-void invoice filter for the period, as in `references()`). `expect` items, evaluated on the reference rows `R` (ordered as the SQL returns them):
+- `"name:COL"` → `str(R[0][COL]).strip()` appears in the answer.
+- `"amount:COL"` → `amount_matches(float(R[0][COL]), answer)`.
+- `"int:COL"` → `str(int(R[0][COL]))` in `num_tokens(answer)`.
+- `"rows:N:COL"` → at least `ceil(N/2)` of `str(R[i][COL]).strip()` for `i < N` appear in the answer.
+A case passes iff every expectation holds and the answer has no code fence.
+
+- [ ] **Step 1: Failing tests** — `expect_holds(expect: list[str], rows: list[dict], answer: str) -> bool` with table cases: name+amount true/false (rounded amount false), `int` whole-token (381 vs 13810), `rows:5:name` with 3 of 5 present true / 2 of 5 false, unknown expect kind raises `ValueError`.
+- [ ] **Step 2:** run → FAIL (function missing).
+- [ ] **Step 3: Implement** `expect_holds`, `load_cases(path)`, `render_ref_sql(text, f, t)`, and CLI `--cases PATH` (default `evals/golden_session_105.jsonl`). A case with `ref_sql` uses `expect_holds` and a fresh `session_id`; cases without it keep the existing `check()` path and the shared session. Results file stem follows the cases file stem. `--baseline` / `--rescore` work for both sets.
+- [ ] **Step 4: Case file** `evals/heldout_105.jsonl` (none of these phrasings appear in the golden set):
+
+```json
+{"name": "top_customer", "question": "مين أفضل زبون عندي الشهر الماضي من حيث المبيعات؟", "ref_sql": "SELECT TOP 5 c.Name AS name, SUM({NET}) AS net {JOIN} JOIN t.Customers c ON c.CustomerID = th.CustomerID AND c.CompanyID = th.CompanyID WHERE {W} GROUP BY c.Name ORDER BY net DESC", "expect": ["name:name", "amount:net"]}
+{"name": "weakest_rep", "question": "مين أضعف مندوب مبيعات بالشهر الفائت؟", "ref_sql": "SELECT sp.Name AS name, SUM({NET}) AS net {JOIN} JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID AND sp.CompanyID = th.CompanyID WHERE {W} GROUP BY sp.Name ORDER BY net ASC", "expect": ["name:name", "amount:net"]}
+{"name": "top5_customers_en", "question": "Top 5 customers by sales last month", "ref_sql": "SELECT TOP 5 c.Name AS name, SUM({NET}) AS net {JOIN} JOIN t.Customers c ON c.CustomerID = th.CustomerID AND c.CompanyID = th.CompanyID WHERE {W} GROUP BY c.Name ORDER BY net DESC", "expect": ["rows:5:name"]}
+{"name": "invoice_count", "question": "كم فاتورة بيع طلعنا الشهر اللي فات؟", "ref_sql": "SELECT COUNT(*) AS inv FROM t.TransactionsHeaders th WHERE {W}", "expect": ["int:inv"]}
+{"name": "rep_most_invoices", "question": "اي مندوب عمل اكبر عدد فواتير الشهر الماضي", "ref_sql": "SELECT TOP 3 sp.Name AS name, COUNT(*) AS inv FROM t.TransactionsHeaders th JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID AND sp.CompanyID = th.CompanyID WHERE {W} GROUP BY sp.Name ORDER BY inv DESC", "expect": ["name:name", "int:inv"]}
+{"name": "best_day", "question": "شو كان أعلى يوم مبيعات بالشهر الماضي وقديش بعنا فيه؟", "ref_sql": "SELECT TOP 3 th.TransactionDate AS d, SUM({NET}) AS net {JOIN} WHERE {W} GROUP BY th.TransactionDate ORDER BY net DESC", "expect": ["amount:net"]}
+{"name": "buying_customers", "question": "كم زبون اشترى مني الشهر الماضي؟", "ref_sql": "SELECT COUNT(DISTINCT th.CustomerID) AS custs FROM t.TransactionsHeaders th WHERE {W}", "expect": ["int:custs"]}
+{"name": "worst5_items_en", "question": "What were my 5 worst selling items last month?", "ref_sql": "SELECT TOP 5 td.ItemCode AS code, SUM({NET}) AS net {JOIN} WHERE {W} GROUP BY td.ItemCode ORDER BY net ASC", "expect": ["rows:5:code"]}
+```
+
+(Verify each `ref_sql` runs through `sql.run_select` for client 105 / company 1 and returns rows — read-only, no API spend — and fix column/join names to the real schema if one errors. `TransactionsHeaders` alias `th` is required because `{W}` uses it.)
+
+- [ ] **Step 5:** unit tests green; commit `test(evals): held-out generalization set with generic expectations`. Then the controller restarts the API on this commit and records the held-out **baseline** once (`--cases evals/heldout_105.jsonl`).
+
+---
+
+### Task 3b: One business definition per term (directions in the system prompt)
+
+Root cause (baseline evidence): `prompts/system.md:75` tells the model to "state both invoiced sales and booked sales orders" when the tenant type is unspecified. The model then summed them (681,501 = 57,252 invoices + 624,249 orders), and ranked salesmen by orders — so "best rep", "summary" and "top item" answers varied run to run and did not lead with the invoiced figure the product owner defined.
+
+**Files:** Modify `prompts/system.md:68-75`; Test `tests/test_agent.py` (prompt-content assertions only).
+
+- [ ] **Step 1: Failing test**
+
+```python
+def test_system_prompt_fixes_sales_basis_and_ranking_rules():
+    text = (BASE_DIR / "prompts" / "system.md").read_text(encoding="utf-8")
+    assert "Never add invoice and order amounts together" in text
+    assert "Primary basis" in text
+    assert "Ranking rule" in text
+```
+
+(`BASE_DIR` = repo root, as already used in tests; adapt to the existing helper.)
+
+- [ ] **Step 2:** FAIL. **Step 3:** replace the `مبيعات (Sales)` bullet block (lines 71-75) with:
+
+```markdown
+  - **مبيعات / sales / بيع (any phrasing: best, worst, total, summary, by item/customer/rep/day)**:
+    - **Primary basis** = invoiced sales: `TransactionTypeID = 1`, non-void, net of returns when returns exist. Lead every sales answer with this figure.
+    - Booked orders (`OrdersHeaders`, `WFApproved = 1`, non-void) are a **separate, secondary** line, labelled «طلبات محجوزة», only when they add context (e.g. a rep with orders but no invoices). **Never add invoice and order amounts together** and never rank by a mix of both.
+    - Every sales answer states its basis and exact period in one line (e.g. «على أساس الفواتير، 2026-10-01 إلى 2026-10-31»).
+  - **Ranking rule** (best/worst/top/bottom/أفضل/أضعف/أقل/أكثر over any dimension): use `run_metric` `sales` with `group_by` + `order` + `limit` so the database ranks; never rank from an unordered or truncated row list. For worst/bottom items also report how many active items had **no** sales in the period (`unsold_items`). Quote amounts with 2 decimals.
+```
+
+(The `order`/`limit` filters and `unsold_items` arrive in Task 14; until then the ranking rule degrades gracefully because `run_select` with `ORDER BY`/`TOP` is still allowed.)
+
+- [ ] **Step 4:** `py -3.13 -m pytest -q tests/test_agent.py` → PASS. Commit `fix(prompt): single sales basis, never mix invoices and orders, general ranking rule`. (The system prompt is in the cached prefix; this re-warms the cache once.)
+
+---
+
+## Checkpoint C1 (after Task 6) — live, ~$0.25
+
+Run once each, with the API restarted on the branch head: `py -3.13 evals/run_golden_session.py --baseline <golden baseline>` and `py -3.13 evals/run_golden_session.py --cases evals/heldout_105.jsonl --baseline <heldout baseline>`. The held-out baseline is recorded once right after Task 2c (API restarted on the Task 2c commit, ~$0.15), before any Task 3 code is live. Gate: no REGRESSED case in either set.
+
+## Checkpoint C2 (after Task 11) — same commands, same gate.
+
 ---
 
 ## File map
@@ -988,40 +1108,73 @@ git commit -m "perf(agent): flag for mid-turn gear escalation (A/B: <paste summa
 
 - [ ] **Step 1: Write the failing tests**
 
+Principle (plan revision R1): the fast path is an **allow-list by structure** — a short, single-clause, single-question count — instead of a deny-list of words. How-to detection is **grammar** (question word + action verb / "how do I"), not a list of our sentences.
+
 ```python
-def test_multi_part_visit_question_is_not_fast_count():
-    q = "شوفلي زيارات احسنمنجوب عندي،كم عميل زار في اخريومعملله،كم عميل باع منهم"
+FAST_COUNT_YES = [
+    "كم عدد العملاء؟", "كم زبون عندي", "كم مندوب عنا", "how many customers do I have",
+    "عدد الأصناف", "كم صنف مسجل؟",
+]
+FAST_COUNT_NO = [  # multi-clause, multiple questions, or analysis around a count
+    "كم عميل زار المندوب امس، وكم واحد اشترى منهم؟",
+    "كم عميل عندي وكم واحد منهم اشترى الشهر الماضي؟",
+    "how many customers did my best rep visit and how many bought",
+    "كم عميل خسرنا هذا الشهر ولماذا؟",
+    "كم زبون عند كل مندوب مرتبين من الاكثر للأقل مع خطة لتحسين الأضعف",
+]
+HOWTO_YES = [
+    "كيف أضيف صنف جديد؟", "طريقة تعديل سعر مادة", "شلون أفعّل المندوب على الجهاز",
+    "كيف احول المندوب من فواتير الى طلبيات", "how do I change a salesman to order taking",
+    "كيفية إلغاء فاتورة",
+]
+HOWTO_NO = [
+    "كيف أداء المناديب هذا الشهر؟", "كيف المبيعات اليوم", "كم طلب بيع عندي",
+    "how are sales this month", "كيف كانت الطلبات امس",
+]
+
+
+@pytest.mark.parametrize("q", FAST_COUNT_YES)
+def test_fast_count_accepts_single_clause_counts(q):
+    assert agent._is_fast_count_path(q) is True
+
+
+@pytest.mark.parametrize("q", FAST_COUNT_NO)
+def test_fast_count_rejects_multi_part_or_analytic(q):
     assert agent._is_fast_count_path(q) is False
 
 
-def test_plain_master_count_stays_fast():
-    assert agent._is_fast_count_path("كم عدد العملاء؟") is True
+@pytest.mark.parametrize("q", HOWTO_YES)
+def test_howto_action_grammar(q):
+    assert agent._is_howto_path(q, "105") is True
 
 
-def test_howto_action_question_wins_over_metric_alias():
-    assert agent._is_howto_path("كيف اغير المندوبمن عمل فواتير الى طلبات بيع ؟", "105") is True
-
-
-def test_how_is_performance_is_not_howto():
-    assert agent._is_howto_path("كيف أداء المناديب هذا الشهر؟", "105") is False
+@pytest.mark.parametrize("q", HOWTO_NO)
+def test_how_is_x_is_not_howto(q):
+    assert agent._is_howto_path(q, "105") is False
 ```
 
-- [ ] **Step 2: Run to verify** — first and third FAIL.
+(If a YES case fails only because `_COUNT_HINT_RE` / `_MASTER_COUNT_TERMS` don't know a common word such as «زبون» or «صنف», extend those general vocabularies — that is fixing a vocabulary, not fitting a question. Do not add golden-question phrasings to any list.)
+
+- [ ] **Step 2: Run to verify** — NO-lists and how-to YES-list mostly FAIL today.
 
 - [ ] **Step 3: Implement**
 
 ```python
-_MULTI_PART_RE = re.compile(r"[،,؛;]")
-_ANALYTIC_TERMS_RE = re.compile(r"احسن|أحسن|افضل|أفضل|اقل|أقل|زيار|خطة|ملخص|\bbest\b|\btop\b|visit", re.I)
+_CLAUSE_SPLIT_RE = re.compile(r"[،,؛;]|\s(?:و|and)\s*(?:كم|مين|من|شو|ما|ماذا|لماذا|ليش|how|what|why)\b", re.I)
+_QUESTION_WORD_RE = re.compile(r"\b(?:كم|مين|شو|ماذا|لماذا|ليش|how many|what|why)\b", re.I)
+_FAST_COUNT_MAX_WORDS = 7
 _HOWTO_ACTION_RE = re.compile(
-    r"(?:كيف|كيفية|طريقة|شلون)\s+(?:[اأن](?:غير|عدل|ضيف|حذف|فعل|فعّل|عمل|حول|نشئ|ربط|وقف|لغي|سجل)\S*)"
+    r"(?:كيف|كيفية|طريقة|شلون)\s+(?:ا|أ|ن)?\S*?(?:غير|عدل|ضيف|اضاف|إضاف|حذف|فعل|فعّل|حول|نشئ|ربط|وقف|لغي|إلغاء|الغاء|سجل|تعديل|تغيير|تحويل)\S*"
+    r"|\bhow (?:do|can|to|should) (?:i |we )?\w+",
+    re.I,
 )
 ```
 
 In `_is_fast_count_path`, after the `_EXPLAIN_INTENT_RE` check:
 
 ```python
-    if _MULTI_PART_RE.search(q) or _ANALYTIC_TERMS_RE.search(q):
+    if (_CLAUSE_SPLIT_RE.search(q) or len(_QUESTION_WORD_RE.findall(q)) > 1
+            or len(q.split()) > _FAST_COUNT_MAX_WORDS):
         return False
 ```
 
@@ -1321,7 +1474,7 @@ Run: `py -3.13 -m pytest -q tests/test_metrics.py -k "ranked or rank_uses or bad
 
 ```python
     "unsold_items": {
-        "aliases": ["مواد راكدة", "اصناف راكدة", "أصناف راكدة", "unsold_items", "never_sold"],
+        "aliases": ["unsold_items", "never_sold", "مواد راكدة", "أصناف راكدة"],  # metric names, not question phrasings
         "description": "Active items with zero sales invoices in the period (count + sample).",
     },
 ```
@@ -1374,7 +1527,7 @@ In `build_sql`, before the final `raise ValueError`:
                             "limit": {"type": "integer", "description": "With order: top N rows, 1-50 (default 10)."},
 ```
 
-Append to the `run_metric` function description: `"For lowest/highest items or salesmen use metric=sales with group_by + order + limit. For 'lowest selling items' ALSO call unsold_items for the same period."`
+Append to the `run_metric` function description (a general rule, not a phrase match — it must cover best/worst/top/bottom over any dimension, in any language): `"Ranked questions over any dimension (best/worst/top/bottom salesman, customer, item, day): metric=sales with group_by + order (desc for best, asc for worst) + limit, so the database ranks. For worst/bottom items also call unsold_items for the same period."` The system-prompt ranking rule from Task 3b already points here.
 
 (The tool schema is part of every request; this one-time change re-warms the prefix cache once.)
 
