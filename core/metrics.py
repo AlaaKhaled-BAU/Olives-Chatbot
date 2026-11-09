@@ -261,6 +261,8 @@ def build_sales_sql(company_id: int, filters: dict | None = None) -> str:
             group_by = " GROUP BY th.TransactionDate"
 
     order = (filters.get("order") or "").strip().lower()
+    if filters.get("limit") is not None and not order:
+        raise ValueError("limit requires order (set group_by and order asc or desc)")
     top = ""
     order_by = ""
     if order:

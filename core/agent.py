@@ -32,7 +32,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 MAX_TURNS = 12
 MODEL_ALIAS = "chatbot"  # cache-key namespace for plan/result keys (kept stable deliberately)
 # Bump when playbook/metric meaning changes; pair with setup/clear_plan_cache.py (I1).
-PLAN_SEMANTIC_VERSION = "3"
+PLAN_SEMANTIC_VERSION = "4"
 # DeepSeek gears (core/llm.GEARS): f0 = flash non-thinking (docs/envelope/fast
 # paths), t1 = flash think-low (standard NL2SQL), t2 = flash think-high
 # (escalated joins/compound), p = pro think-high — rescue path ONLY
@@ -792,7 +792,10 @@ TOOLS = [
                             },
                             "limit": {
                                 "type": "integer",
-                                "description": "With order: top N rows, 1-50 (default 10).",
+                                "description": (
+                                    "Only with group_by and order: top N rows, 1-50 (default 10). "
+                                    "Ignored or rejected if order is omitted."
+                                ),
                             },
                             "sales_person_id": {"type": "integer"},
                             "undelivered_only": {"type": "boolean"},

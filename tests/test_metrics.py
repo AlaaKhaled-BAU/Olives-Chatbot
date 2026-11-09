@@ -300,6 +300,37 @@ def test_sales_rank_rejects_order_without_group_by():
     assert "group_by" in result["error"]
 
 
+def test_sales_rank_rejects_limit_without_order():
+    with patch.object(metrics.sql, "run_select"):
+        result = metrics.run_metric(
+            "sales",
+            COMPANY_ID,
+            "105",
+            filters={"group_by": "item", "limit": 5},
+        )
+    assert result.get("error") == "limit requires order (set group_by and order asc or desc)"
+
+
+def test_ranked_sales_sql_passes_gate_with_tenant_per_scope():
+    path = config.work_dir("105") / "schema_cache.json"
+    if not path.is_file():
+        pytest.skip("work/105/schema_cache.json required")
+    schema_cache = json.loads(path.read_text(encoding="utf-8"))
+    raw = metrics.build_sales_sql(
+        1,
+        {
+            "from_date": "2026-10-01",
+            "to_date": "2026-11-01",
+            "group_by": "item",
+            "order": "asc",
+            "limit": 10,
+        },
+    )
+    out = gate.validate(raw, company_id=1, schema_cache=schema_cache)
+    assert "ORDER BY gross_sales ASC" in out
+    assert "TOP 10" in out
+
+
 def test_unsold_items_metric_sql():
     s = metrics.build_sql(
         "unsold_items",
@@ -331,17 +362,31 @@ def test_unsold_items_gate_injects_tenant_inside_not_exists():
     assert "i.CompanyID = 1" in gated
 
 
-def test_unsold_items_live_unsold_count_oct_2026():
+def test_unsold_items_live_count_matches_independent_not_exists():
+    """Shape + consistency only — no snapshot golden count."""
     from core import sql as sql_mod
 
-    q = metrics.build_sql(
-        "unsold_items",
-        {"from_date": "2026-10-01", "to_date": "2026-11-01"},
-        company_id=1,
+    filters = {"from_date": "2026-10-01", "to_date": "2026-11-01"}
+    q = metrics.build_sql("unsold_items", filters, company_id=1)
+    independent = (
+        "SELECT COUNT(*) AS n FROM t.Items i WHERE ISNULL(i.IsSuspended, 0) = 0 "
+        "AND NOT EXISTS ("
+        "SELECT 1 FROM t.TransactionsHeaders th "
+        "INNER JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID "
+        "AND th.TransactionTypeID = td.TransactionTypeID "
+        "AND th.TransactionYear = td.TransactionYear AND th.TransactionNo = td.TransactionNo "
+        "WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 "
+        "AND th.TransactionDate >= '2026-10-01' AND th.TransactionDate < '2026-11-01' "
+        "AND td.ItemCode = i.ItemCode AND td.CompanyID = i.CompanyID)"
     )
     try:
         rows = sql_mod.run_select(q, company_id=1, client="105")
+        ref = sql_mod.run_select(independent, company_id=1, client="105")
     except Exception as exc:
         pytest.skip(f"SQL Server unavailable: {exc}")
     assert rows
-    assert int(rows[0]["unsold_count"]) == 1987
+    unsold_count = int(rows[0]["unsold_count"])
+    assert unsold_count >= 0
+    assert all(int(r["unsold_count"]) == unsold_count for r in rows)
+    assert len(rows) <= unsold_count
+    assert int(ref[0]["n"]) == unsold_count
