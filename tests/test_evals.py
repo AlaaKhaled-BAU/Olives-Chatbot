@@ -231,3 +231,15 @@ def test_empty_answer_with_doc_sources_hard_fails():
     good = {"answer": "see customers.md 4.8", "needs_ask": None, "answer_sql": None, "sources": ["customers.md › 4.8"]}
     assert not run_evals._case_passes(case, bad)
     assert run_evals._case_passes(case, good)
+
+
+def test_number_variants_cover_comma_and_plain_forms():
+    from evals.run_golden_session import number_variants
+    v = number_variants(15355.228256)
+    assert "15,355.23" in v and "15355.23" in v and "15,355" in v
+
+
+def test_cost_usd_offpeak_matches_published_flash_rates():
+    from evals.run_golden_session import cost_usd, OFFPEAK
+    call = {"cache_hit": 1_000_000, "cache_miss": 1_000_000, "completion": 1_000_000}
+    assert round(cost_usd(call, OFFPEAK), 6) == round(0.003 + 0.15 + 0.60, 6)

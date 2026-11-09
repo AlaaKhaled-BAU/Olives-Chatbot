@@ -1,0 +1,6 @@
+{"name": "best_rep_last_month", "question": "اعطيني احسن منجوب عدي اخر شهر", "check": "top_rep"}
+{"name": "top_item", "question": "اعطيني احسنمادةمبيعا", "check": "top_item"}
+{"name": "bottom10_items_plan", "question": "اعطيني اقل 10 مواد بيع عندي واعطيني خطة للتحسين", "check": "bottom10"}
+{"name": "best_rep_visits", "question": "شوفلي زيارات احسنمنجوب عندي،كم عميل زار في اخريومعملله،كم عميل باع منهم", "check": "visits"}
+{"name": "last_month_summary", "question": "اعطيني ملخص مبيعات الشهر الماضي مع خطة للتحسين", "check": "summary"}
+{"name": "howto_invoice_to_orders", "question": "كيف اغير المندوبمن عمل فواتير الى طلبات بيع ؟", "check": "howto"}
