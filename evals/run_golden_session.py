@@ -29,6 +29,19 @@ NET = metrics.line_amount_sql("td")
 JOIN = ("FROM t.TransactionsHeaders th JOIN t.TransactionsDetails td ON th.CompanyID = td.CompanyID "
         "AND th.TransactionTypeID = td.TransactionTypeID AND th.TransactionYear = td.TransactionYear "
         "AND th.TransactionNo = td.TransactionNo")
+INVOICE_HEADER_KEY = (
+    "CAST(th.TransactionYear AS varchar(4)) + '-' + CAST(th.TransactionNo AS varchar(20))"
+)
+_MONTH_EN = (
+    "", "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+)
+_MONTH_AR: dict[int, tuple[str, ...]] = {
+    1: ("يناير",), 2: ("فبراير",), 3: ("مارس",), 4: ("أبريل",), 5: ("مايو",),
+    6: ("يونيو",), 7: ("يوليو", "تموز"), 8: ("أغسطس",), 9: ("سبتمبر",),
+    10: ("أكتوبر", "تشرين الأول"), 11: ("نوفمبر", "تشرين الثاني"),
+    12: ("ديسمبر", "كانون الأول"),
+}
 
 _ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
 _NUM_RE = re.compile(
@@ -116,8 +129,8 @@ def references() -> dict:
               f"JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID AND sp.CompanyID = th.CompanyID "
               f"WHERE {W} GROUP BY th.SalesPersonID, sp.Name ORDER BY net DESC")
     items = _q(f"SELECT td.ItemCode AS code, SUM({NET}) AS net {JOIN} WHERE {W} GROUP BY td.ItemCode ORDER BY net DESC")
-    summary = _q(f"SELECT SUM({NET}) AS net, COUNT(DISTINCT CAST(th.TransactionYear AS varchar(4)) + '-' + "
-                 f"CAST(th.TransactionNo AS varchar(20))) AS inv, COUNT(DISTINCT th.CustomerID) AS custs {JOIN} WHERE {W}")[0]
+    summary = _q(f"SELECT SUM({NET}) AS net, COUNT(DISTINCT {INVOICE_HEADER_KEY}) AS inv, "
+                 f"COUNT(DISTINCT th.CustomerID) AS custs {JOIN} WHERE {W}")[0]
     unsold = _q("SELECT COUNT(*) AS n FROM t.Items i WHERE ISNULL(i.IsSuspended, 0) = 0 AND NOT EXISTS ("
                 f"SELECT 1 {JOIN} WHERE {W} AND td.ItemCode = i.ItemCode)")[0]["n"]
     top = reps[0]
@@ -188,7 +201,69 @@ def check(kind: str, answer: str, ref: dict) -> bool:
 def render_ref_sql(text: str, f: str, t: str) -> str:
     w = (f"th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 "
          f"AND th.TransactionDate >= '{f}' AND th.TransactionDate < '{t}'")
-    return text.format(f=f, t=t, JOIN=JOIN, NET=NET, W=w)
+    return text.format(f=f, t=t, JOIN=JOIN, NET=NET, W=w, INV_KEY=INVOICE_HEADER_KEY)
+
+
+def _as_date(val) -> date:
+    if isinstance(val, datetime):
+        return val.date()
+    if isinstance(val, date):
+        return val
+    return date.fromisoformat(str(val).strip()[:10])
+
+
+def date_variants(val) -> list[str]:
+    d = _as_date(val)
+    day, month, year = d.day, d.month, d.year
+    out = [
+        d.isoformat(),
+        f"{day:02d}/{month:02d}/{year}",
+        f"{day}-{month:02d}-{year}",
+        f"{day}/{month:02d}",
+        f"{day} {_MONTH_EN[month]}",
+        f"{_MONTH_EN[month][:3]} {day}",
+    ]
+    for ar in _MONTH_AR.get(month, ()):
+        out.append(f"{day} {ar}")
+    return out
+
+
+def date_matches(val, text: str) -> bool:
+    a = _norm(text)
+    return any(v in a for v in date_variants(val))
+
+
+def _name_metric_cols(expect: list[str]) -> tuple[str | None, str | None, str | None]:
+    name_col = amount_col = int_col = None
+    for item in expect:
+        kind, _, rest = item.partition(":")
+        if kind == "name":
+            name_col = rest
+        elif kind == "amount":
+            amount_col = rest
+        elif kind == "int":
+            int_col = rest
+    if name_col and amount_col:
+        return name_col, "amount", amount_col
+    if name_col and int_col:
+        return name_col, "int", int_col
+    return None, None, None
+
+
+def _same_line_name_metric(rows: list[dict], name_col: str, metric: str, metric_col: str,
+                           answer: str) -> bool:
+    if not rows:
+        return False
+    name = str(rows[0][name_col]).strip()
+    lines = answer.splitlines() or [answer]
+    for line in lines:
+        if name not in _norm(line):
+            continue
+        if metric == "amount" and amount_matches(float(rows[0][metric_col]), line):
+            return True
+        if metric == "int" and str(int(rows[0][metric_col])) in num_tokens(line):
+            return True
+    return False
 
 
 def expect_holds(expect: list[str], rows: list[dict], answer: str) -> bool:
@@ -196,8 +271,14 @@ def expect_holds(expect: list[str], rows: list[dict], answer: str) -> bool:
         return False
     a = _norm(answer)
     toks = num_tokens(answer)
+    name_col, metric, metric_col = _name_metric_cols(expect)
+    paired = name_col is not None and metric is not None
+    if paired and not _same_line_name_metric(rows, name_col, metric, metric_col, answer):
+        return False
     for item in expect:
         kind, _, rest = item.partition(":")
+        if paired and kind in ("name", "amount", "int"):
+            continue
         if kind == "name":
             if not rows or str(rows[0][rest]).strip() not in a:
                 return False
@@ -206,6 +287,9 @@ def expect_holds(expect: list[str], rows: list[dict], answer: str) -> bool:
                 return False
         elif kind == "int":
             if not rows or str(int(rows[0][rest])) not in toks:
+                return False
+        elif kind == "date":
+            if not rows or not date_matches(rows[0][rest], answer):
                 return False
         elif kind == "rows":
             n_s, _, col = rest.partition(":")

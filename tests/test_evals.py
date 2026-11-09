@@ -441,9 +441,12 @@ def test_expect_holds_rows_five_name_two_present_fails():
 
 def test_expect_holds_unknown_kind_raises():
     from evals.run_golden_session import expect_holds
-    import pytest
-    with pytest.raises(ValueError):
+    try:
         expect_holds(["bogus:col"], [{"col": 1}], "x")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError")
 
 
 def test_load_cases_reads_custom_path(tmp_path):
@@ -454,8 +457,64 @@ def test_load_cases_reads_custom_path(tmp_path):
 
 
 def test_render_ref_sql_substitutes_placeholders():
-    from evals.run_golden_session import render_ref_sql, JOIN, NET
-    sql = "SELECT {NET} {JOIN} WHERE {W} AND d >= '{f}' AND d < '{t}'"
+    from evals.run_golden_session import render_ref_sql, JOIN, NET, INVOICE_HEADER_KEY
+    sql = "SELECT {NET} {JOIN} WHERE {W} AND d >= '{f}' AND d < '{t}' AND {INV_KEY}"
     out = render_ref_sql(sql, "2025-10-01", "2025-11-01")
-    assert "{f}" not in out and JOIN in out and NET in out
+    assert "{f}" not in out and JOIN in out and NET in out and INVOICE_HEADER_KEY in out
     assert "2025-10-01" in out and "TransactionTypeID = 1" in out
+
+
+def test_expect_holds_same_line_name_amount_required():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": "ACME", "net": 100.0}]
+    assert expect_holds(["name:name", "amount:net"], rows, "ACME بقيمة 100.00")
+    assert not expect_holds(["name:name", "amount:net"], rows, "ACME\nOTHER 100.00")
+    assert expect_holds(
+        ["name:name", "amount:net"], rows, "٥٧٬٢٥١٫٨٥\nACME ١٠٠٫٠٠"
+    )
+
+
+def test_expect_holds_same_line_name_int_required():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": "Rep A", "inv": 111}]
+    assert expect_holds(["name:name", "int:inv"], rows, "Rep A عمل 111 فاتورة")
+    assert not expect_holds(["name:name", "int:inv"], rows, "Rep A\nRep B 111 فاتورة")
+
+
+def test_expect_holds_rejects_code_fence():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": "ACME", "net": 10.0}]
+    assert not expect_holds(["amount:net"], rows, "10.00\n```sql\nx\n```")
+
+
+def test_invoice_header_key_matches_golden_summary_count():
+    from evals.run_golden_session import INVOICE_HEADER_KEY, _last_month, _q
+    f, t = _last_month()
+    w = (f"th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 "
+         f"AND th.TransactionDate >= '{f}' AND th.TransactionDate < '{t}'")
+    distinct = _q(f"SELECT COUNT(DISTINCT {INVOICE_HEADER_KEY}) AS inv "
+                  f"FROM t.TransactionsHeaders th WHERE {w}")[0]["inv"]
+    star = _q(f"SELECT COUNT(*) AS inv FROM t.TransactionsHeaders th WHERE {w}")[0]["inv"]
+    assert distinct == 381
+    assert distinct == star, "Oct 2026 headers: distinct year-no equals row count (no duplicate keys)"
+
+
+def test_expect_holds_date_variants_table():
+    from datetime import datetime
+    from evals.run_golden_session import expect_holds
+    rows = [{"d": datetime(2026, 10, 10), "net": 4189.52}]
+    cases = [
+        ("أعلى يوم 2026-10-10 بمبيعات 4189.52", True),
+        ("10/10/2026 صافي 4189.52", True),
+        ("10-10-2026", True),
+        ("10/10 مبيعات", True),
+        ("10 أكتوبر 2026", True),
+        ("10 تشرين الأول", True),
+        ("10 October sales", True),
+        ("Oct 10 peak", True),
+        ("١٠ أكتوبر", True),
+        ("2026-10-11", False),
+        ("11 أكتوبر", False),
+    ]
+    for answer, ok in cases:
+        assert expect_holds(["date:d"], rows, answer) is ok, answer
