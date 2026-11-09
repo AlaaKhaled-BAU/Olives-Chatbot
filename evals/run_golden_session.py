@@ -212,25 +212,45 @@ def _as_date(val) -> date:
     return date.fromisoformat(str(val).strip()[:10])
 
 
+def _day_forms(day: int) -> list[str]:
+    return list(dict.fromkeys((str(day), f"{day:02d}")))
+
+
+def _month_forms(month: int) -> list[str]:
+    return list(dict.fromkeys((str(month), f"{month:02d}")))
+
+
+def _date_token_pattern(literal: str) -> re.Pattern[str]:
+    return re.compile(rf"(?<!\d){re.escape(literal)}(?!\d)")
+
+
 def date_variants(val) -> list[str]:
+    """Literal date strings matched by date_patterns (padded and unpadded)."""
     d = _as_date(val)
     day, month, year = d.day, d.month, d.year
-    out = [
-        d.isoformat(),
-        f"{day:02d}/{month:02d}/{year}",
-        f"{day}-{month:02d}-{year}",
-        f"{day}/{month:02d}",
-        f"{day} {_MONTH_EN[month]}",
-        f"{_MONTH_EN[month][:3]} {day}",
-    ]
-    for ar in _MONTH_AR.get(month, ()):
-        out.append(f"{day} {ar}")
+    days, months = _day_forms(day), _month_forms(month)
+    out = [d.isoformat()]
+    for d_s in days:
+        for m_s in months:
+            for sep in ("/", "-"):
+                out.append(f"{d_s}{sep}{m_s}{sep}{year}")
+                out.append(f"{d_s}{sep}{m_s}")
+            out.append(f"{year}/{m_s}/{d_s}")
+    for d_s in days:
+        out.append(f"{d_s} {_MONTH_EN[month]}")
+        out.append(f"{_MONTH_EN[month][:3]} {d_s}")
+        for ar in _MONTH_AR.get(month, ()):
+            out.append(f"{d_s} {ar}")
     return out
+
+
+def date_patterns(val) -> list[re.Pattern[str]]:
+    return [_date_token_pattern(v) for v in date_variants(val)]
 
 
 def date_matches(val, text: str) -> bool:
     a = _norm(text)
-    return any(v in a for v in date_variants(val))
+    return any(p.search(a) for p in date_patterns(val))
 
 
 def _name_metric_cols(expect: list[str]) -> tuple[str | None, str | None, str | None]:

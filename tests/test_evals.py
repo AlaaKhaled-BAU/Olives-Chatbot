@@ -474,6 +474,12 @@ def test_expect_holds_same_line_name_amount_required():
     )
 
 
+def test_expect_holds_markdown_table_row_same_line():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": "أحمد", "net": 12345.0}]
+    assert expect_holds(["name:name", "amount:net"], rows, "| أحمد | 12,345.00 |")
+
+
 def test_expect_holds_same_line_name_int_required():
     from evals.run_golden_session import expect_holds
     rows = [{"name": "Rep A", "inv": 111}]
@@ -518,3 +524,21 @@ def test_expect_holds_date_variants_table():
     ]
     for answer, ok in cases:
         assert expect_holds(["date:d"], rows, answer) is ok, answer
+
+
+def test_date_matches_unpadded_numeric_forms():
+    from datetime import date
+    from evals.run_golden_session import date_matches
+    d = date(2026, 10, 1)
+    for text in ("1/10/2026", "1-10-2026", "1/10", "2026/10/1", "01/10/2026"):
+        assert date_matches(d, text), text
+
+
+def test_date_matches_digit_boundaries_negative():
+    from datetime import date
+    from evals.run_golden_session import date_matches
+    d = date(2026, 10, 1)
+    for text in ("11/10/2026", "11/10", "21 أكتوبر", "١١/١٠"):
+        assert not date_matches(d, text), text
+    assert date_matches(d, "1 أكتوبر")
+    assert date_matches(d, "١/١٠/٢٠٢٦")
