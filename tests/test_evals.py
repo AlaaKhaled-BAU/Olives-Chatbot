@@ -542,3 +542,11 @@ def test_date_matches_digit_boundaries_negative():
         assert not date_matches(d, text), text
     assert date_matches(d, "1 أكتوبر")
     assert date_matches(d, "١/١٠/٢٠٢٦")
+
+
+def test_last_month_accepts_result_cache_string_dates(monkeypatch):
+    from datetime import datetime
+    import evals.run_golden_session as rgs
+    for mx in (datetime(2026, 11, 3, 10, 5), "2026-11-03 10:05:00"):
+        monkeypatch.setattr(rgs, "_q", lambda *_a, mx=mx: [{"mx": mx}])
+        assert rgs._last_month() == ("2026-10-01", "2026-11-01")

@@ -115,8 +115,8 @@ def _q(text: str) -> list[dict]:
 
 
 def _last_month() -> tuple[str, str]:
-    mx = _q("SELECT MAX(TransactionDate) AS mx FROM t.TransactionsHeaders "
-            "WHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0")[0]["mx"]
+    mx = _as_date(_q("SELECT MAX(TransactionDate) AS mx FROM t.TransactionsHeaders "
+                     "WHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0")[0]["mx"])
     first_cur = date(mx.year, mx.month, 1)
     prev = date(first_cur.year - (first_cur.month == 1), (first_cur.month - 2) % 12 + 1, 1)
     return prev.isoformat(), first_cur.isoformat()
