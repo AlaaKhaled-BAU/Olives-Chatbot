@@ -1483,3 +1483,67 @@ def test_no_recompose_without_rows():
     with patch.object(agent.llm, "complete") as mc:
         assert agent._recompose_if_false_failure("تعذر استخراج", [], {"last_rows": []}) == "تعذر استخراج"
     mc.assert_not_called()
+
+
+import hashlib
+import re
+
+_USER_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def test_user_id_session_scope_differs_by_subject(monkeypatch):
+    monkeypatch.setenv("CHATBOT_CACHE_SCOPE", "session")
+    a = agent._user_id("morec", 1, "subject-aaa")
+    b = agent._user_id("morec", 1, "subject-bbb")
+    again = agent._user_id("morec", 1, "subject-aaa")
+    assert a != b
+    assert a == again
+    assert len(a) == 32 and _USER_ID_RE.fullmatch(a)
+    assert len(b) == 32 and _USER_ID_RE.fullmatch(b)
+
+
+def test_user_id_unset_scope_matches_session_hash(monkeypatch):
+    monkeypatch.delenv("CHATBOT_CACHE_SCOPE", raising=False)
+    got = agent._user_id("morec", 1, "subject-aaa")
+    raw = "morec|1|subject-aaa"
+    assert got == hashlib.sha256(raw.encode()).hexdigest()[:32]
+
+
+def test_user_id_blank_subject_uses_anon_in_session_scope(monkeypatch):
+    monkeypatch.setenv("CHATBOT_CACHE_SCOPE", "session")
+    assert agent._user_id("morec", 1, None) == agent._user_id("morec", 1, "")
+    raw = "morec|1|anon"
+    assert agent._user_id("morec", 1, None) == hashlib.sha256(raw.encode()).hexdigest()[:32]
+
+
+def test_user_id_tenant_scope_ignores_subject(monkeypatch):
+    monkeypatch.setenv("CHATBOT_CACHE_SCOPE", "tenant")
+    a = agent._user_id("morec", 1, "subject-aaa")
+    b = agent._user_id("morec", 1, "subject-bbb")
+    c = agent._user_id("morec", 1, None)
+    assert a == b == c
+    raw = "morec|1"
+    assert a == hashlib.sha256(raw.encode()).hexdigest()[:32]
+    assert len(a) == 32 and _USER_ID_RE.fullmatch(a)
+
+
+def test_user_id_tenant_scope_splits_company_and_client(monkeypatch):
+    monkeypatch.setenv("CHATBOT_CACHE_SCOPE", "tenant")
+    same = agent._user_id("morec", 1, "s1")
+    other_company = agent._user_id("morec", 2, "s1")
+    other_client = agent._user_id("rukn", 1, "s1")
+    assert same != other_company
+    assert same != other_client
+    assert other_company != other_client
+
+
+def test_user_id_unknown_scope_stays_on_session(monkeypatch):
+    monkeypatch.setenv("CHATBOT_CACHE_SCOPE", "TENANT ")
+    shared = agent._user_id("morec", 1, "s1")
+    monkeypatch.setenv("CHATBOT_CACHE_SCOPE", "bogus")
+    split_a = agent._user_id("morec", 1, "s1")
+    split_b = agent._user_id("morec", 1, "s2")
+    # "tenant" with surrounding whitespace is tenant; anything else is session.
+    assert shared == hashlib.sha256("morec|1".encode()).hexdigest()[:32]
+    assert split_a != split_b
+    assert split_a == hashlib.sha256("morec|1|s1".encode()).hexdigest()[:32]
