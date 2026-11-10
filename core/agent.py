@@ -408,6 +408,12 @@ _EXPLAIN_INTENT_RE = re.compile(
     re.IGNORECASE,
 )
 _COUNT_HINT_RE = re.compile(r"كم|عدد|how many|\bcount\b", re.IGNORECASE)
+# "How is/was X" asks about business state, not a procedure.
+_HOW_IS_STATE_RE = re.compile(
+    r"(?:كيف|شلون)\s+(?:كان|كانت|هو|هي|صار|صارت|أداء|اداء|حال|وضع|ال\S+)"
+    r"|\bhow (?:is|are|was|were)\b",
+    re.IGNORECASE,
+)
 _CLAUSE_SPLIT_RE = re.compile(
     r"[،,؛;]|\s(?:و|and)\s*(?:كم|مين|من|شو|ما|ماذا|لماذا|ليش|how|what|why)\b",
     re.I,
@@ -982,6 +988,8 @@ def _is_howto_path(question: str, client: str) -> bool:
         return False
     if _HOWTO_ACTION_RE.search(q) and not _COUNT_HINT_RE.search(q):
         return True
+    if _HOW_IS_STATE_RE.search(q):
+        return False
     if _has_count_sql_intent(q) or _is_fast_count_path(q):
         return False
     if metrics.question_mentions_metric(q):
@@ -1369,7 +1377,7 @@ def _recompose_if_false_failure(final_text: str | None, messages: list, state: d
     text = None
     for event in _stream_turn(
         messages + [nudge],
-        None,
+        state.get("turn_tools"),
         gear=state["gear"],
         user_id=state.get("_user_id"),
         usage_acc=state.get("_usage"),
@@ -1587,6 +1595,20 @@ def _after_business_sql(
     return {"rows": rows, **extra}
 
 
+def _mid_turn_block_reason(name: str, state: dict) -> str | None:
+    """The tool list is fixed for the whole turn (a changed list re-sends the
+    prefix uncached), so caps reached mid-turn are enforced here instead."""
+    if name == "search_docs" and state.get("doc_searches", 0) >= MAX_DOC_SEARCHES:
+        return "No more documentation searches this turn. Answer from excerpts already retrieved."
+    if name in _VAULT_TOOLS and state.get("vault_searches", 0) >= MAX_VAULT_SEARCHES:
+        return "No more vault schema searches this turn."
+    if name == "recall_turns" and state.get("had_business_rows"):
+        return "recall_turns is not available after business rows were returned."
+    if name in _DOCS_ONLY_SCHEMA_TOOLS and state.get("docs_only"):
+        return "Schema tools are not available in docs-only mode."
+    return None
+
+
 def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, client, state):
     if name in ("run_select", "run_metric", "run_report") and (
         "information_schema" not in str(args.get("sql", "")).lower()
@@ -1598,6 +1620,9 @@ def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, 
                 f"Query budget ({MAX_QUERIES}) is spent. Answer from results already returned."
             ),
         }
+    blocked = _mid_turn_block_reason(name, state)
+    if blocked:
+        return {"status": "unavailable", "message": blocked}
     if name == "introspect_schema":
         return _introspect(cache, catalog_procs, args.get("name", ""))
     if name == "analyze":
@@ -1815,15 +1840,26 @@ def _answer_sql(state: dict) -> str | None:
     return "; ".join(parts) if parts else None
 
 
+def _evidence_confidence(state: dict) -> str:
+    if state.get("tool_errors"):
+        return "medium"
+    if isinstance(state.get("last_rows"), list) and state["last_rows"]:
+        return "high"
+    return "medium" if state.get("doc_source_pairs") else "low"
+
+
 def _build_envelope(question: str, final_text: str, state: dict) -> dict:
     """C8/E1: assembles the structured pieces /ask returns alongside the
     prose. Everything is derived from data this turn already produced plus
     the optional JSON contract (followups/confidence); never a second ask
     for numbers the tools already returned."""
     table = _build_table(state["last_rows"])
-    contract = _final_contract(question, final_text, state.get("_user_id"), state.get("_usage")) if final_text else None
     thread_head = state.get("thread_head")
-    if thread_head:
+    use_card = bool(thread_head) and state.get("card_is_new", True)
+    contract = None
+    if final_text and not use_card:
+        contract = _final_contract(question, final_text, state.get("_user_id"), state.get("_usage"))
+    if use_card:
         followups = thread.card_followups(thread_head)
     else:
         followups = (contract or {}).get("followups") or []
@@ -1837,8 +1873,8 @@ def _build_envelope(question: str, final_text: str, state: dict) -> dict:
     }
     if thread_head:
         out["thread_head"] = thread_head
-    if contract and not contract["refusal"] and contract["confidence"]:
-        out["confidence"] = contract["confidence"]
+    if final_text and not (contract and contract["refusal"]):
+        out["confidence"] = _evidence_confidence(state)
     if state.get("report_name"):
         out["report_name"] = state["report_name"]
     return out
@@ -2222,10 +2258,14 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             **fields,
         )
 
+    state["turn_tools"] = _active_tools(state)
     for _ in range(MAX_TURNS):
         if cancel is not None and cancel.is_set():
             raise TurnCancelled("client disconnected")
-        tools = _active_tools(state)
+        if state.get("report_unlock") and not state.get("_tools_unlocked"):
+            state["turn_tools"] = _active_tools(state)
+            state["_tools_unlocked"] = True
+        tools = state["turn_tools"]
         msg = None
         for event in _stream_turn(messages, tools, gear=state["gear"],
                                   user_id=state["_user_id"], cancel=cancel,
@@ -2366,6 +2406,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         final_text = _recompose_if_false_failure(final_text, messages, state)
         final_text = _apply_count_backstop(_strip_sql_fences(final_text), state)
         new_card = thread.card_from_query_log(state.get("query_log"))
+        state["card_is_new"] = bool(new_card)
         if new_card:
             state["thread_head"] = new_card
         _kw = {"company_id": company_id}
@@ -2386,6 +2427,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         final_text = final_text.strip()
         final_text = _apply_count_backstop(_strip_sql_fences(final_text), state)
         new_card = thread.card_from_query_log(state.get("query_log"))
+        state["card_is_new"] = bool(new_card)
         if new_card:
             state["thread_head"] = new_card
         _kw = {"company_id": company_id}

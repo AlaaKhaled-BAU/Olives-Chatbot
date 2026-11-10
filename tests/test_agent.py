@@ -365,12 +365,11 @@ def test_query_budget_closes_after_max_queries_real_queries(monkeypatch, tmp_pat
         result = agent.ask("morec", "compare this month to last month", conversation=SCOPE)
 
     assert result["answer"] == "Here is the comparison."
-    # calls[0..MAX_QUERIES-1] each still had tools offered (budget not yet
-    # spent going INTO that call); the final call (index MAX_QUERIES) must
-    # have tools withheld.
-    for i in range(agent.MAX_QUERIES):
-        assert mock_complete.call_args_list[i].kwargs["tools"] is not None, f"call {i} should still offer tools"
-    assert mock_complete.call_args_list[agent.MAX_QUERIES].kwargs["tools"] is None
+    # The tool list never changes inside a turn (prefix cache); the spent
+    # budget is enforced by _run_tool returning budget_spent instead.
+    first = mock_complete.call_args_list[0].kwargs["tools"]
+    for i in range(agent.MAX_QUERIES + 1):
+        assert mock_complete.call_args_list[i].kwargs["tools"] is first, f"call {i} changed the tool list"
     warnings = [m for m in mock_complete.call_args_list[agent.MAX_QUERIES].args[0]
                 if m.get("content") == "This is your last query. Answer from what you have."]
     assert len(warnings) == 1, "the last-query reminder must be injected exactly once"
@@ -826,9 +825,11 @@ def test_doc_search_cap_omits_search_docs(monkeypatch, tmp_path):
         result = agent.ask("morec", "how does approval work?", conversation=SCOPE)
     assert result["answer"] == "Answer from docs."
     assert result["doc_search_count"] == agent.MAX_DOC_SEARCHES
-    tools_on_fourth = mock_complete.call_args_list[agent.MAX_DOC_SEARCHES].kwargs["tools"]
-    names = {t["function"]["name"] for t in tools_on_fourth}
-    assert "search_docs" not in names
+    assert (mock_complete.call_args_list[agent.MAX_DOC_SEARCHES].kwargs["tools"]
+            is mock_complete.call_args_list[0].kwargs["tools"])
+    blocked = agent._run_tool("search_docs", {"query": "x"}, {}, [], set(), 1, "morec",
+                              {"queries": [], "doc_searches": agent.MAX_DOC_SEARCHES})
+    assert blocked["status"] == "unavailable"
 
 
 def test_docs_only_omits_schema_tools(monkeypatch, tmp_path):
@@ -1077,10 +1078,12 @@ def test_vault_search_cap_increments_and_blocks(monkeypatch, tmp_path):
          patch.object(agent.vault, "get_joins", return_value={"joins": []}):
         result = agent.ask("morec", "customers joined to salesperson via CFD", conversation=SCOPE)
     assert result["answer"] == "Joined via CFD."
-    tools_on_fourth = mock_complete.call_args_list[agent.MAX_VAULT_SEARCHES].kwargs["tools"]
-    names = {t["function"]["name"] for t in tools_on_fourth}
-    assert "search_schema_notes" not in names
-    assert "get_joins" not in names
+    assert (mock_complete.call_args_list[agent.MAX_VAULT_SEARCHES].kwargs["tools"]
+            is mock_complete.call_args_list[0].kwargs["tools"])
+    for name in ("search_schema_notes", "get_joins"):
+        blocked = agent._run_tool(name, {}, {}, [], set(), 1, "morec",
+                                  {"queries": [], "vault_searches": agent.MAX_VAULT_SEARCHES})
+        assert blocked["status"] == "unavailable"
 
 
 def test_run_report_path1_uses_empty_allowlist():
@@ -1355,3 +1358,78 @@ def test_tool_errors_are_written_to_the_trace(monkeypatch, tmp_path):
         agent.ask("morec", "كم عدد الأصناف المباعة أمس؟", conversation=dict(SCOPE))
     assert logged["tool_errors"][0]["tool"] == "run_select"
     assert "Invalid object name" in logged["tool_errors"][0]["error"]
+
+
+def test_tool_list_is_identical_on_every_call_of_a_turn(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    seen = []
+
+    def fake_complete(messages, gear="t1", tools=None, stream=False, **kw):
+        if stream:
+            seen.append([t["function"]["name"] for t in (tools or [])])
+            if len(seen) == 1:
+                return _resp(_msg(tool_calls=[_tool_call("c1", "run_select",
+                                                         '{"sql": "SELECT COUNT(*) AS n FROM t.Items"}')]))
+            return _resp(_msg(content="عدد الأصناف 7"))
+        return _plain_resp("{}")
+
+    with patch.object(agent.llm, "complete", side_effect=fake_complete), \
+         patch.object(agent.sql, "run_select", return_value=[{"n": 7}]):
+        agent.ask("morec", "كم عدد الأصناف؟", conversation=dict(SCOPE))
+    assert len(seen) >= 2 and all(s == seen[0] for s in seen)
+
+
+@pytest.mark.parametrize("name,state", [
+    ("search_docs", {"doc_searches": agent.MAX_DOC_SEARCHES}),
+    ("get_joins", {"vault_searches": agent.MAX_VAULT_SEARCHES}),
+    ("recall_turns", {"had_business_rows": True}),
+    ("introspect_schema", {"docs_only": True}),
+])
+def test_mid_turn_caps_are_enforced_in_run_tool(name, state):
+    out = agent._run_tool(name, {}, {}, [], set(), 1, "morec", {"queries": [], **state})
+    assert out["status"] == "unavailable"
+
+
+def test_envelope_skips_contract_call_when_turn_made_a_card():
+    state = {"queries": ["q"], "last_rows": [{"a": 1}], "doc_source_pairs": [],
+             "thread_head": {"period_label": "2026-10"}, "card_is_new": True, "tool_errors": []}
+    with patch.object(agent.llm, "complete") as mock_complete:
+        env = agent._build_envelope("q", "answer", state)
+    mock_complete.assert_not_called()
+    assert env["confidence"] == "high"
+
+
+def test_inherited_card_does_not_drive_followups():
+    state = {"queries": [], "last_rows": None, "doc_source_pairs": [("a", "b")],
+             "thread_head": {"period_label": "2026-10"}, "card_is_new": False, "tool_errors": []}
+    payload = '{"answer_md": "x", "refusal": false, "confidence": "high", "followups": ["أ", "ب", "ج"]}'
+    with patch.object(agent.llm, "complete", return_value=_plain_resp(payload)):
+        env = agent._build_envelope("كيف اغير", "answer", state)
+    assert env["followups"] == ["أ", "ب", "ج"]
+    assert env["confidence"] == "medium"
+
+
+@pytest.mark.parametrize("text,claims", [
+    ("تعذر استخراج البيانات المطلوبة", True),
+    ("لم أتمكن من تحديد أفضل مندوب", True),
+    ("I couldn't extract the results", True),
+    ("لا أستطيع حذف البيانات، النظام للقراءة فقط", False),
+    ("أفضل مندوب هو أحمد بمبيعات 12,500", False),
+])
+def test_text_claims_query_failure(text, claims):
+    assert agent._text_claims_query_failure(text) is claims
+
+
+def test_false_failure_with_rows_recomposes_once():
+    state = {"last_rows": [{"n": 4}], "gear": "t1", "turn_tools": agent.TOOLS}
+    with patch.object(agent.llm, "complete", return_value=_resp(_msg(content="العدد 4"))) as mc:
+        out = agent._recompose_if_false_failure("تعذر استخراج النتيجة", [], state)
+        again = agent._recompose_if_false_failure("تعذر استخراج النتيجة", [], state)
+    assert out == "العدد 4" and again == "تعذر استخراج النتيجة"
+    assert mc.call_count == 1 and mc.call_args.kwargs["tools"] is agent.TOOLS
+
+
+def test_no_recompose_without_rows():
+    with patch.object(agent.llm, "complete") as mc:
+        assert agent._recompose_if_false_failure("تعذر استخراج", [], {"last_rows": []}) == "تعذر استخراج"
+    mc.assert_not_called()
