@@ -122,13 +122,70 @@ def _last_month() -> tuple[str, str]:
     return prev.isoformat(), first_cur.isoformat()
 
 
+def _item_labels(row: dict) -> list[str]:
+    out: list[str] = []
+    for key in ("code", "name", "foreign_name"):
+        val = row.get(key)
+        if val is None:
+            continue
+        s = str(val).strip()
+        if s and s not in out:
+            out.append(s)
+    return out
+
+
+def _ident_in_norm_text(labels: list[str], text: str) -> bool:
+    a = _norm(text)
+    return any(_norm(lab) in a for lab in labels if lab)
+
+
+def _same_line_ident_metric(
+    rows: list[dict],
+    labels: list[str],
+    metric: str,
+    metric_col: str,
+    answer: str,
+) -> bool:
+    if not rows:
+        return False
+    lines = answer.splitlines() or [answer]
+    for line in lines:
+        if not _ident_in_norm_text(labels, line):
+            continue
+        if metric == "amount" and amount_matches(float(rows[0][metric_col]), line):
+            return True
+        if metric == "int" and str(int(rows[0][metric_col])) in num_tokens(line):
+            return True
+    return False
+
+
 def references() -> dict:
     f, t = _last_month()
     W = f"th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 AND th.TransactionDate >= '{f}' AND th.TransactionDate < '{t}'"
+    item_join = (
+        f"JOIN t.Items i ON i.ItemCode = td.ItemCode AND i.CompanyID = td.CompanyID"
+    )
     reps = _q(f"SELECT th.SalesPersonID AS id, sp.Name AS name, SUM({NET}) AS net {JOIN} "
               f"JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID AND sp.CompanyID = th.CompanyID "
               f"WHERE {W} GROUP BY th.SalesPersonID, sp.Name ORDER BY net DESC")
-    items = _q(f"SELECT td.ItemCode AS code, SUM({NET}) AS net {JOIN} WHERE {W} GROUP BY td.ItemCode ORDER BY net DESC")
+    items = _q(
+        f"SELECT TOP 1 td.ItemCode AS code, i.Name AS name, i.ForeignName AS foreign_name, "
+        f"SUM({NET}) AS net {JOIN} {item_join} WHERE {W} "
+        f"GROUP BY td.ItemCode, i.Name, i.ForeignName ORDER BY net DESC"
+    )
+    bottom_seed = _q(
+        f"SELECT TOP 10 td.ItemCode AS code, i.Name AS name, i.ForeignName AS foreign_name, "
+        f"SUM({NET}) AS net {JOIN} {item_join} WHERE {W} "
+        f"GROUP BY td.ItemCode, i.Name, i.ForeignName ORDER BY net ASC"
+    )
+    bottom_threshold = float(bottom_seed[-1]["net"]) if bottom_seed else 0.0
+    bottom_acceptable = _q(
+        f"SELECT td.ItemCode AS code, i.Name AS name, i.ForeignName AS foreign_name, "
+        f"SUM({NET}) AS net {JOIN} {item_join} WHERE {W} "
+        f"GROUP BY td.ItemCode, i.Name, i.ForeignName "
+        f"HAVING SUM({NET}) <= {bottom_threshold} "
+        f"ORDER BY net ASC"
+    ) if bottom_seed else []
     summary = _q(f"SELECT SUM({NET}) AS net, COUNT(DISTINCT {INVOICE_HEADER_KEY}) AS inv, "
                  f"COUNT(DISTINCT th.CustomerID) AS custs {JOIN} WHERE {W}")[0]
     unsold = _q("SELECT COUNT(*) AS n FROM t.Items i WHERE ISNULL(i.IsSuspended, 0) = 0 AND NOT EXISTS ("
@@ -139,12 +196,20 @@ def references() -> dict:
               "GROUP BY CAST(TimeStamp AS date) ORDER BY d DESC")
     visit_days = []
     for d in days:
-        nxt = date.fromordinal(d["d"].toordinal() + 1).isoformat()
+        day = _as_date(d["d"])
+        nxt = date.fromordinal(day.toordinal() + 1).isoformat()
         s = _q("SELECT COUNT(*) AS inv, COUNT(DISTINCT CustomerID) AS sold FROM t.TransactionsHeaders "
                f"WHERE TransactionTypeID = 1 AND ISNULL(IsVoid, 0) = 0 AND SalesPersonID = {int(top['id'])} "
-               f"AND TransactionDate >= '{d['d'].isoformat()}' AND TransactionDate < '{nxt}'")[0]
+               f"AND TransactionDate >= '{day.isoformat()}' AND TransactionDate < '{nxt}'")[0]
         visit_days.append({"visited": d["visited"], "sold": s["sold"], "inv": s["inv"]})
-    return {"reps": reps, "items": items, "summary": summary, "visit_days": visit_days, "unsold": unsold}
+    return {
+        "reps": reps,
+        "items": items,
+        "bottom_acceptable": bottom_acceptable,
+        "summary": summary,
+        "visit_days": visit_days,
+        "unsold": unsold,
+    }
 
 
 def _line_token_counts(line: str) -> Counter:
@@ -169,6 +234,32 @@ def _visits_pass(answer: str, ref: dict) -> bool:
     )
 
 
+def _lines_matching_check(kind: str, answer: str, ref: dict) -> list[str]:
+    if kind == "top_item" and ref.get("items"):
+        top = ref["items"][0]
+        labels = _item_labels(top)
+        out = []
+        for line in answer.splitlines() or [answer]:
+            if _ident_in_norm_text(labels, line) and amount_matches(float(top["net"]), line):
+                out.append(line.strip())
+        return out
+    if kind == "bottom10":
+        acceptable = ref.get("bottom_acceptable") or []
+        out = []
+        seen: set[str] = set()
+        for line in answer.splitlines() or [answer]:
+            nl = _norm(line)
+            for row in acceptable:
+                if any(_norm(lab) in nl for lab in _item_labels(row) if lab):
+                    t = line.strip()
+                    if t not in seen:
+                        seen.add(t)
+                        out.append(t)
+                    break
+        return out
+    return []
+
+
 def check(kind: str, answer: str, ref: dict) -> bool:
     if "```" in (answer or ""):
         return False
@@ -178,11 +269,18 @@ def check(kind: str, answer: str, ref: dict) -> bool:
         return top["name"].strip() in a and amount_matches(float(top["net"]), answer)
     if kind == "top_item":
         top = ref["items"][0]
-        return top["code"] in a and amount_matches(float(top["net"]), answer)
+        labels = _item_labels(top)
+        return _same_line_ident_metric([top], labels, "amount", "net", answer)
     if kind == "bottom10":
-        bottom = [r["code"] for r in ref["items"][-10:]]
         unsold_tok = str(int(ref["unsold"]))
-        return sum(code in a for code in bottom) >= 5 and unsold_tok in num_tokens(a)
+        if unsold_tok not in num_tokens(a):
+            return False
+        acceptable = ref.get("bottom_acceptable") or []
+        hits = sum(
+            1 for row in acceptable
+            if _ident_in_norm_text(_item_labels(row), a)
+        )
+        return hits >= 5
     if kind == "visits":
         return _visits_pass(answer, ref)
     if kind == "summary":
@@ -314,7 +412,12 @@ def expect_holds(expect: list[str], rows: list[dict], answer: str) -> bool:
         elif kind == "rows":
             n_s, _, col = rest.partition(":")
             n, need = int(n_s), math.ceil(int(n_s) / 2)
-            hit = sum(1 for i in range(min(n, len(rows))) if str(rows[i][col]).strip() in a)
+            def _row_hit(i: int) -> bool:
+                if col == "code":
+                    return _ident_in_norm_text(_item_labels(rows[i]), a)
+                return str(rows[i][col]).strip() in a
+
+            hit = sum(1 for i in range(min(n, len(rows))) if _row_hit(i))
             if hit < need:
                 return False
         else:
@@ -408,8 +511,17 @@ def rescore_results(src: Path, cases_path: Path | None = None) -> int:
     for old in data["cases"]:
         c = by_name[old["name"]]
         row = dict(old)
-        row["pass"] = _pass_case(c, old.get("answer") or "", ref)
+        ans = old.get("answer") or ""
+        before = bool(old.get("pass"))
+        row["pass"] = _pass_case(c, ans, ref)
         rows.append(row)
+        if c.get("check") in ("bottom10", "top_item"):
+            lines = _lines_matching_check(c["check"], ans, ref)
+            delta = "pass" if not before and row["pass"] else ("fail" if before and not row["pass"] else "=")
+            print(f"  {c['name']}: {before}->{row['pass']} ({delta})", flush=True)
+            if lines:
+                for ln in lines:
+                    print(f"    match: {ln}", flush=True)
     summary = _summary(rows)
     _print_rows(rows)
     print(json.dumps(summary, indent=1))

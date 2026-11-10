@@ -7,6 +7,8 @@ import json
 import re
 import sys
 from pathlib import Path
+
+import pytest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -247,14 +249,22 @@ def test_cost_usd_offpeak_matches_published_flash_rates():
 
 def _golden_ref():
     """Inline fixture matching task-2 tightened-check table."""
-    items = [{"code": "0103022", "net": 1841.65}]
-    items += [{"code": f"A{i:02d}", "net": 13 - i} for i in range(1, 13)]
+    items = [{"code": "0103022", "name": "شامبو فاتيكا 650", "net": 1841.65}]
+    bottom_acceptable = [
+        {"code": "A07", "name": "تعادل A07", "net": 5.0},
+        {"code": "A08", "name": "Ember A08", "net": 5.0},
+        {"code": "A09", "name": "هيمالايا A09", "net": 4.0},
+        {"code": "A10", "name": "Item A10", "net": 3.0},
+        {"code": "A11", "name": "Item A11", "net": 2.0},
+        {"code": "A12", "name": "Item A12", "net": 2.0},
+    ]
     return {
         "reps": [
             {"id": 8, "name": "محمد مصطفى جميل", "net": 15355.228256},
             {"id": 210, "name": "زكريا حمزاوي", "net": 15185.23},
         ],
         "items": items,
+        "bottom_acceptable": bottom_acceptable,
         "summary": {"net": 57251.853534, "inv": 381, "custs": 298},
         "visit_days": [
             {"visited": 4, "sold": 4, "inv": 4},
@@ -343,6 +353,14 @@ def test_golden_check_top_item_code_and_amount():
     _assert_check("top_item", "0103022 بقيمة 1,841.65", True)
 
 
+def test_golden_check_top_item_name_same_line_passes():
+    _assert_check("top_item", "شامبو فاتيكا 650 بقيمة 1,841.65", True)
+
+
+def test_golden_check_top_item_name_amount_split_lines_fails():
+    _assert_check("top_item", "شامبو فاتيكا 650\n1,841.65", False)
+
+
 def test_golden_check_top_rep_name_and_amount():
     _assert_check("top_rep", "محمد مصطفى جميل صافي 15,355.23", True)
 
@@ -357,6 +375,21 @@ def test_golden_check_bottom10_with_unsold():
 
 def test_golden_check_bottom10_without_unsold():
     _assert_check("bottom10", "A08 A09 A10 A11 A12", False)
+
+
+@pytest.mark.parametrize(
+    "answer,expected",
+    [
+        ("Ember A08, هيمالايا A09, Item A10, Item A11, Item A12 و 1987", True),
+        ("تعادل A07 و A08 و A09 و A10 و A11 — غير مباع 1987", True),
+        ("A08 A09 A10 A11 A12", False),
+        ("A01 A02 A03 A04 A05 و 1987", False),
+        ("A08 A09 A10 A11 A12", False),
+    ],
+    ids=["names_and_codes", "tie_bucket_by_name", "missing_unsold", "wrong_items", "missing_unsold_codes"],
+)
+def test_golden_check_bottom10_table(answer, expected):
+    _assert_check("bottom10", answer, expected)
 
 
 def test_golden_check_code_fence_always_fails():
