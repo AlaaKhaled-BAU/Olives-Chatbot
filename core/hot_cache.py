@@ -11,7 +11,7 @@ TTL_SECONDS = 600  # 10 minutes
 # Customers may gain Code when schema_cache shows that column (see l1_sql).
 L1_QUERIES = {
     "SalesPersons": (
-        "SELECT ID, Name, ForeignName, PositionID, IsSuspended, GroupID, CarID, VehicleId FROM t.SalesPersons"
+        "SELECT ID, Name, ForeignName, PositionID, IsSuspended, GroupID FROM t.SalesPersons"
     ),
     "SalesPersonsDevicePermissions": (
         "SELECT PositionsID, MakeSalesInvoice, MakeOrderTaking, "

@@ -1629,3 +1629,45 @@ def test_two_sessions_share_static_prefix_bytes_and_differ_after_it(monkeypatch)
     assert tail_a != tail_b
     assert "answer A only" in tail_a
     assert "answer A only" not in json.dumps(session_b[:n], ensure_ascii=False)
+
+
+def test_schema_block_drops_types_companyid_and_junk_views():
+    cache = {
+        "has_tenant_view": {
+            "dbo.Items": True,
+            "dbo.CustomersFinancialDetails_Old": True,
+            "dbo.Technical_CFD_temp": True,
+            "dbo.LogActionTransaction_": True,
+        },
+        "tables": {
+            "dbo.Items": [
+                {"column": "CompanyID", "type": "smallint", "nullable": False},
+                {"column": "ItemCode", "type": "nvarchar", "nullable": False},
+                {"column": "Name", "type": "nvarchar", "nullable": True},
+            ],
+            "dbo.CustomersFinancialDetails_Old": [{"column": "ID", "type": "int", "nullable": False}],
+            "dbo.Technical_CFD_temp": [{"column": "ID", "type": "int", "nullable": False}],
+            "dbo.LogActionTransaction_": [{"column": "ID", "type": "int", "nullable": False}],
+        },
+    }
+    text = agent._schema_block(cache)
+    assert "dbo.Items(ItemCode, Name)" in text
+    assert "CompanyID:" not in text and "(CompanyID" not in text
+    assert "nvarchar" not in text and "?" not in text
+    assert "CustomersFinancialDetails_Old" not in text
+    assert "Technical_CFD_temp" not in text
+    assert "LogActionTransaction_" not in text
+
+
+def test_cards_block_omits_primary_key(monkeypatch):
+    monkeypatch.setattr(agent.vault, "_load_cards", lambda client: [
+        {"kind": "table", "name": "Items", "purpose": "sellable items",
+         "primary_key": "ItemCode", "foreign_keys": "CompanyID"},
+        {"kind": "relation", "parent": "Items", "referenced": "Categories",
+         "columns": "CategoryID"},
+    ])
+    text = agent._all_cards_block("105")
+    assert "| PK" not in text
+    assert "sellable items" in text
+    assert "| FK CompanyID" in text
+    assert "Categories" in text

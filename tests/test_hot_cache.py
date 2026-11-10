@@ -25,6 +25,8 @@ def test_salespersons_includes_position_and_group_ids():
     sql = hot_cache.L1_QUERIES["SalesPersons"]
     assert "PositionID" in sql
     assert "GroupID" in sql
+    assert "CarID" not in sql
+    assert "VehicleId" not in sql
 
 
 def test_l1_sql_customers_adds_code_only_when_introspected(monkeypatch):

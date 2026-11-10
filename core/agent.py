@@ -311,12 +311,15 @@ def _schema_block(cache: dict) -> str:
             continue
         if views and not views.get(name, False):
             continue
+        if bare.endswith("_old") or bare.endswith("_temp") or bare.endswith("_"):
+            continue
         cols = tables[name] or []
-        rendered = ", ".join(
-            f"{c.get('column')}:{c.get('type')}" + ("?" if c.get("nullable") else "")
-            for c in cols if isinstance(c, dict)
-        )
-        lines.append(f"- {name}({rendered})")
+        names = [
+            c.get("column") for c in cols
+            if isinstance(c, dict) and c.get("column")
+            and str(c.get("column")).lower() != "companyid"
+        ]
+        lines.append(f"- {name}({', '.join(names)})")
     return "\n".join(lines)
 
 
@@ -341,13 +344,10 @@ def _all_cards_block(client: str) -> str:
             if name.lower() in gate.HIDDEN_TABLES:
                 continue
             purpose = str(card.get("purpose", ""))[:110]
-            pk = str(card.get("primary_key", ""))[:60]
             fk = str(card.get("foreign_keys", ""))[:80]
             line = f"- TBL {card.get('name')}"
             if purpose:
                 line += f" — {purpose}"
-            if pk:
-                line += f" | PK {pk}"
             if fk:
                 line += f" | FK {fk}"
             lines.append(line)
@@ -880,7 +880,7 @@ TOOLS = [
         "function": {
             "name": "lookup_hot",
             "description": (
-                "Load an L1 master snapshot (SalesPersons with CarID/VehicleId, SalesPersonsDevicePermissions, "
+                "Load an L1 master snapshot (SalesPersons, SalesPersonsDevicePermissions, "
                 "DeliveryCars, items, routes, LogActions ActionID codebook). "
                 "Pass LogActionTransaction for the same codebook (the fact log is not cached). "
                 "Never for invoices/orders/receipts/balances. Free — does not count against query budget."
