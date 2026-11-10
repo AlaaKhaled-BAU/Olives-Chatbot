@@ -101,3 +101,51 @@ def test_header_only_count_is_not_lines():
 
 def test_count_note_constant():
     assert verify.COUNT_NOTE == "counts lines, not invoice headers"
+
+
+def test_distinct_header_key_count_over_detail_join_is_header():
+    s = metrics.build_sales_sql(1, {"from_date": "2026-10-01", "to_date": "2026-11-01"})
+    assert verify.count_scopes(s) == [{"kind": "header", "func": "count"}]
+
+
+def test_plain_count_star_over_detail_join_is_still_lines():
+    s = (
+        "SELECT COUNT(*) AS n FROM t.TransactionsHeaders th JOIN t.TransactionsDetails td "
+        "ON td.TransactionNo = th.TransactionNo"
+    )
+    assert verify.count_scopes(s) == [{"kind": "lines", "func": "count"}]
+
+
+@pytest.mark.parametrize(
+    "sql,kind",
+    [
+        (
+            "SELECT COUNT(DISTINCT th.TransactionNo) AS n FROM t.TransactionsHeaders th "
+            "JOIN t.TransactionsDetails td ON td.TransactionNo = th.TransactionNo",
+            "header",
+        ),
+        (
+            "SELECT COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.TransactionNo END) AS n "
+            "FROM t.TransactionsHeaders th JOIN t.TransactionsDetails td "
+            "ON td.TransactionNo = th.TransactionNo",
+            "header",
+        ),
+        (
+            "SELECT COUNT(DISTINCT th.CustomerID) AS n FROM t.TransactionsHeaders th "
+            "JOIN t.TransactionsDetails td ON td.TransactionNo = th.TransactionNo",
+            "lines",
+        ),
+        (
+            "SELECT COUNT(*) AS a, COUNT(DISTINCT th.TransactionNo) AS b "
+            "FROM t.TransactionsHeaders th JOIN t.TransactionsDetails td "
+            "ON td.TransactionNo = th.TransactionNo",
+            "lines",
+        ),
+        (
+            "SELECT COUNT(*) AS n FROM (SELECT 1 AS x) sq JOIN t.TransactionsDetails td ON 1=1",
+            "lines",
+        ),
+    ],
+)
+def test_detail_join_count_grain_table(sql, kind):
+    assert verify.count_scopes(sql) == [{"kind": kind, "func": "count"}]

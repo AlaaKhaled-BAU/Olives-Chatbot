@@ -1371,8 +1371,9 @@ def _analyze(args: dict) -> dict:
                      f"trend_direction, growth_compare, or top_movers"}
 
 
-_INVOICE_WORD_RE = re.compile(r"فاتور|invoice", re.IGNORECASE)
+_INVOICE_WORD_RE = re.compile(r"فاتور|فواتير|invoice", re.IGNORECASE)
 _LINES_WORD_RE = re.compile(r"بنود|سطور|\blines\b", re.IGNORECASE)
+_CODE_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
 
 
 def _apply_count_backstop(final_text: str | None, state: dict) -> str:
@@ -1380,9 +1381,10 @@ def _apply_count_backstop(final_text: str | None, state: dict) -> str:
     text = (final_text or "").strip()
     if not text or not state.get("had_lines_count"):
         return text
-    if _LINES_WORD_RE.search(text):
+    prose = _CODE_FENCE_RE.sub("", text)
+    if _LINES_WORD_RE.search(prose):
         return text
-    if not _INVOICE_WORD_RE.search(text):
+    if not _INVOICE_WORD_RE.search(prose):
         return text
     hc = state.get("header_count")
     if hc is not None:

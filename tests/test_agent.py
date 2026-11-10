@@ -1139,6 +1139,13 @@ WHERE th.CompanyID = 2
     assert state["query_log"][0]["sql"] == july_lines_sql
 
 
+def test_count_backstop_ignores_words_inside_code_fences():
+    state = {"had_lines_count": True, "header_count": None}
+    text = "باع لـ 5 عملاء عبر 9 فواتير.\n```sql\n-- حبيبات البنود\nSELECT 1\n```"
+    out = agent._apply_count_backstop(text, state)
+    assert out.endswith(agent.locale_ar.COUNT_NOTE_USER)
+
+
 def test_visit_plan_ask_salesman_singular():
     assert agent._visit_plan_ask_salesman("الزيارات القادمة للمندوب")
     assert agent._visit_plan_ask_salesman("خطة المسار للمندوب للأسبوع القادم")

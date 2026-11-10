@@ -70,6 +70,9 @@ def _count_kind_for_select(select: exp.Select) -> str | None:
     if not tables:
         return "other"
     if tables & _DETAIL_TABLES:
+        counts = [c for e in select.expressions for c in _counts_excluding_subqueries(e)]
+        if counts and all(_is_distinct_header_key(c) for c in counts):
+            return "header"
         return "lines"
     if tables <= _HEADER_TABLES:
         return "header"
@@ -128,6 +131,42 @@ def _detail_aliases(select: exp.Select) -> set[str]:
 
 def _column_bare(col: exp.Column) -> str:
     return (col.name or "").lower()
+
+
+_HEADER_KEY_COLS = frozenset({"transactionno"})
+
+
+def _counts_excluding_subqueries(expr: exp.Expression) -> list[exp.Count]:
+    if isinstance(expr, exp.Subquery):
+        return []
+    if isinstance(expr, exp.Count):
+        return [expr]
+    out: list[exp.Count] = []
+    for child in expr.args.values():
+        items = child if isinstance(child, list) else [child]
+        for item in items:
+            if isinstance(item, exp.Expression):
+                out.extend(_counts_excluding_subqueries(item))
+    return out
+
+
+def _distinct_value_columns(node: exp.Expression) -> list[exp.Column]:
+    if isinstance(node, exp.Case):
+        cols: list[exp.Column] = []
+        for if_ in node.args.get("ifs") or []:
+            cols.extend(if_.args["true"].find_all(exp.Column))
+        if node.args.get("default") is not None:
+            cols.extend(node.args["default"].find_all(exp.Column))
+        return cols
+    return list(node.find_all(exp.Column))
+
+
+def _is_distinct_header_key(count: exp.Count) -> bool:
+    inner = count.this
+    if not isinstance(inner, exp.Distinct):
+        return False
+    cols = [c for e in inner.expressions for c in _distinct_value_columns(e)]
+    return bool(cols) and all(_column_bare(c) in _HEADER_KEY_COLS for c in cols)
 
 
 def _column_table_alias(col: exp.Column) -> str:
