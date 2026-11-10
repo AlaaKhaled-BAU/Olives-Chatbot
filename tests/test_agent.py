@@ -1275,6 +1275,16 @@ def test_visit_plan_ask_salesman_singular():
     assert not agent._visit_plan_ask_salesman("تقرير ملخص المسار للمندوب عثمان القدسي")
 
 
+def test_midturn_escalation_can_be_disabled(monkeypatch):
+    monkeypatch.setattr(agent, "_MIDTURN_ESCALATION", False)
+    state = {"gate_errors": 1, "gear": agent.DEFAULT_GEAR}
+    agent._maybe_escalate(state)
+    assert state["gear"] == agent.DEFAULT_GEAR
+    monkeypatch.setattr(agent, "_MIDTURN_ESCALATION", True)
+    agent._maybe_escalate(state)
+    assert state["gear"] == "t2"
+
+
 def test_tool_errors_are_written_to_the_trace(monkeypatch, tmp_path):
     monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
     logged = {}

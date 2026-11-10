@@ -15,6 +15,7 @@ import calendar
 import datetime
 import hashlib
 import json
+import os
 import re
 import threading
 import time
@@ -39,6 +40,12 @@ PLAN_SEMANTIC_VERSION = "4"
 # (_retry_empty_final), never a streaming interactive turn.
 DEFAULT_GEAR = "t1"
 DOCS_GEAR = "f0"
+_MIDTURN_ESCALATION = os.environ.get("CHATBOT_MIDTURN_ESCALATION", "1") == "1"
+
+
+def _maybe_escalate(state: dict) -> None:
+    if _MIDTURN_ESCALATION and state["gate_errors"] >= 1 and state["gear"] == DEFAULT_GEAR:
+        state["gear"] = "t2"
 
 
 class TurnCancelled(Exception):
@@ -2219,8 +2226,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                 # coping — escalate once interactively (t1→t2). Gear p stays
                 # reserved for the empty-final rescue (C5).
                 state["gate_errors"] += 1
-                if state["gate_errors"] >= 1 and state["gear"] == DEFAULT_GEAR:
-                    state["gear"] = "t2"
+                _maybe_escalate(state)
 
             messages.append({
                 "role": "tool",
