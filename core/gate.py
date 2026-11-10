@@ -30,6 +30,8 @@ _REFERENCE_TABLES = {
     "OlivesMenu", "OlivesPages", "PromotionTypes", "SystemCodes",
     "TargetsTypes", "TransactionsTypes", "WF_Functions",
 }
+_REFERENCE_TABLES_FOLD = frozenset(t.casefold() for t in _REFERENCE_TABLES)
+_CASEFOLD_INDEX_KEY = "__gate_casefold_table_index"
 
 _COMPNO_VARIANTS = ("compno",)
 
@@ -101,15 +103,45 @@ def _ensure_column_aliases(stmt):
                 col_idx += 1
 
 
-def _schema_columns(schema_cache: dict, bare_name: str) -> list | None:
-    return schema_cache.get("tables", {}).get(f"dbo.{bare_name}")
+def _casefold_table_index(schema_cache: dict) -> dict[str, str]:
+    """Bare table name (casefolded) -> canonical dbo key in schema_cache['tables']."""
+    cached = schema_cache.get(_CASEFOLD_INDEX_KEY)
+    if cached is not None:
+        return cached
+    index: dict[str, str] = {}
+    for key in schema_cache.get("tables", {}):
+        if not key.startswith("dbo."):
+            continue
+        bare = key[4:]
+        fold = bare.casefold()
+        prev = index.get(fold)
+        if prev is not None and prev != key:
+            raise GateError(f"ambiguous table case variants: {prev!r} vs {key!r}")
+        index[fold] = key
+    schema_cache[_CASEFOLD_INDEX_KEY] = index
+    return index
+
+
+def _resolve_dbo_table_key(schema_cache: dict, bare_name: str) -> str | None:
+    return _casefold_table_index(schema_cache).get(bare_name.casefold())
+
+
+def _schema_columns(
+    schema_cache: dict, bare_name: str, *, fail_unknown: bool = False
+) -> list | None:
+    key = _resolve_dbo_table_key(schema_cache, bare_name)
+    if key is None:
+        if fail_unknown:
+            raise GateError(f"unknown table t.{bare_name}")
+        return None
+    return schema_cache.get("tables", {}).get(key)
 
 
 def _tenant_column_names(bare_name: str, columns: list | None) -> list[str]:
-    if not columns or bare_name in _REFERENCE_TABLES:
+    if not columns or bare_name.casefold() in _REFERENCE_TABLES_FOLD:
         return []
     col_map = {c["column"].lower(): c["column"] for c in columns}
-    if bare_name == "Companies":
+    if bare_name.casefold() == "companies":
         return [col_map["id"]] if "id" in col_map else []
     names: list[str] = []
     if "companyid" in col_map:
@@ -121,17 +153,41 @@ def _tenant_column_names(bare_name: str, columns: list | None) -> list[str]:
 
 
 def _tables_in_from(select: exp.Select) -> list[exp.Table]:
-    tables: list[exp.Table] = []
+    """t.* tables whose nearest enclosing SELECT is `select` — tables inside
+    derived tables belong to the inner SELECT and are handled when
+    find_all(exp.Select) reaches it."""
+    sources = []
     from_ = select.args.get("from_")
     if from_:
-        for node in from_.walk():
-            if isinstance(node, exp.Table) and (node.db or "").lower() == "t":
-                tables.append(node)
-    for join in select.args.get("joins") or []:
-        for node in join.walk():
-            if isinstance(node, exp.Table) and (node.db or "").lower() == "t":
+        sources.append(from_)
+    sources.extend(select.args.get("joins") or [])
+    tables: list[exp.Table] = []
+    for src in sources:
+        for node in src.walk():
+            if (
+                isinstance(node, exp.Table)
+                and (node.db or "").lower() == "t"
+                and node.find_ancestor(exp.Select) is select
+            ):
                 tables.append(node)
     return tables
+
+
+def _verify_tenant_coverage(stmt, company_id: int, schema_cache: dict):
+    """Fail closed if any scoped t. table is still missing a tenant predicate."""
+    cid = int(company_id)
+    for select in stmt.find_all(exp.Select):
+        where = select.args.get("where")
+        where_expr = where.this if where is not None else None
+        for table in _tables_in_from(select):
+            bare = table.name
+            alias = table.alias_or_name
+            columns = _schema_columns(schema_cache, bare, fail_unknown=True)
+            for tcol in _tenant_column_names(bare, columns):
+                if not _tenant_pred_satisfied(where_expr, alias, tcol, cid, bare):
+                    raise GateError(
+                        f"missing tenant predicate {alias}.{tcol} = {cid} after rewrite"
+                    )
 
 
 def _col_matches(col: exp.Column, alias: str, col_name: str, bare: str = "") -> bool:
@@ -158,7 +214,7 @@ def _reject_cross_company_literals(stmt, company_id: int, schema_cache: dict):
             val = int(eq.expression.this)
             col = eq.this
             for _table, bare, alias in refs:
-                columns = _schema_columns(schema_cache, bare)
+                columns = _schema_columns(schema_cache, bare, fail_unknown=True)
                 for tcol in _tenant_column_names(bare, columns):
                     if _col_matches(col, alias, tcol, bare):
                         if val != cid:
@@ -209,7 +265,7 @@ def _inject_tenant_on_select(select: exp.Select, company_id: int, schema_cache: 
     for table in _tables_in_from(select):
         bare = table.name
         alias = table.alias_or_name
-        columns = _schema_columns(schema_cache, bare)
+        columns = _schema_columns(schema_cache, bare, fail_unknown=True)
         for tcol in _tenant_column_names(bare, columns):
             if not _tenant_pred_satisfied(where_expr, alias, tcol, company_id, bare):
                 missing.append(_eq_predicate(alias, tcol, company_id))
@@ -220,6 +276,7 @@ def _inject_tenant_on_select(select: exp.Select, company_id: int, schema_cache: 
 def _inject_tenant_predicates(stmt, company_id: int, schema_cache: dict):
     for select in stmt.find_all(exp.Select):
         _inject_tenant_on_select(select, company_id, schema_cache)
+    _verify_tenant_coverage(stmt, company_id, schema_cache)
 
 
 def _skip_tenant_rewrite(raw: str) -> bool:

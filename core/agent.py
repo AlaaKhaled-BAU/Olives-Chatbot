@@ -15,6 +15,7 @@ import calendar
 import datetime
 import hashlib
 import json
+import os
 import re
 import threading
 import time
@@ -32,13 +33,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 MAX_TURNS = 12
 MODEL_ALIAS = "chatbot"  # cache-key namespace for plan/result keys (kept stable deliberately)
 # Bump when playbook/metric meaning changes; pair with setup/clear_plan_cache.py (I1).
-PLAN_SEMANTIC_VERSION = "2"
+PLAN_SEMANTIC_VERSION = "5"
 # DeepSeek gears (core/llm.GEARS): f0 = flash non-thinking (docs/envelope/fast
 # paths), t1 = flash think-low (standard NL2SQL), t2 = flash think-high
 # (escalated joins/compound), p = pro think-high — rescue path ONLY
 # (_retry_empty_final), never a streaming interactive turn.
 DEFAULT_GEAR = "t1"
 DOCS_GEAR = "f0"
+_MIDTURN_ESCALATION = os.environ.get("CHATBOT_MIDTURN_ESCALATION", "1") == "1"
+
+
+def _maybe_escalate(state: dict) -> None:
+    if _MIDTURN_ESCALATION and state["gate_errors"] >= 1 and state["gear"] == DEFAULT_GEAR:
+        state["gear"] = "t2"
 
 
 class TurnCancelled(Exception):
@@ -116,10 +123,19 @@ _DEFAULT_FOLLOWUPS = [
 
 
 def _user_id(client: str, company_id, subject: str | None) -> str:
-    """DeepSeek user_id (regex [a-zA-Z0-9_-]+): per-user KV-cache isolation,
-    scheduling isolation and audit-trail alignment. Hash of tenant scope +
-    session hash — no PII by construction."""
-    raw = f"{client}|{company_id}|{subject or 'anon'}"
+    """DeepSeek user_id (regex [a-zA-Z0-9_-]+).
+
+    CHATBOT_CACHE_SCOPE=session (default): hash of client|company_id|subject
+    so chats do not share a prefix-cache id.
+    CHATBOT_CACHE_SCOPE=tenant: hash of client|company_id only, so every chat
+    of that company reuses the prefix cache. Subject is ignored. Never drop
+    client or company_id. Session text is not part of this id.
+    """
+    scope = os.environ.get("CHATBOT_CACHE_SCOPE", "session").strip().lower()
+    if scope == "tenant":
+        raw = f"{client}|{company_id}"
+    else:
+        raw = f"{client}|{company_id}|{subject or 'anon'}"
     return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
 
@@ -401,6 +417,26 @@ _EXPLAIN_INTENT_RE = re.compile(
     re.IGNORECASE,
 )
 _COUNT_HINT_RE = re.compile(r"كم|عدد|how many|\bcount\b", re.IGNORECASE)
+# "How is/was X" asks about business state, not a procedure.
+_HOW_IS_STATE_RE = re.compile(
+    r"(?:كيف|شلون)\s+(?:كان|كانت|هو|هي|صار|صارت|أداء|اداء|حال|وضع|ال\S+)"
+    r"|\bhow (?:is|are|was|were)\b",
+    re.IGNORECASE,
+)
+_CLAUSE_SPLIT_RE = re.compile(
+    r"[،,؛;]|\s(?:و|and)\s*(?:كم|مين|من|شو|ما|ماذا|لماذا|ليش|how|what|why)\b",
+    re.I,
+)
+_QUESTION_WORD_RE = re.compile(
+    r"\b(?:كم|مين|شو|ماذا|لماذا|ليش|how many|what|why)\b",
+    re.I,
+)
+_FAST_COUNT_MAX_WORDS = 7
+_HOWTO_ACTION_RE = re.compile(
+    r"(?:كيف|كيفية|طريقة|شلون)\s+(?:ا|أ|ن)?\S*?(?:غير|عدل|ضيف|اضاف|إضاف|حذف|فعل|فعّل|حول|نشئ|ربط|وقف|لغي|إلغاء|الغاء|سجل|تعديل|تغيير|تحويل)\S*"
+    r"|\bhow (?:do|can|to|should) (?:i |we )?\w+",
+    re.I,
+)
 _MASTER_COUNT_TERMS = (
     "عميل", "عملاء", "زبائن", "زبون", "customer", "customers",
     "مندوب", "مناديب", "مندوبين", "salesperson", "salesman",
@@ -747,7 +783,10 @@ TOOLS = [
             "description": (
                 "Run a named business metric with the correct grain — prefer over run_select for "
                 "sales, salesperson rank, returns, orders, van stock, or customer-to-salesperson "
-                "assignment. Counts against the query budget."
+                "assignment. Counts against the query budget. "
+                "Ranked questions over any dimension (best/worst/top/bottom salesman, customer, item, day): "
+                "metric=sales with group_by + order (desc for best, asc for worst) + limit, so the database ranks. "
+                "For worst/bottom items also call unsold_items for the same period."
             ),
             "parameters": {
                 "type": "object",
@@ -758,7 +797,8 @@ TOOLS = [
                             "Prefer sales (مبيعات) with filters tax and returns. "
                             "Also: net_sales_by_salesperson (أفضل مندوب), "
                             "daily_sales_pack (محصلة يومية), returns (مرتجعات), orders (طلبات), "
-                            "van_stock (رصيد السيارة), cfd_assignment (عملاء المندوب). "
+                            "van_stock (رصيد السيارة), cfd_assignment (عملاء المندوب), "
+                            "unsold_items (مواد راكدة: active items with no sales in the period). "
                             "Legacy net_sales remains for old plans only."
                         ),
                     },
@@ -780,6 +820,18 @@ TOOLS = [
                             "group_by": {
                                 "type": "string",
                                 "enum": ["salesperson", "customer", "item", "day"],
+                            },
+                            "order": {
+                                "type": "string",
+                                "enum": ["asc", "desc"],
+                                "description": "With group_by: rank by the primary measure (asc = lowest first).",
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": (
+                                    "Only with group_by and order: top N rows, 1-50 (default 10). "
+                                    "Ignored or rejected if order is omitted."
+                                ),
                             },
                             "sales_person_id": {"type": "integer"},
                             "undelivered_only": {"type": "boolean"},
@@ -894,6 +946,9 @@ def _is_fast_count_path(question: str) -> bool:
         return False
     if not _COUNT_HINT_RE.search(q):
         return False
+    if (_CLAUSE_SPLIT_RE.search(q) or len(_QUESTION_WORD_RE.findall(q)) > 1
+            or len(q.split()) > _FAST_COUNT_MAX_WORDS):
+        return False
     q_lower = q.lower()
     if metrics.question_mentions_metric(q):
         return True
@@ -939,6 +994,10 @@ def _is_howto_path(question: str, client: str) -> bool:
     """How-to / screen / option — search_docs first; no schema or SQL until needed."""
     q = (question or "").strip()
     if not q:
+        return False
+    if _HOWTO_ACTION_RE.search(q) and not _COUNT_HINT_RE.search(q):
+        return True
+    if _HOW_IS_STATE_RE.search(q):
         return False
     if _has_count_sql_intent(q) or _is_fast_count_path(q):
         return False
@@ -1025,6 +1084,12 @@ def _month_bounds(year: int, month: int) -> tuple[datetime.date, datetime.date]:
     return first, last
 
 
+def _half_open_month_end(year: int, month: int) -> datetime.date:
+    if month == 12:
+        return datetime.date(year + 1, 1, 1)
+    return datetime.date(year, month + 1, 1)
+
+
 def _asks_this_month(question: str) -> bool:
     q = question.lower()
     return any(p.lower() in q for p in _THIS_MONTH_PHRASES)
@@ -1100,10 +1165,11 @@ def _calendar_confirm_system_note(client: str, company_id: int) -> str | None:
     max_invoice = _fetch_max_invoice_date(client, company_id)
     if max_invoice is None:
         return None
-    first, last = _month_bounds(max_invoice.year, max_invoice.month)
+    first, _last = _month_bounds(max_invoice.year, max_invoice.month)
+    to_exclusive = _half_open_month_end(max_invoice.year, max_invoice.month)
     return (
         f"User confirmed last posting month. Use run_metric(net_sales, "
-        f"from_date={first.isoformat()}, to_date={last.isoformat()}). "
+        f"from_date={first.isoformat()}, to_date={to_exclusive.isoformat()}). "
         "Do not label that period as هذا الشهر or the current calendar month."
     )
 
@@ -1268,6 +1334,69 @@ def _resolve_final_text(final_text: str | None, messages: list, state: dict) -> 
     return _build_arabic_stub(state)
 
 
+_QUERY_FAILURE_STEM_RE = re.compile(
+    r"(?:"
+    r"تعذّ?ر"
+    r"|(?:لم|لا)\s+(?:أ?تمكن|ي?كتمل|تُ?ستكمل)"
+    r"|(?:لم|لا)\s+ي?مكنني\s+(?:استخراج|تحديد|إكمال)"
+    r"|(?:(?:couldn'?t|could\s+not|unable\s+to|failed\s+to)\s+"
+    r"(?:extract|retrieve|get|obtain|complete|determine))"
+    r")",
+    re.IGNORECASE,
+)
+_QUERY_FAILURE_AR_RE = re.compile(
+    r"(?:تعذّ?ر|لم\s+أ?تمكن|لا\s+يمكنني)\s+.{0,48}?"
+    r"(?:استخراج|تحديد|إكمال|استكمال|القائمة|النتيج(?:ة|ه)|البيانات|المعلومات)",
+    re.IGNORECASE,
+)
+_CAPABILITY_REFUSAL_RE = re.compile(
+    r"لا\s+(?:أ?ستطيع|يمكنني)\s+(?:حذف|تنفيذ|عرض|تجاهل|الالتزام|تزويد)",
+    re.IGNORECASE,
+)
+
+
+def _text_claims_query_failure(text: str | None) -> bool:
+    """True when prose claims the last business query failed to yield an answer."""
+    if _is_blank(text):
+        return False
+    t = text.strip()
+    if _CAPABILITY_REFUSAL_RE.search(t):
+        return False
+    if _QUERY_FAILURE_STEM_RE.search(t):
+        return True
+    return bool(_QUERY_FAILURE_AR_RE.search(t))
+
+
+def _claims_failure_with_rows(final_text: str | None, state: dict) -> bool:
+    rows = state.get("last_rows")
+    if not (isinstance(rows, list) and rows):
+        return False
+    if state.get("recomposed"):
+        return False
+    return _text_claims_query_failure(final_text)
+
+
+def _recompose_if_false_failure(final_text: str | None, messages: list, state: dict) -> str | None:
+    if not _claims_failure_with_rows(final_text, state):
+        return final_text
+    rows = state["last_rows"]
+    nudge = {"role": "system", "content": (
+        f"The last query DID return {len(rows)} rows (in the tool results above). "
+        "Answer the user's question from those rows. Do not say the query failed.")}
+    text = None
+    for event in _stream_turn(
+        messages + [nudge],
+        state.get("turn_tools"),
+        gear=state["gear"],
+        user_id=state.get("_user_id"),
+        usage_acc=state.get("_usage"),
+    ):
+        if event["type"] == "_turn_done":
+            text = _sanitize_final_text(event["message"].get("content"))
+    state["recomposed"] = True
+    return text if not _is_blank(text) else final_text
+
+
 def _analyze(args: dict) -> dict:
     """C4 + TRACK F3: exact arithmetic/trend computation the model can
     offload instead of computing (and potentially getting slightly wrong)
@@ -1348,8 +1477,75 @@ def _analyze(args: dict) -> dict:
                      f"trend_direction, growth_compare, or top_movers"}
 
 
-_INVOICE_WORD_RE = re.compile(r"فاتور|invoice", re.IGNORECASE)
+_INVOICE_WORD_RE = re.compile(r"فاتور|فواتير|invoice", re.IGNORECASE)
 _LINES_WORD_RE = re.compile(r"بنود|سطور|\blines\b", re.IGNORECASE)
+_CODE_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
+_FENCE_OPEN_RE = re.compile(r"```(\w*)\s*\n")
+_SQL_LEAD_RE = re.compile(
+    r"^\s*(?:--[^\n]*\n\s*)*(?:SELECT|WITH)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+_NON_SQL_FENCE_LANGS = frozenset({"python", "json", "yaml", "yml", "md", "markdown", "text"})
+
+
+def _fence_body_looks_like_sql(body: str) -> bool:
+    raw = body.strip()
+    if not raw:
+        return False
+    if _SQL_LEAD_RE.match(raw):
+        return True
+    try:
+        import sqlglot
+        from sqlglot import exp
+
+        for stmt in sqlglot.parse(raw, read="tsql") or []:
+            if stmt is None or isinstance(stmt, exp.Command):
+                continue
+            if isinstance(stmt, exp.Select) or stmt.find(exp.Select):
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _strip_sql_fences(text: str | None) -> str | None:
+    """Remove SQL code fences from model prose; answer_sql is shown separately."""
+    if not text:
+        return text
+    parts: list[str] = []
+    pos = 0
+    while True:
+        m = _FENCE_OPEN_RE.search(text, pos)
+        if not m:
+            parts.append(text[pos:])
+            break
+        parts.append(text[pos:m.start()])
+        lang = (m.group(1) or "").lower()
+        body_start = m.end()
+        close = text.find("```", body_start)
+        if close == -1:
+            body = text[body_start:]
+            fence_end = len(text)
+        else:
+            body = text[body_start:close]
+            fence_end = close + 3
+        strip_fence = lang in ("sql", "tsql") or (
+            lang not in _NON_SQL_FENCE_LANGS and _fence_body_looks_like_sql(body)
+        )
+        if strip_fence:
+            parts.append("\n\n")
+        else:
+            parts.append(text[m.start():fence_end])
+        pos = fence_end
+    out = re.sub(r"\n{3,}", "\n\n", "".join(parts))
+    return out.strip()
+
+
+def _prose_mentions_count(prose: str, v: int) -> bool:
+    return bool(
+        re.search(rf"(?<![\d.,]){re.escape(f'{v:,}')}(?![\d]|[.,]\d)", prose)
+        or re.search(rf"(?<![\d.,]){v}(?![\d]|[.,]\d)", prose)
+    )
 
 
 def _apply_count_backstop(final_text: str | None, state: dict) -> str:
@@ -1357,9 +1553,30 @@ def _apply_count_backstop(final_text: str | None, state: dict) -> str:
     text = (final_text or "").strip()
     if not text or not state.get("had_lines_count"):
         return text
-    if _LINES_WORD_RE.search(text):
+    prose = _CODE_FENCE_RE.sub("", text)
+    if _LINES_WORD_RE.search(prose):
         return text
-    if not _INVOICE_WORD_RE.search(text):
+    if not _INVOICE_WORD_RE.search(prose):
+        return text
+    line_values = state.get("line_count_values")
+    line_sum = state.get("line_count_sum")
+    # Ignore 1–9: they collide with type ids, dates, and one-line invoices.
+    # The summed total is the number a wrong answer states as «فواتير».
+    candidates: set[int] = set()
+    if line_sum is not None and int(line_sum) >= 3:
+        candidates.add(int(line_sum))
+    for v in line_values or ():
+        if int(v) >= 10:
+            candidates.add(int(v))
+    hc_now = state.get("header_count")
+    if hc_now is not None:
+        candidates.discard(int(hc_now))
+    quoted = any(_prose_mentions_count(prose, v) for v in candidates)
+    if (
+        line_values is not None
+        and not state.get("line_count_unresolved")
+        and not quoted
+    ):
         return text
     hc = state.get("header_count")
     if hc is not None:
@@ -1396,6 +1613,33 @@ def _after_business_sql(
         extra["count_note"] = verify.COUNT_NOTE
         state["hold_stream"] = True
         state["had_lines_count"] = True
+        cols = verify.line_count_columns(sql_text)
+        if cols:
+            extra["line_count_columns"] = cols
+            values = state.setdefault("line_count_values", set())
+            batch_sum = 0
+            batch_n = 0
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                for key, val in row.items():
+                    if str(key).lower() not in cols:
+                        continue
+                    try:
+                        num = int(val)
+                    except (TypeError, ValueError):
+                        continue
+                    if isinstance(val, bool):
+                        continue
+                    values.add(num)
+                    batch_sum += num
+                    batch_n += 1
+            if batch_n:
+                state["line_count_sum"] = state.get("line_count_sum", 0) + batch_sum
+            elif not values:
+                state["line_count_unresolved"] = True
+        else:
+            state["line_count_unresolved"] = True
 
     if has_lines and verify.needs_header_recount(sql_text, cache):
         recount_sql = verify.header_recount_sql(sql_text)
@@ -1414,7 +1658,34 @@ def _after_business_sql(
     return {"rows": rows, **extra}
 
 
+def _mid_turn_block_reason(name: str, state: dict) -> str | None:
+    """The tool list is fixed for the whole turn (a changed list re-sends the
+    prefix uncached), so caps reached mid-turn are enforced here instead."""
+    if name == "search_docs" and state.get("doc_searches", 0) >= MAX_DOC_SEARCHES:
+        return "No more documentation searches this turn. Answer from excerpts already retrieved."
+    if name in _VAULT_TOOLS and state.get("vault_searches", 0) >= MAX_VAULT_SEARCHES:
+        return "No more vault schema searches this turn."
+    if name == "recall_turns" and state.get("had_business_rows"):
+        return "recall_turns is not available after business rows were returned."
+    if name in _DOCS_ONLY_SCHEMA_TOOLS and state.get("docs_only"):
+        return "Schema tools are not available in docs-only mode."
+    return None
+
+
 def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, client, state):
+    if name in ("run_select", "run_metric", "run_report") and (
+        "information_schema" not in str(args.get("sql", "")).lower()
+        and len(state.get("queries") or []) >= MAX_QUERIES
+    ):
+        return {
+            "status": "budget_spent",
+            "message": (
+                f"Query budget ({MAX_QUERIES}) is spent. Answer from results already returned."
+            ),
+        }
+    blocked = _mid_turn_block_reason(name, state)
+    if blocked:
+        return {"status": "unavailable", "message": blocked}
     if name == "introspect_schema":
         return _introspect(cache, catalog_procs, args.get("name", ""))
     if name == "analyze":
@@ -1632,15 +1903,26 @@ def _answer_sql(state: dict) -> str | None:
     return "; ".join(parts) if parts else None
 
 
+def _evidence_confidence(state: dict) -> str:
+    if state.get("tool_errors"):
+        return "medium"
+    if isinstance(state.get("last_rows"), list) and state["last_rows"]:
+        return "high"
+    return "medium" if state.get("doc_source_pairs") else "low"
+
+
 def _build_envelope(question: str, final_text: str, state: dict) -> dict:
     """C8/E1: assembles the structured pieces /ask returns alongside the
     prose. Everything is derived from data this turn already produced plus
     the optional JSON contract (followups/confidence); never a second ask
     for numbers the tools already returned."""
     table = _build_table(state["last_rows"])
-    contract = _final_contract(question, final_text, state.get("_user_id"), state.get("_usage")) if final_text else None
     thread_head = state.get("thread_head")
-    if thread_head:
+    use_card = bool(thread_head) and state.get("card_is_new", True)
+    contract = None
+    if final_text and not use_card:
+        contract = _final_contract(question, final_text, state.get("_user_id"), state.get("_usage"))
+    if use_card:
         followups = thread.card_followups(thread_head)
     else:
         followups = (contract or {}).get("followups") or []
@@ -1654,8 +1936,8 @@ def _build_envelope(question: str, final_text: str, state: dict) -> dict:
     }
     if thread_head:
         out["thread_head"] = thread_head
-    if contract and not contract["refusal"] and contract["confidence"]:
-        out["confidence"] = contract["confidence"]
+    if final_text and not (contract and contract["refusal"]):
+        out["confidence"] = _evidence_confidence(state)
     if state.get("report_name"):
         out["report_name"] = state["report_name"]
     return out
@@ -2014,6 +2296,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                               fast_count=fast_count,
                               analysis_intent=bool(_ANALYSIS_HINT_RE.search(question))),
         "gate_errors": 0,
+        "tool_errors": [],
         "_user_id": _user_id(client, company_id, subject),
         "tools_ms": {},
         "_usage": usage_acc,
@@ -2031,15 +2314,21 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             queries=len(state.get("queries") or []),
             result_rows=len(rows) if isinstance(rows, list) else 0,
             path=state.get("_path_flags"),
+            tool_errors=state.get("tool_errors") or [],
+            recomposed=state.get("recomposed", False),
             **_timing_fields(),
             **usage_acc.totals(),
             **fields,
         )
 
+    state["turn_tools"] = _active_tools(state)
     for _ in range(MAX_TURNS):
         if cancel is not None and cancel.is_set():
             raise TurnCancelled("client disconnected")
-        tools = _active_tools(state)
+        if state.get("report_unlock") and not state.get("_tools_unlocked"):
+            state["turn_tools"] = _active_tools(state)
+            state["_tools_unlocked"] = True
+        tools = state["turn_tools"]
         msg = None
         for event in _stream_turn(messages, tools, gear=state["gear"],
                                   user_id=state["_user_id"], cancel=cancel,
@@ -2118,12 +2407,12 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                 state["tools_ms"][name] = state["tools_ms"].get(name, 0) + ms
 
             if isinstance(result, dict) and result.get("error"):
+                state["tool_errors"].append({"tool": name, "error": str(result["error"])[:300]})
                 # A3: a failed tool attempt means the current gear is not
                 # coping — escalate once interactively (t1→t2). Gear p stays
                 # reserved for the empty-final rescue (C5).
                 state["gate_errors"] += 1
-                if state["gate_errors"] >= 1 and state["gear"] == DEFAULT_GEAR:
-                    state["gear"] = "t2"
+                _maybe_escalate(state)
 
             messages.append({
                 "role": "tool",
@@ -2177,8 +2466,10 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
 
     if _has_evidence(state):
         final_text = _resolve_final_text(final_text, messages, state)
-        final_text = _apply_count_backstop(final_text, state)
+        final_text = _recompose_if_false_failure(final_text, messages, state)
+        final_text = _apply_count_backstop(_strip_sql_fences(final_text), state)
         new_card = thread.card_from_query_log(state.get("query_log"))
+        state["card_is_new"] = bool(new_card)
         if new_card:
             state["thread_head"] = new_card
         _kw = {"company_id": company_id}
@@ -2197,8 +2488,9 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         envelope = {"table": None, "chart": None, "sources": [], "followups": [], "doc_search_count": state.get("doc_searches", 0)}
     else:
         final_text = final_text.strip()
-        final_text = _apply_count_backstop(final_text, state)
+        final_text = _apply_count_backstop(_strip_sql_fences(final_text), state)
         new_card = thread.card_from_query_log(state.get("query_log"))
+        state["card_is_new"] = bool(new_card)
         if new_card:
             state["thread_head"] = new_card
         _kw = {"company_id": company_id}

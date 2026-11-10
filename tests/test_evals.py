@@ -7,6 +7,8 @@ import json
 import re
 import sys
 from pathlib import Path
+
+import pytest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -231,3 +233,353 @@ def test_empty_answer_with_doc_sources_hard_fails():
     good = {"answer": "see customers.md 4.8", "needs_ask": None, "answer_sql": None, "sources": ["customers.md › 4.8"]}
     assert not run_evals._case_passes(case, bad)
     assert run_evals._case_passes(case, good)
+
+
+def test_number_variants_cover_comma_and_plain_forms():
+    from evals.run_golden_session import number_variants
+    v = number_variants(15355.228256)
+    assert "15,355.23" in v and "15355.23" in v and "15,355" in v
+
+
+def test_cost_usd_offpeak_matches_published_flash_rates():
+    from evals.run_golden_session import cost_usd, OFFPEAK
+    call = {"cache_hit": 1_000_000, "cache_miss": 1_000_000, "completion": 1_000_000}
+    assert round(cost_usd(call, OFFPEAK), 6) == round(0.003 + 0.15 + 0.60, 6)
+
+
+def _golden_ref():
+    """Inline fixture matching task-2 tightened-check table."""
+    items = [{"code": "0103022", "name": "شامبو فاتيكا 650", "net": 1841.65}]
+    bottom_acceptable = [
+        {"code": "A07", "name": "تعادل A07", "net": 5.0},
+        {"code": "A08", "name": "Ember A08", "net": 5.0},
+        {"code": "A09", "name": "هيمالايا A09", "net": 4.0},
+        {"code": "A10", "name": "Item A10", "net": 3.0},
+        {"code": "A11", "name": "Item A11", "net": 2.0},
+        {"code": "A12", "name": "Item A12", "net": 2.0},
+    ]
+    return {
+        "reps": [
+            {"id": 8, "name": "محمد مصطفى جميل", "net": 15355.228256},
+            {"id": 210, "name": "زكريا حمزاوي", "net": 15185.23},
+        ],
+        "items": items,
+        "bottom_acceptable": bottom_acceptable,
+        "summary": {"net": 57251.853534, "inv": 381, "custs": 298},
+        "visit_days": [
+            {"visited": 4, "sold": 4, "inv": 4},
+            {"visited": 1, "sold": 1, "inv": 1},
+            {"visited": 6, "sold": 5, "inv": 5},
+        ],
+        "unsold": 1987,
+    }
+
+
+def test_num_tokens_strips_commas_and_parses_standalone():
+    from evals.run_golden_session import num_tokens
+    assert num_tokens("57,251.85 و 381") == {"57251.85", "381"}
+
+
+def test_regressions_baseline_pass_fail_fail_is_regressed():
+    from evals.run_golden_session import regressions
+    base = {"x": True}
+    assert regressions(base, {"x": False}, {"x": False}) == (["x"], [])
+
+
+def test_regressions_baseline_pass_fail_pass_is_flaky():
+    from evals.run_golden_session import regressions
+    base = {"x": True}
+    assert regressions(base, {"x": False}, {"x": True}) == ([], ["x"])
+
+
+def test_regressions_baseline_fail_not_counted():
+    from evals.run_golden_session import regressions
+    base = {"x": False}
+    assert regressions(base, {"x": False}, {"x": False}) == ([], [])
+
+
+def test_regressions_run2_none_when_run1_all_pass():
+    from evals.run_golden_session import regressions
+    base = {"x": True}
+    assert regressions(base, {"x": True}, None) == ([], [])
+
+
+def _assert_check(kind, answer, expected):
+    from evals.run_golden_session import check
+    assert check(kind, answer, _golden_ref()) is expected
+
+
+def test_golden_check_visits_baseline_false_pass_text():
+    _assert_check(
+        "visits",
+        "| سامح أبو عرمانة (125) | 2 | 2 | 0 |\n| زكريا حمزاوي (210) | 1 | 4 | 0 |",
+        False,
+    )
+
+
+def test_golden_check_visits_correct_table_row():
+    _assert_check("visits", "محمد مصطفى جميل\n| 2026-11-07 | 4 | 4 | 4 |", True)
+
+
+def test_golden_check_visits_numbers_without_name():
+    _assert_check("visits", "| 2026-11-07 | 4 | 4 | 4 |", False)
+
+
+def test_golden_check_visits_numbers_split_across_lines():
+    _assert_check("visits", "محمد مصطفى جميل زار 4\nباع 4\nفواتير 4", False)
+
+
+def test_golden_check_summary_ok():
+    _assert_check("summary", "صافي 57,251.85 من 381 فاتورة و 298 عميل", True)
+
+
+def test_golden_check_summary_rejects_rounded_net():
+    _assert_check("summary", "57,252 من فواتير و 381 فاتورة و 298 عميل", False)
+
+
+def test_golden_check_summary_rejects_inv_substring():
+    _assert_check("summary", "57,251.85 و 13810 و 298", False)
+
+
+def test_golden_check_summary_arabic_indic_digits():
+    _assert_check("summary", "٥٧٬٢٥١٫٨٥ و ٣٨١ و ٢٩٨", True)
+
+
+def test_golden_check_top_item_code_only_fails():
+    _assert_check("top_item", "0103022", False)
+
+
+def test_golden_check_top_item_code_and_amount():
+    _assert_check("top_item", "0103022 بقيمة 1,841.65", True)
+
+
+def test_golden_check_top_item_name_same_line_passes():
+    _assert_check("top_item", "شامبو فاتيكا 650 بقيمة 1,841.65", True)
+
+
+def test_golden_check_top_item_name_amount_split_lines_fails():
+    _assert_check("top_item", "شامبو فاتيكا 650\n1,841.65", False)
+
+
+def test_golden_check_top_rep_name_and_amount():
+    _assert_check("top_rep", "محمد مصطفى جميل صافي 15,355.23", True)
+
+
+def test_golden_check_top_rep_rejects_integer_rounded_amount():
+    _assert_check("top_rep", "محمد مصطفى جميل صافي 15,355", False)
+
+
+def test_golden_check_bottom10_with_unsold():
+    _assert_check("bottom10", "A08 A09 A10 A11 A12 و 1,987", True)
+
+
+def test_golden_check_bottom10_without_unsold():
+    _assert_check("bottom10", "A08 A09 A10 A11 A12", False)
+
+
+@pytest.mark.parametrize(
+    "answer,expected",
+    [
+        ("Ember A08, هيمالايا A09, Item A10, Item A11, Item A12 و 1987", True),
+        ("تعادل A07 و A08 و A09 و A10 و A11 — غير مباع 1987", True),
+        ("A08 A09 A10 A11 A12", False),
+        ("A01 A02 A03 A04 A05 و 1987", False),
+        ("A08 A09 A10 A11 A12", False),
+    ],
+    ids=["names_and_codes", "tie_bucket_by_name", "missing_unsold", "wrong_items", "missing_unsold_codes"],
+)
+def test_golden_check_bottom10_table(answer, expected):
+    _assert_check("bottom10", answer, expected)
+
+
+def test_golden_check_code_fence_always_fails():
+    _assert_check("howto", "foo ```sql\nx\n```", False)
+
+
+def test_golden_check_howto_keyword():
+    _assert_check("howto", "MakeOrderTaking", True)
+
+
+def test_golden_check_visits_single_pipe_four_fails():
+    _assert_check("visits", "محمد مصطفى جميل\n| 4 |", False)
+
+
+def test_golden_check_visits_single_pipe_one_fails():
+    _assert_check("visits", "محمد مصطفى جميل\n| 1 |", False)
+
+
+def test_golden_check_visits_prose_three_fours_on_line():
+    _assert_check(
+        "visits",
+        "محمد مصطفى جميل زار 4 عملاء وباع لـ 4 منهم بـ 4 فواتير",
+        True,
+    )
+
+
+def test_golden_check_visits_unequal_day_six_five_five_ok():
+    _assert_check(
+        "visits",
+        "محمد مصطفى جميل: 6 زيارات، 5 عملاء اشتروا، 5 فواتير",
+        True,
+    )
+
+
+def test_golden_check_visits_unequal_day_incomplete_fails():
+    _assert_check("visits", "محمد مصطفى جميل: 6 زيارات، 5 عملاء", False)
+
+
+def test_baseline_passes_uses_pass_final_when_present():
+    from evals.run_golden_session import baseline_passes
+    data = {"cases": [{"name": "a", "pass": False, "pass_final": True}]}
+    assert baseline_passes(data) == {"a": True}
+
+
+def test_baseline_passes_falls_back_to_pass():
+    from evals.run_golden_session import baseline_passes
+    data = {"cases": [{"name": "b", "pass": True}]}
+    assert baseline_passes(data) == {"b": True}
+
+
+def test_expect_holds_name_and_amount_true():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": "ACME", "net": 15355.228256}]
+    ans = "ACME صافي 15,355.23"
+    assert expect_holds(["name:name", "amount:net"], rows, ans)
+
+
+def test_expect_holds_amount_rejects_rounded():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": "ACME", "net": 15355.228256}]
+    assert not expect_holds(["name:name", "amount:net"], rows, "ACME صافي 15,355")
+
+
+def test_expect_holds_int_whole_token_not_substring():
+    from evals.run_golden_session import expect_holds
+    rows = [{"inv": 381}]
+    assert expect_holds(["int:inv"], rows, "381 فاتورة")
+    assert not expect_holds(["int:inv"], rows, "13810 و 298")
+
+
+def test_expect_holds_rows_five_name_three_present():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": f"N{i}"} for i in range(5)]
+    assert expect_holds(["rows:5:name"], rows, "N0 N2 N4")
+
+
+def test_expect_holds_rows_five_name_two_present_fails():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": f"N{i}"} for i in range(5)]
+    assert not expect_holds(["rows:5:name"], rows, "N0 N1")
+
+
+def test_expect_holds_unknown_kind_raises():
+    from evals.run_golden_session import expect_holds
+    try:
+        expect_holds(["bogus:col"], [{"col": 1}], "x")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError")
+
+
+def test_load_cases_reads_custom_path(tmp_path):
+    from evals.run_golden_session import load_cases
+    p = tmp_path / "cases.jsonl"
+    p.write_text('{"name": "a", "question": "q"}\n', encoding="utf-8")
+    assert load_cases(p) == [{"name": "a", "question": "q"}]
+
+
+def test_render_ref_sql_substitutes_placeholders():
+    from evals.run_golden_session import render_ref_sql, JOIN, NET, INVOICE_HEADER_KEY
+    sql = "SELECT {NET} {JOIN} WHERE {W} AND d >= '{f}' AND d < '{t}' AND {INV_KEY}"
+    out = render_ref_sql(sql, "2025-10-01", "2025-11-01")
+    assert "{f}" not in out and JOIN in out and NET in out and INVOICE_HEADER_KEY in out
+    assert "2025-10-01" in out and "TransactionTypeID = 1" in out
+
+
+def test_expect_holds_same_line_name_amount_required():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": "ACME", "net": 100.0}]
+    assert expect_holds(["name:name", "amount:net"], rows, "ACME بقيمة 100.00")
+    assert not expect_holds(["name:name", "amount:net"], rows, "ACME\nOTHER 100.00")
+    assert expect_holds(
+        ["name:name", "amount:net"], rows, "٥٧٬٢٥١٫٨٥\nACME ١٠٠٫٠٠"
+    )
+
+
+def test_expect_holds_markdown_table_row_same_line():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": "أحمد", "net": 12345.0}]
+    assert expect_holds(["name:name", "amount:net"], rows, "| أحمد | 12,345.00 |")
+
+
+def test_expect_holds_same_line_name_int_required():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": "Rep A", "inv": 111}]
+    assert expect_holds(["name:name", "int:inv"], rows, "Rep A عمل 111 فاتورة")
+    assert not expect_holds(["name:name", "int:inv"], rows, "Rep A\nRep B 111 فاتورة")
+
+
+def test_expect_holds_rejects_code_fence():
+    from evals.run_golden_session import expect_holds
+    rows = [{"name": "ACME", "net": 10.0}]
+    assert not expect_holds(["amount:net"], rows, "10.00\n```sql\nx\n```")
+
+
+def test_invoice_header_key_matches_golden_summary_count():
+    from evals.run_golden_session import INVOICE_HEADER_KEY, _last_month, _q
+    f, t = _last_month()
+    w = (f"th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0 "
+         f"AND th.TransactionDate >= '{f}' AND th.TransactionDate < '{t}'")
+    distinct = _q(f"SELECT COUNT(DISTINCT {INVOICE_HEADER_KEY}) AS inv "
+                  f"FROM t.TransactionsHeaders th WHERE {w}")[0]["inv"]
+    star = _q(f"SELECT COUNT(*) AS inv FROM t.TransactionsHeaders th WHERE {w}")[0]["inv"]
+    assert distinct == 381
+    assert distinct == star, "Oct 2026 headers: distinct year-no equals row count (no duplicate keys)"
+
+
+def test_expect_holds_date_variants_table():
+    from datetime import datetime
+    from evals.run_golden_session import expect_holds
+    rows = [{"d": datetime(2026, 10, 10), "net": 4189.52}]
+    cases = [
+        ("أعلى يوم 2026-10-10 بمبيعات 4189.52", True),
+        ("10/10/2026 صافي 4189.52", True),
+        ("10-10-2026", True),
+        ("10/10 مبيعات", True),
+        ("10 أكتوبر 2026", True),
+        ("10 تشرين الأول", True),
+        ("10 October sales", True),
+        ("Oct 10 peak", True),
+        ("١٠ أكتوبر", True),
+        ("2026-10-11", False),
+        ("11 أكتوبر", False),
+    ]
+    for answer, ok in cases:
+        assert expect_holds(["date:d"], rows, answer) is ok, answer
+
+
+def test_date_matches_unpadded_numeric_forms():
+    from datetime import date
+    from evals.run_golden_session import date_matches
+    d = date(2026, 10, 1)
+    for text in ("1/10/2026", "1-10-2026", "1/10", "2026/10/1", "01/10/2026"):
+        assert date_matches(d, text), text
+
+
+def test_date_matches_digit_boundaries_negative():
+    from datetime import date
+    from evals.run_golden_session import date_matches
+    d = date(2026, 10, 1)
+    for text in ("11/10/2026", "11/10", "21 أكتوبر", "١١/١٠"):
+        assert not date_matches(d, text), text
+    assert date_matches(d, "1 أكتوبر")
+    assert date_matches(d, "١/١٠/٢٠٢٦")
+
+
+def test_last_month_accepts_result_cache_string_dates(monkeypatch):
+    from datetime import datetime
+    import evals.run_golden_session as rgs
+    for mx in (datetime(2026, 11, 3, 10, 5), "2026-11-03 10:05:00"):
+        monkeypatch.setattr(rgs, "_q", lambda *_a, mx=mx: [{"mx": mx}])
+        assert rgs._last_month() == ("2026-10-01", "2026-11-01")

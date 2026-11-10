@@ -117,13 +117,13 @@ class GatewayUnavailableError(ProviderUnavailableError):
     """Back-compat alias (old name) — do not use in new code."""
 
 
-def _log_usage(gear: str, usage, elapsed_s: float) -> None:
+def _log_usage(gear: str, usage, elapsed_s: float, model: str = "") -> None:
     if usage is None:
         return
     hit = getattr(usage, "prompt_cache_hit_tokens", None)
     miss = getattr(usage, "prompt_cache_miss_tokens", None)
     print(
-        f"[llm] gear={gear} model={getattr(usage, 'model', '?')} "
+        f"[llm] gear={gear} model={model or getattr(usage, 'model', '?')} "
         f"in={getattr(usage, 'prompt_tokens', '?')} out={getattr(usage, 'completion_tokens', '?')} "
         f"cache_hit={hit} cache_miss={miss} {elapsed_s:.1f}s",
         flush=True,
@@ -166,6 +166,8 @@ def stream_create_kwargs(cfg: dict, messages, *, tools=None, response_format=Non
         kwargs["tools"] = tools
     if response_format is not None:
         kwargs["response_format"] = response_format
+    if not cfg["thinking"]:
+        kwargs["temperature"] = 0
     return kwargs
 
 
@@ -195,7 +197,7 @@ def complete(messages, gear: str = "t1", *, tools=None, stream=False,
                 return _logged_stream(gear, resp, usage_acc, cfg["model"])
             elapsed = time.monotonic() - t0
             sdk_usage = getattr(resp, "usage", None)
-            _log_usage(gear, sdk_usage, elapsed)
+            _log_usage(gear, sdk_usage, elapsed, model=cfg["model"])
             if usage_acc is not None:
                 usage_acc.add_sdk(gear, cfg["model"], sdk_usage, elapsed)
             return resp
@@ -234,6 +236,6 @@ def _logged_stream(gear: str, stream_iter, usage_acc=None, model: str = ""):
             usage = u
         yield chunk
     elapsed = time.monotonic() - t0
-    _log_usage(gear, usage, elapsed)
+    _log_usage(gear, usage, elapsed, model=model)
     if usage_acc is not None:
         usage_acc.add_sdk(gear, model, usage, elapsed)

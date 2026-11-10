@@ -187,3 +187,26 @@ def test_alternate_provider_complete_omits_thinking_extra_body(monkeypatch):
 
 def test_old_alias_still_importable():
     assert issubclass(llm.GatewayUnavailableError, llm.ProviderUnavailableError)
+
+
+def test_non_thinking_gear_is_greedy():
+    kw = llm.stream_create_kwargs(
+        llm.resolve_gear("f0"), [{"role": "user", "content": "x"}],
+    )
+    assert kw["temperature"] == 0
+
+
+def test_thinking_gear_sends_no_sampling_params():
+    kw = llm.stream_create_kwargs(
+        llm.resolve_gear("t1"), [{"role": "user", "content": "x"}],
+    )
+    assert "temperature" not in kw and "top_p" not in kw
+
+
+def test_alternate_provider_t2_is_greedy(monkeypatch):
+    monkeypatch.setenv("CHATBOT_LLM_BASE_URL", "https://api.cursor.com/v1")
+    kw = llm.stream_create_kwargs(
+        llm.resolve_gear("t2"), [{"role": "user", "content": "x"}],
+    )
+    assert llm.resolve_gear("t2")["thinking"] is False
+    assert kw["temperature"] == 0

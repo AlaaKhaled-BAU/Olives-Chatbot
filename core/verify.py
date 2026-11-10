@@ -7,7 +7,11 @@ import sqlglot
 from sqlglot import exp
 
 # Tool-result field (I1). English in JSON; user-facing copy lives in locale table.
-COUNT_NOTE = "counts lines, not invoice headers"
+COUNT_NOTE = (
+    "COUNT over header-detail join rows counts invoice lines, not invoices. "
+    "Do not state line_count_columns as invoices; an invoice count is "
+    "COUNT(DISTINCT CAST(TransactionYear AS varchar(4)) + '-' + CAST(TransactionNo AS varchar(20))) of the headers."
+)
 
 _HEADER_TABLES = frozenset({"transactionsheaders", "ordersheaders"})
 _DETAIL_TABLES = frozenset({"transactionsdetails", "ordersdetails"})
@@ -70,6 +74,13 @@ def _count_kind_for_select(select: exp.Select) -> str | None:
     if not tables:
         return "other"
     if tables & _DETAIL_TABLES:
+        header_aliases = set(_alias_to_header(select))
+        counts = [c for e in select.expressions for c in _counts_excluding_subqueries(e)
+                  if not _is_distinct_header_attribute(c, header_aliases)]
+        if not counts:
+            return "other"
+        if all(_is_distinct_header_key(c) for c in counts):
+            return "header"
         return "lines"
     if tables <= _HEADER_TABLES:
         return "header"
@@ -90,6 +101,45 @@ def count_scopes(sql: str) -> list[dict[str, str]]:
             if kind is not None:
                 scopes.append({"kind": kind, "func": "count"})
     return scopes
+
+
+def _is_line_count(count: exp.Count, header_aliases: set[str]) -> bool:
+    return not (_is_distinct_header_key(count)
+                or _is_distinct_header_attribute(count, header_aliases))
+
+
+def line_count_columns(sql: str) -> list[str]:
+    """Lower-cased output names carrying a line-grain COUNT, followed through
+    columns that re-aggregate them (``SUM(InvCount) AS InvoiceCount``)."""
+    raw = (sql or "").strip()
+    if not raw:
+        return []
+    selects = [s for stmt in sqlglot.parse(raw, read="tsql") if stmt is not None
+               for s in stmt.find_all(exp.Select)]
+    names: set[str] = set()
+    for select in selects:
+        if _count_kind_for_select(select) != "lines":
+            continue
+        header_aliases = set(_alias_to_header(select))
+        for e in select.expressions:
+            alias = (e.alias_or_name or "").lower()
+            if alias and any(_is_line_count(c, header_aliases)
+                             for c in _counts_excluding_subqueries(e)):
+                names.add(alias)
+    changed = bool(names)
+    while changed:
+        changed = False
+        for select in selects:
+            for e in select.expressions:
+                alias = (e.alias_or_name or "").lower()
+                if alias and alias not in names and any(
+                    isinstance(fn, (exp.Sum, exp.Count))
+                    and any(_column_bare(c) in names for c in fn.find_all(exp.Column))
+                    for fn in e.find_all(exp.AggFunc)
+                ):
+                    names.add(alias)
+                    changed = True
+    return sorted(names)
 
 
 def _header_columns(schema_cache: dict, bare: str) -> set[str]:
@@ -128,6 +178,62 @@ def _detail_aliases(select: exp.Select) -> set[str]:
 
 def _column_bare(col: exp.Column) -> str:
     return (col.name or "").lower()
+
+
+_HEADER_PK_COLS = frozenset(
+    {"companyid", "transactiontypeid", "transactionyear", "transactionno"}
+)
+
+
+def _counts_excluding_subqueries(expr: exp.Expression) -> list[exp.Count]:
+    if isinstance(expr, exp.Subquery):
+        return []
+    if isinstance(expr, exp.Count):
+        return [expr]
+    out: list[exp.Count] = []
+    for child in expr.args.values():
+        items = child if isinstance(child, list) else [child]
+        for item in items:
+            if isinstance(item, exp.Expression):
+                out.extend(_counts_excluding_subqueries(item))
+    return out
+
+
+def _distinct_value_columns(node: exp.Expression) -> list[exp.Column]:
+    if isinstance(node, exp.Case):
+        cols: list[exp.Column] = []
+        for if_ in node.args.get("ifs") or []:
+            cols.extend(if_.args["true"].find_all(exp.Column))
+        if node.args.get("default") is not None:
+            cols.extend(node.args["default"].find_all(exp.Column))
+        return cols
+    return list(node.find_all(exp.Column))
+
+
+def _is_distinct_header_attribute(count: exp.Count, header_aliases: set[str]) -> bool:
+    """COUNT(DISTINCT th.CustomerID): header-only columns that are not the
+    invoice key -- the detail join cannot inflate it, and it is not an
+    invoice count either."""
+    inner = count.this
+    if not isinstance(inner, exp.Distinct) or not header_aliases:
+        return False
+    cols = [c for e in inner.expressions for c in _distinct_value_columns(e)]
+    if not cols or "transactionno" in {_column_bare(c) for c in cols}:
+        return False
+    return all(_column_table_alias(c) in header_aliases for c in cols)
+
+
+def _is_distinct_header_key(count: exp.Count) -> bool:
+    inner = count.this
+    if not isinstance(inner, exp.Distinct):
+        return False
+    cols = [c for e in inner.expressions for c in _distinct_value_columns(e)]
+    if not cols:
+        return False
+    bare = {_column_bare(c) for c in cols}
+    if "transactionno" not in bare:
+        return False
+    return bare <= _HEADER_PK_COLS
 
 
 def _column_table_alias(col: exp.Column) -> str:

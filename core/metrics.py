@@ -12,7 +12,7 @@ METRICS = {
         "aliases": ["مبيعات", "sales", "إجمالي المبيعات", "اجمالي المبيعات"],
         "description": (
             "Parameterized sales scan: gross_sales, returns, net_of_returns, "
-            "invoice_count, return_count (types 1/2, single SELECT)."
+            "invoice_count, return_count, customer_count (types 1/2, single SELECT)."
         ),
     },
     "net_sales": {
@@ -69,6 +69,10 @@ METRICS = {
             "Consolidated sales overview: invoiced sales (TransactionsHeaders Type 1) and "
             "booked sales orders (OrdersHeaders with approved and undelivered status)."
         ),
+    },
+    "unsold_items": {
+        "aliases": ["unsold_items", "never_sold", "مواد راكدة", "أصناف راكدة"],
+        "description": "Active items with zero sales invoices in the period (count + sample).",
     },
 }
 
@@ -141,7 +145,7 @@ def _invoice_date_filters(filters: dict, alias: str = "th") -> str:
     if from_date:
         parts.append(f"{alias}.TransactionDate >= '{from_date}'")
     if to_date:
-        parts.append(f"{alias}.TransactionDate <= '{to_date}'")
+        parts.append(f"{alias}.TransactionDate < '{to_date}'")
     sp = _safe_int(filters.get("sales_person_id"))
     if sp is not None:
         parts.append(f"{alias}.SalesPersonID = {sp}")
@@ -155,7 +159,7 @@ def _order_date_filters(filters: dict, alias: str = "oh") -> str:
     if from_date:
         parts.append(f"{alias}.OrderDate >= '{from_date}'")
     if to_date:
-        parts.append(f"{alias}.OrderDate <= '{to_date}'")
+        parts.append(f"{alias}.OrderDate < '{to_date}'")
     sp = _safe_int(filters.get("sales_person_id"))
     if sp is not None:
         parts.append(f"{alias}.SalesPersonID = {sp}")
@@ -213,14 +217,12 @@ def build_sales_sql(company_id: int, filters: dict | None = None) -> str:
     amt = _sales_line_amount(tax)
     gross_expr = f"SUM(CASE WHEN th.TransactionTypeID = 1 THEN {amt} ELSE 0 END)"
     returns_expr = f"SUM(CASE WHEN th.TransactionTypeID = 2 THEN {amt} ELSE 0 END)"
-    invoice_cnt = (
-        "COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 "
-        "THEN th.TransactionNo END)"
+    header_key = (
+        "CAST(th.TransactionYear AS varchar(4)) + '-' + CAST(th.TransactionNo AS varchar(20))"
     )
-    return_cnt = (
-        "COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 "
-        "THEN th.TransactionNo END)"
-    )
+    invoice_cnt = f"COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN {header_key} END)"
+    return_cnt = f"COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN {header_key} END)"
+    customer_cnt = "COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.CustomerID END)"
     select_dims = ""
     join_extra = ""
     group_by = ""
@@ -256,14 +258,31 @@ def build_sales_sql(company_id: int, filters: dict | None = None) -> str:
             select_dims = "th.TransactionDate AS sale_day, "
             group_by = " GROUP BY th.TransactionDate"
 
+    order = (filters.get("order") or "").strip().lower()
+    if filters.get("limit") is not None and not order:
+        raise ValueError("limit requires order (set group_by and order asc or desc)")
+    top = ""
+    order_by = ""
+    if order:
+        if order not in ("asc", "desc") or not group_key:
+            raise ValueError("order needs group_by and must be asc or desc")
+        limit = int(filters.get("limit") or 10)
+        if not 1 <= limit <= 50:
+            raise ValueError("limit must be between 1 and 50")
+        measure = "net_of_returns" if _returns == "net" else "gross_sales"
+        top = f"TOP {limit} "
+        order_by = f" ORDER BY {measure} {order.upper()}"
+
     return (
         "SELECT "
+        + top
         + select_dims
         + f"ISNULL({gross_expr}, 0) AS gross_sales, "
         + f"ISNULL({returns_expr}, 0) AS returns, "
         + f"ISNULL({gross_expr}, 0) - ISNULL({returns_expr}, 0) AS net_of_returns, "
         + f"ISNULL({invoice_cnt}, 0) AS invoice_count, "
-        + f"ISNULL({return_cnt}, 0) AS return_count "
+        + f"ISNULL({return_cnt}, 0) AS return_count, "
+        + f"ISNULL({customer_cnt}, 0) AS customer_count "
         "FROM t.TransactionsHeaders th "
         + _detail_join()
         + join_extra
@@ -271,6 +290,7 @@ def build_sales_sql(company_id: int, filters: dict | None = None) -> str:
         + _company_id_filter(cid, "th", "td")
         + _sales_half_open_dates(filters)
         + group_by
+        + order_by
     )
 
 
@@ -297,23 +317,16 @@ def build_sql(metric: str, filters: dict | None = None, *, company_id: int) -> s
         )
     if metric == "net_sales_by_salesperson":
         extra = _invoice_date_filters(filters)
-        extra_gross = extra.replace("th.", "th2.")
         return (
             "SELECT th.SalesPersonID, sp.Name AS SalesPersonName, "
-            "COUNT(*) AS invoice_count, "
-            f"(SELECT SUM({line_amount_sql('td')}) FROM t.TransactionsHeaders th2 "
-            "INNER JOIN t.TransactionsDetails td ON "
-            "th2.CompanyID = td.CompanyID AND th2.TransactionTypeID = td.TransactionTypeID "
-            "AND th2.TransactionYear = td.TransactionYear AND th2.TransactionNo = td.TransactionNo "
-            "WHERE th2.SalesPersonID = th.SalesPersonID "
-            "AND th2.TransactionTypeID = 1 AND ISNULL(th2.IsVoid, 0) = 0"
-            + _company_id_filter(cid, "th2", "td")
-            + extra_gross
-            + ") AS gross_amount "
+            "COUNT(DISTINCT CAST(th.TransactionYear AS varchar(4)) + '-' + "
+            "CAST(th.TransactionNo AS varchar(20))) AS invoice_count, "
+            f"SUM({line_amount_sql('td')}) AS gross_amount "
             "FROM t.TransactionsHeaders th "
-            "INNER JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID AND sp.CompanyID = th.CompanyID "
+            + _detail_join()
+            + "INNER JOIN t.SalesPersons sp ON sp.ID = th.SalesPersonID AND sp.CompanyID = th.CompanyID "
             "WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0"
-            + _company_id_filter(cid, "th", "sp")
+            + _company_id_filter(cid, "th", "td", "sp")
             + extra
             + " GROUP BY th.SalesPersonID, sp.Name "
             "ORDER BY gross_amount DESC"
@@ -426,6 +439,22 @@ def build_sql(metric: str, filters: dict | None = None, *, company_id: int) -> s
             + f" GROUP BY td.ItemCode, i.Name ORDER BY SUM({line_amount_sql('td')}) DESC"
             + ") top_val"
         )
+    if metric == "unsold_items":
+        dates = _sales_half_open_dates(filters)
+        limit = int(filters.get("limit") or 20)
+        if not 1 <= limit <= 50:
+            raise ValueError("limit must be between 1 and 50")
+        return (
+            f"SELECT TOP {limit} COUNT(*) OVER () AS unsold_count, i.ItemCode, i.Name AS ItemName "
+            "FROM t.Items i WHERE ISNULL(i.IsSuspended, 0) = 0"
+            + _company_id_filter(cid, "i")
+            + " AND NOT EXISTS (SELECT 1 FROM t.TransactionsHeaders th "
+            + _detail_join()
+            + "WHERE th.TransactionTypeID = 1 AND ISNULL(th.IsVoid, 0) = 0"
+            + _company_id_filter(cid, "th", "td")
+            + dates
+            + " AND td.ItemCode = i.ItemCode) ORDER BY i.ItemCode"
+        )
     raise ValueError(f"unknown metric {metric!r}")
 
 
@@ -446,9 +475,9 @@ def run_metric(
     if canonical == "sales":
         try:
             tax, returns = _sales_filter_basis(filters)
+            sql_text = build_sales_sql(company_id, filters)
         except ValueError as exc:
             return {"error": str(exc)}
-        sql_text = build_sales_sql(company_id, filters)
         rows = sql.run_select(sql_text, company_id, client, allowed_procs=allowed_procs)
         primary_measure = "net_of_returns" if returns == "net" else "gross_sales"
         return {
@@ -470,6 +499,9 @@ def run_metric(
         )
         if rows and rows[0].get("d") is not None:
             filters["date"] = str(rows[0]["d"])[:10]
-    sql_text = build_sql(canonical, filters, company_id=company_id)
+    try:
+        sql_text = build_sql(canonical, filters, company_id=company_id)
+    except ValueError as exc:
+        return {"error": str(exc)}
     rows = sql.run_select(sql_text, company_id, client, allowed_procs=allowed_procs)
     return {"metric": canonical, "sql": sql_text, "rows": rows}

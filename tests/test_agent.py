@@ -9,10 +9,13 @@ The one live, un-mocked path (an actual "how many companies" question
 against the real gateway) is exercised manually -- see the Phase 6 commit
 message -- not here, since CI-style runs shouldn't depend on a live LLM
 quota."""
+import datetime
 import sys
 import types
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core import agent, memory
@@ -362,15 +365,87 @@ def test_query_budget_closes_after_max_queries_real_queries(monkeypatch, tmp_pat
         result = agent.ask("morec", "compare this month to last month", conversation=SCOPE)
 
     assert result["answer"] == "Here is the comparison."
-    # calls[0..MAX_QUERIES-1] each still had tools offered (budget not yet
-    # spent going INTO that call); the final call (index MAX_QUERIES) must
-    # have tools withheld.
-    for i in range(agent.MAX_QUERIES):
-        assert mock_complete.call_args_list[i].kwargs["tools"] is not None, f"call {i} should still offer tools"
-    assert mock_complete.call_args_list[agent.MAX_QUERIES].kwargs["tools"] is None
+    # The tool list never changes inside a turn (prefix cache); the spent
+    # budget is enforced by _run_tool returning budget_spent instead.
+    first = mock_complete.call_args_list[0].kwargs["tools"]
+    for i in range(agent.MAX_QUERIES + 1):
+        assert mock_complete.call_args_list[i].kwargs["tools"] is first, f"call {i} changed the tool list"
     warnings = [m for m in mock_complete.call_args_list[agent.MAX_QUERIES].args[0]
                 if m.get("content") == "This is your last query. Answer from what you have."]
     assert len(warnings) == 1, "the last-query reminder must be injected exactly once"
+
+
+def test_parallel_tool_calls_cannot_exceed_query_budget():
+    state = {"queries": ["q"] * agent.MAX_QUERIES, "question": "x"}
+    with patch.object(agent.sql, "run_select") as rs:
+        out = agent._run_tool(
+            "run_select", {"sql": "SELECT 1 FROM t.Items"}, {}, {}, [], 1, "morec", state,
+        )
+    rs.assert_not_called()
+    assert out["status"] == "budget_spent"
+    assert "error" not in out
+    assert len(state["queries"]) == agent.MAX_QUERIES
+
+
+@pytest.mark.parametrize(
+    "tool,args,patch_target",
+    [
+        ("run_select", {"sql": "SELECT 1 FROM t.Sales"}, "core.sql.run_select"),
+        ("run_metric", {"metric": "sales"}, "core.metrics.run_metric"),
+        ("run_report", {"name": "Rpt_Sales"}, "core.reports.run_report"),
+    ],
+)
+def test_business_tools_return_budget_spent_at_max_queries(tool, args, patch_target):
+    state = {"queries": ["spent"] * agent.MAX_QUERIES, "question": "test"}
+    import importlib
+    mod_path, attr = patch_target.rsplit(".", 1)
+    mod = importlib.import_module(mod_path)
+    with patch.object(mod, attr) as mocked:
+        if tool == "run_metric":
+            mocked.return_value = {"rows": [], "sql": "SELECT 1"}
+        elif tool == "run_report":
+            mocked.return_value = {"rows": [], "sql": "SELECT 2", "status": "ok"}
+        else:
+            mocked.return_value = [{"n": 1}]
+        out = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
+    mocked.assert_not_called()
+    assert out["status"] == "budget_spent"
+    assert len(state["queries"]) == agent.MAX_QUERIES
+
+
+@pytest.mark.parametrize(
+    "tool,args",
+    [
+        ("run_select", {"sql": "SELECT 1"}),
+        ("run_metric", {"metric": "sales"}),
+        ("run_report", {"name": "Rpt_Sales"}),
+    ],
+)
+def test_business_tools_run_when_budget_has_room(tool, args):
+    state = {"queries": ["q"] * (agent.MAX_QUERIES - 1), "question": "test", "last_rows": None}
+    if tool == "run_select":
+        with patch.object(agent.sql, "run_select", return_value=[{"n": 1}]) as rs:
+            out = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
+        rs.assert_called_once()
+    elif tool == "run_metric":
+        with patch.object(agent.metrics, "run_metric", return_value={"rows": [], "sql": "SELECT 1"}) as rm:
+            out = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
+        rm.assert_called_once()
+    else:
+        with patch.object(agent.reports, "run_report", return_value={"rows": [], "sql": "SELECT 2"}) as rr:
+            out = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
+        rr.assert_called_once()
+    assert len(state["queries"]) == agent.MAX_QUERIES
+
+
+def test_information_schema_probe_free_even_when_budget_spent():
+    state = {"queries": ["q"] * agent.MAX_QUERIES, "question": "schema", "last_rows": None}
+    sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS"
+    with patch.object(agent.sql, "run_select", return_value=[{"COLUMN_NAME": "x"}]) as rs:
+        out = agent._run_tool("run_select", {"sql": sql}, {}, {}, [], 1, "morec", state)
+    rs.assert_called_once()
+    assert not isinstance(out, dict) or out.get("status") != "budget_spent"
+    assert len(state["queries"]) == agent.MAX_QUERIES
 
 
 def test_analyze_tool_never_counts_against_the_budget(monkeypatch, tmp_path):
@@ -577,6 +652,24 @@ def test_system_prompt_documents_invoice_grain_and_isvoid():
     assert "Receipts" in prompt
 
 
+def test_system_prompt_fixes_sales_basis_and_ranking_rules():
+    text = (Path(__file__).resolve().parent.parent / "prompts" / "system.md").read_text(
+        encoding="utf-8"
+    )
+    required = (
+        "Primary basis",
+        "Ranking rule",
+        "Never add invoice and order amounts together",
+        "unsold_items",
+        "TOP",
+        "order",
+        "limit",
+    )
+    for fragment in required:
+        assert fragment in text
+    assert "state both invoiced sales" not in text
+
+
 def test_malformed_tool_syntax_does_not_false_positive_on_prose_mentioning_it():
     """C9: the old check was `"tool_calls" in content or "｜" in content` --
     a legitimate answer that merely discusses tool-calling in English prose
@@ -640,6 +733,62 @@ def test_has_count_sql_intent():
     assert not agent._has_count_sql_intent("what is the price list")
 
 
+FAST_COUNT_YES = [
+    "كم عدد العملاء؟",
+    "كم زبون عندي",
+    "كم مندوب عنا",
+    "how many customers do I have",
+    "عدد الأصناف",
+    "كم صنف مسجل؟",
+    "كم عميل؟",
+]
+FAST_COUNT_NO = [
+    "كم عميل زار المندوب امس، وكم واحد اشترى منهم؟",
+    "كم عميل عندي وكم واحد منهم اشترى الشهر الماضي؟",
+    "how many customers did my best rep visit and how many bought",
+    "كم عميل خسرنا هذا الشهر ولماذا؟",
+    "كم زبون عند كل مندوب مرتبين من الاكثر للأقل مع خطة لتحسين الأضعف",
+    "كم زبائن اشترت وكم وحدة باعت كل مندوب امس؟",
+]
+HOWTO_YES = [
+    "كيف أضيف صنف جديد؟",
+    "طريقة تعديل سعر مادة",
+    "شلون أفعّل المندوب على الجهاز",
+    "كيف احول المندوب من فواتير الى طلبيات",
+    "how do I change a salesman to order taking",
+    "كيفية إلغاء فاتورة",
+    "how can I add a new item",
+]
+HOWTO_NO = [
+    "كيف أداء المناديب هذا الشهر؟",
+    "كيف المبيعات اليوم",
+    "كم طلب بيع عندي",
+    "how are sales this month",
+    "كيف كانت الطلبات امس",
+    "how many invoices today",
+]
+
+
+@pytest.mark.parametrize("q", FAST_COUNT_YES)
+def test_fast_count_accepts_single_clause_counts(q):
+    assert agent._is_fast_count_path(q) is True
+
+
+@pytest.mark.parametrize("q", FAST_COUNT_NO)
+def test_fast_count_rejects_multi_part_or_analytic(q):
+    assert agent._is_fast_count_path(q) is False
+
+
+@pytest.mark.parametrize("q", HOWTO_YES)
+def test_howto_action_grammar(q):
+    assert agent._is_howto_path(q, "105") is True
+
+
+@pytest.mark.parametrize("q", HOWTO_NO)
+def test_how_is_x_is_not_howto(q):
+    assert agent._is_howto_path(q, "105") is False
+
+
 def test_is_fast_count_path_for_masters_and_metrics():
     assert agent._is_fast_count_path("كم عدد العملاء؟")
     assert agent._is_fast_count_path("how many items")
@@ -676,9 +825,11 @@ def test_doc_search_cap_omits_search_docs(monkeypatch, tmp_path):
         result = agent.ask("morec", "how does approval work?", conversation=SCOPE)
     assert result["answer"] == "Answer from docs."
     assert result["doc_search_count"] == agent.MAX_DOC_SEARCHES
-    tools_on_fourth = mock_complete.call_args_list[agent.MAX_DOC_SEARCHES].kwargs["tools"]
-    names = {t["function"]["name"] for t in tools_on_fourth}
-    assert "search_docs" not in names
+    assert (mock_complete.call_args_list[agent.MAX_DOC_SEARCHES].kwargs["tools"]
+            is mock_complete.call_args_list[0].kwargs["tools"])
+    blocked = agent._run_tool("search_docs", {"query": "x"}, {}, [], set(), 1, "morec",
+                              {"queries": [], "doc_searches": agent.MAX_DOC_SEARCHES})
+    assert blocked["status"] == "unavailable"
 
 
 def test_docs_only_omits_schema_tools(monkeypatch, tmp_path):
@@ -806,6 +957,17 @@ def test_empty_calendar_month_needs_ask_before_tools(monkeypatch, tmp_path):
     assert "هل أحسب" in result["needs_ask"]
 
 
+def test_calendar_confirm_system_note_uses_half_open_to_date():
+    with patch.object(
+        agent, "_fetch_max_invoice_date", return_value=datetime.date(2025, 7, 15),
+    ):
+        note = agent._calendar_confirm_system_note("morec", 1)
+    assert note is not None
+    assert "from_date=2025-07-01" in note
+    assert "to_date=2025-08-01" in note
+    assert "to_date=2025-07-31" not in note
+
+
 def test_calendar_confirm_skips_empty_month_gate(monkeypatch, tmp_path):
     monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
     calls = [
@@ -916,10 +1078,12 @@ def test_vault_search_cap_increments_and_blocks(monkeypatch, tmp_path):
          patch.object(agent.vault, "get_joins", return_value={"joins": []}):
         result = agent.ask("morec", "customers joined to salesperson via CFD", conversation=SCOPE)
     assert result["answer"] == "Joined via CFD."
-    tools_on_fourth = mock_complete.call_args_list[agent.MAX_VAULT_SEARCHES].kwargs["tools"]
-    names = {t["function"]["name"] for t in tools_on_fourth}
-    assert "search_schema_notes" not in names
-    assert "get_joins" not in names
+    assert (mock_complete.call_args_list[agent.MAX_VAULT_SEARCHES].kwargs["tools"]
+            is mock_complete.call_args_list[0].kwargs["tools"])
+    for name in ("search_schema_notes", "get_joins"):
+        blocked = agent._run_tool(name, {}, {}, [], set(), 1, "morec",
+                                  {"queries": [], "vault_searches": agent.MAX_VAULT_SEARCHES})
+        assert blocked["status"] == "unavailable"
 
 
 def test_run_report_path1_uses_empty_allowlist():
@@ -1109,9 +1273,359 @@ WHERE th.CompanyID = 2
     assert state["query_log"][0]["sql"] == july_lines_sql
 
 
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        (
+            "النتيجة 5 عملاء.\n\n```sql\nSELECT 1\n```\n\nملاحظة.",
+            "النتيجة 5 عملاء.\n\nملاحظة.",
+        ),
+        (
+            "محمد المراهفه — 111 فاتورة.\n```tsql\nSELECT TOP 1 1\n```",
+            "محمد المراهفه — 111 فاتورة.",
+        ),
+        (
+            "خطوات التقرير:\n```python\nprint('ok')\n```\nانتهى.",
+            "خطوات التقرير:\n```python\nprint('ok')\n```\nانتهى.",
+        ),
+        (
+            "أ\n```\nSELECT COUNT(*) FROM t.X\n```\nب",
+            "أ\n\nب",
+        ),
+        (
+            "قبل\n```sql\nWITH x AS (SELECT 1 n) SELECT n FROM x\n```\n```\nmarkdown table\n```\nبعد",
+            "قبل\n\n```\nmarkdown table\n```\nبعد",
+        ),
+        (
+            "نهاية مفتوحة\n```sql\nSELECT 1\n",
+            "نهاية مفتوحة",
+        ),
+        (None, None),
+        ("", ""),
+    ],
+    ids=[
+        "sql_fence_arabic",
+        "tsql_fence",
+        "python_fence_kept",
+        "unlabeled_select",
+        "sql_then_plain_fence",
+        "unterminated_sql",
+        "none",
+        "empty",
+    ],
+)
+def test_strip_sql_fences_removes_sql_blocks_only(text, expected):
+    assert agent._strip_sql_fences(text) == expected
+
+
+def test_count_backstop_ignores_words_inside_code_fences():
+    state = {"had_lines_count": True, "header_count": None}
+    text = "باع لـ 5 عملاء عبر 9 فواتير.\n```sql\n-- حبيبات البنود\nSELECT 1\n```"
+    stripped = agent._strip_sql_fences(text)
+    out = agent._apply_count_backstop(stripped, state)
+    assert out.endswith(agent.locale_ar.COUNT_NOTE_USER)
+
+
+def test_count_backstop_skips_when_prose_number_is_not_a_line_count():
+    state = {"had_lines_count": True, "header_count": None, "line_count_values": {2, 3, 7}}
+    text = "زار 4 عملاء وأصدر 4 فواتير."
+    assert agent._apply_count_backstop(text, state) == text
+
+
+def test_count_backstop_warns_when_prose_quotes_a_line_count():
+    state = {"had_lines_count": True, "header_count": None, "line_count_values": {19}}
+    out = agent._apply_count_backstop("عدد الفواتير الصادرة: 19 فاتورة.", state)
+    assert out.endswith(agent.locale_ar.COUNT_NOTE_USER)
+
+
+def test_count_backstop_ignores_tiny_line_counts_beside_invoice_words():
+    state = {
+        "had_lines_count": True,
+        "header_count": 4,
+        "line_count_values": {1, 2},
+        "line_count_sum": 6,
+    }
+    text = "فواتير النوع 1، وعدد الفواتير 4."
+    assert agent._apply_count_backstop(text, state) == text
+
+
+def test_count_backstop_warns_when_prose_quotes_sum_of_line_counts():
+    """Per-row line counts 2+2+1+1=6 stated as total invoices."""
+    state = {
+        "had_lines_count": True,
+        "header_count": None,
+        "line_count_values": {1, 2},
+        "line_count_sum": 6,
+    }
+    # Avoid bare 1/2 in prose so only the summed total triggers.
+    text = "أصدر المندوب 6 فواتير في ذلك اليوم."
+    out = agent._apply_count_backstop(text, state)
+    assert out.endswith(agent.locale_ar.COUNT_NOTE_USER)
+
+
+def test_after_business_sql_records_line_count_values():
+    sql_text = (
+        "SELECT th.CustomerID, COUNT(*) AS InvCount FROM t.TransactionsHeaders th "
+        "JOIN t.TransactionsDetails td ON td.TransactionNo = th.TransactionNo "
+        "GROUP BY th.CustomerID"
+    )
+    state = {}
+    rows = [{"CustomerID": 1, "InvCount": 6}, {"CustomerID": 2, "InvCount": 13}]
+    out = agent._after_business_sql("run_select", {}, sql_text, rows, {}, 1, "105", state, [])
+    assert out["line_count_columns"] == ["invcount"]
+    assert state["line_count_values"] == {6, 13}
+
+
 def test_visit_plan_ask_salesman_singular():
     assert agent._visit_plan_ask_salesman("الزيارات القادمة للمندوب")
     assert agent._visit_plan_ask_salesman("خطة المسار للمندوب للأسبوع القادم")
     assert not agent._visit_plan_ask_salesman("الزيارات القادمة للاسبوع الجاي")
     assert not agent._visit_plan_ask_salesman("خطة المسار لكل المناديب")
     assert not agent._visit_plan_ask_salesman("تقرير ملخص المسار للمندوب عثمان القدسي")
+
+
+def test_midturn_escalation_can_be_disabled(monkeypatch):
+    monkeypatch.setattr(agent, "_MIDTURN_ESCALATION", False)
+    state = {"gate_errors": 1, "gear": agent.DEFAULT_GEAR}
+    agent._maybe_escalate(state)
+    assert state["gear"] == agent.DEFAULT_GEAR
+    monkeypatch.setattr(agent, "_MIDTURN_ESCALATION", True)
+    agent._maybe_escalate(state)
+    assert state["gear"] == "t2"
+
+
+def test_tool_errors_are_written_to_the_trace(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    logged = {}
+    monkeypatch.setattr(agent.trace, "log_event",
+                        lambda *a, **kw: logged.update(kw))
+    calls = [
+        _resp(_msg(tool_calls=[_tool_call("c1", "run_select", '{"sql": "SELECT 1 FROM t.Nope"}')])),
+        _resp(_msg(content="لا توجد بيانات")),
+    ]
+    with patch.object(agent.llm, "complete", side_effect=calls + [_plain_resp("{}")]), \
+         patch.object(agent.sql, "run_select", side_effect=RuntimeError("Invalid object name")):
+        agent.ask("morec", "كم عدد الأصناف المباعة أمس؟", conversation=dict(SCOPE))
+    assert logged["tool_errors"][0]["tool"] == "run_select"
+    assert "Invalid object name" in logged["tool_errors"][0]["error"]
+
+
+def test_tool_list_is_identical_on_every_call_of_a_turn(monkeypatch, tmp_path):
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    seen = []
+
+    def fake_complete(messages, gear="t1", tools=None, stream=False, **kw):
+        if stream:
+            seen.append([t["function"]["name"] for t in (tools or [])])
+            if len(seen) == 1:
+                return _resp(_msg(tool_calls=[_tool_call("c1", "run_select",
+                                                         '{"sql": "SELECT COUNT(*) AS n FROM t.Items"}')]))
+            return _resp(_msg(content="عدد الأصناف 7"))
+        return _plain_resp("{}")
+
+    with patch.object(agent.llm, "complete", side_effect=fake_complete), \
+         patch.object(agent.sql, "run_select", return_value=[{"n": 7}]):
+        agent.ask("morec", "كم عدد الأصناف؟", conversation=dict(SCOPE))
+    assert len(seen) >= 2 and all(s == seen[0] for s in seen)
+
+
+@pytest.mark.parametrize("name,state", [
+    ("search_docs", {"doc_searches": agent.MAX_DOC_SEARCHES}),
+    ("get_joins", {"vault_searches": agent.MAX_VAULT_SEARCHES}),
+    ("recall_turns", {"had_business_rows": True}),
+    ("introspect_schema", {"docs_only": True}),
+])
+def test_mid_turn_caps_are_enforced_in_run_tool(name, state):
+    out = agent._run_tool(name, {}, {}, [], set(), 1, "morec", {"queries": [], **state})
+    assert out["status"] == "unavailable"
+
+
+def test_envelope_skips_contract_call_when_turn_made_a_card():
+    state = {"queries": ["q"], "last_rows": [{"a": 1}], "doc_source_pairs": [],
+             "thread_head": {"period_label": "2026-10"}, "card_is_new": True, "tool_errors": []}
+    with patch.object(agent.llm, "complete") as mock_complete:
+        env = agent._build_envelope("q", "answer", state)
+    mock_complete.assert_not_called()
+    assert env["confidence"] == "high"
+
+
+def test_inherited_card_does_not_drive_followups():
+    state = {"queries": [], "last_rows": None, "doc_source_pairs": [("a", "b")],
+             "thread_head": {"period_label": "2026-10"}, "card_is_new": False, "tool_errors": []}
+    payload = '{"answer_md": "x", "refusal": false, "confidence": "high", "followups": ["أ", "ب", "ج"]}'
+    with patch.object(agent.llm, "complete", return_value=_plain_resp(payload)):
+        env = agent._build_envelope("كيف اغير", "answer", state)
+    assert env["followups"] == ["أ", "ب", "ج"]
+    assert env["confidence"] == "medium"
+
+
+@pytest.mark.parametrize("text,claims", [
+    ("تعذر استخراج البيانات المطلوبة", True),
+    ("لم أتمكن من تحديد أفضل مندوب", True),
+    ("I couldn't extract the results", True),
+    ("لا أستطيع حذف البيانات، النظام للقراءة فقط", False),
+    ("أفضل مندوب هو أحمد بمبيعات 12,500", False),
+])
+def test_text_claims_query_failure(text, claims):
+    assert agent._text_claims_query_failure(text) is claims
+
+
+def test_false_failure_with_rows_recomposes_once():
+    state = {"last_rows": [{"n": 4}], "gear": "t1", "turn_tools": agent.TOOLS}
+    with patch.object(agent.llm, "complete", return_value=_resp(_msg(content="العدد 4"))) as mc:
+        out = agent._recompose_if_false_failure("تعذر استخراج النتيجة", [], state)
+        again = agent._recompose_if_false_failure("تعذر استخراج النتيجة", [], state)
+    assert out == "العدد 4" and again == "تعذر استخراج النتيجة"
+    assert mc.call_count == 1 and mc.call_args.kwargs["tools"] is agent.TOOLS
+
+
+def test_no_recompose_without_rows():
+    with patch.object(agent.llm, "complete") as mc:
+        assert agent._recompose_if_false_failure("تعذر استخراج", [], {"last_rows": []}) == "تعذر استخراج"
+    mc.assert_not_called()
+
+
+import hashlib
+import json
+import re
+
+_USER_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def test_user_id_session_scope_differs_by_subject(monkeypatch):
+    monkeypatch.setenv("CHATBOT_CACHE_SCOPE", "session")
+    a = agent._user_id("morec", 1, "subject-aaa")
+    b = agent._user_id("morec", 1, "subject-bbb")
+    again = agent._user_id("morec", 1, "subject-aaa")
+    assert a != b
+    assert a == again
+    assert len(a) == 32 and _USER_ID_RE.fullmatch(a)
+    assert len(b) == 32 and _USER_ID_RE.fullmatch(b)
+
+
+def test_user_id_unset_scope_matches_session_hash(monkeypatch):
+    monkeypatch.delenv("CHATBOT_CACHE_SCOPE", raising=False)
+    got = agent._user_id("morec", 1, "subject-aaa")
+    raw = "morec|1|subject-aaa"
+    assert got == hashlib.sha256(raw.encode()).hexdigest()[:32]
+
+
+def test_user_id_blank_subject_uses_anon_in_session_scope(monkeypatch):
+    monkeypatch.setenv("CHATBOT_CACHE_SCOPE", "session")
+    assert agent._user_id("morec", 1, None) == agent._user_id("morec", 1, "")
+    raw = "morec|1|anon"
+    assert agent._user_id("morec", 1, None) == hashlib.sha256(raw.encode()).hexdigest()[:32]
+
+
+def test_user_id_tenant_scope_ignores_subject(monkeypatch):
+    monkeypatch.setenv("CHATBOT_CACHE_SCOPE", "tenant")
+    a = agent._user_id("morec", 1, "subject-aaa")
+    b = agent._user_id("morec", 1, "subject-bbb")
+    c = agent._user_id("morec", 1, None)
+    assert a == b == c
+    raw = "morec|1"
+    assert a == hashlib.sha256(raw.encode()).hexdigest()[:32]
+    assert len(a) == 32 and _USER_ID_RE.fullmatch(a)
+
+
+def test_user_id_tenant_scope_splits_company_and_client(monkeypatch):
+    monkeypatch.setenv("CHATBOT_CACHE_SCOPE", "tenant")
+    same = agent._user_id("morec", 1, "s1")
+    other_company = agent._user_id("morec", 2, "s1")
+    other_client = agent._user_id("rukn", 1, "s1")
+    assert same != other_company
+    assert same != other_client
+    assert other_company != other_client
+
+
+def test_user_id_unknown_scope_stays_on_session(monkeypatch):
+    monkeypatch.setenv("CHATBOT_CACHE_SCOPE", "TENANT ")
+    shared = agent._user_id("morec", 1, "s1")
+    monkeypatch.setenv("CHATBOT_CACHE_SCOPE", "bogus")
+    split_a = agent._user_id("morec", 1, "s1")
+    split_b = agent._user_id("morec", 1, "s2")
+    # "tenant" with surrounding whitespace is tenant; anything else is session.
+    assert shared == hashlib.sha256("morec|1".encode()).hexdigest()[:32]
+    assert split_a != split_b
+    assert split_a == hashlib.sha256("morec|1|s1".encode()).hexdigest()[:32]
+
+
+_TINY_CACHE = {
+    "has_tenant_view": {"dbo.Customers": True},
+    "tables": {
+        "dbo.Customers": [
+            {"column": "ID", "type": "int", "nullable": False},
+            {"column": "Name", "type": "nvarchar", "nullable": True},
+        ]
+    },
+}
+
+
+def _messages_like_ask_stream(client, cache, *, thread_head, history, transcript, question):
+    """Same boundary ask_stream uses: static prefix, then thread card, then
+    history/transcript/question. Skips few-shots and report cards, which are
+    also appended after _prefix_messages and are not part of prefix_hash."""
+    messages = agent._prefix_messages(client, cache, thread_head)
+    conv_block = agent._conversation_block(history)
+    if conv_block:
+        messages.append({"role": "system", "content": conv_block})
+    index_block = agent._transcript_index_block(transcript)
+    if index_block:
+        messages.append({"role": "system", "content": index_block})
+    messages.append({"role": "user", "content": question})
+    return messages
+
+
+def test_static_prefix_ignores_history_question_and_thread(monkeypatch):
+    monkeypatch.setattr(agent, "_all_cards_block", lambda client: "CARD-BLOCK")
+    static = agent._static_prefix("morec", _TINY_CACHE)
+    blob = json.dumps(static, ensure_ascii=False)
+    assert "SESSION-B-SECRET-ANSWER" not in blob
+    assert "how many customers" not in blob
+    assert "thread-title-b" not in blob
+    h1 = agent.prefix_hash("morec", _TINY_CACHE)
+    h2 = agent.prefix_hash("morec", _TINY_CACHE)
+    assert h1 == h2
+    assert len(h1) == 16
+    # prefix_hash has no thread_head parameter; the card must not affect it.
+    with_card = agent._prefix_messages("morec", _TINY_CACHE, {"title": "thread-title-b"})
+    without_card = agent._prefix_messages("morec", _TINY_CACHE, None)
+    assert without_card == static
+    assert with_card[: len(static)] == static
+    assert with_card[-1]["content"] != static[-1]["content"]
+    assert agent.prefix_hash("morec", _TINY_CACHE) == h1
+
+
+def test_two_sessions_share_static_prefix_bytes_and_differ_after_it(monkeypatch):
+    monkeypatch.setattr(agent, "_all_cards_block", lambda client: "CARD-BLOCK")
+    static = agent._static_prefix("morec", _TINY_CACHE)
+    session_a = _messages_like_ask_stream(
+        "morec",
+        _TINY_CACHE,
+        thread_head={"title": "card-A"},
+        history=[{"q": "question A only", "a": "answer A only"}],
+        transcript=[{"q": "question A only"}],
+        question="how many customers in A",
+    )
+    session_b = _messages_like_ask_stream(
+        "morec",
+        _TINY_CACHE,
+        thread_head={"title": "card-B"},
+        history=[{"q": "question B only", "a": "SESSION-B-SECRET-ANSWER"}],
+        transcript=[{"q": "question B only"}],
+        question="list unpaid invoices in B",
+    )
+    n = len(static)
+    assert session_a[:n] == static
+    assert session_b[:n] == static
+    assert session_a[:n] == session_b[:n]
+    tail_a = json.dumps(session_a[n:], ensure_ascii=False)
+    tail_b = json.dumps(session_b[n:], ensure_ascii=False)
+    prefix_a = json.dumps(session_a[:n], ensure_ascii=False)
+    assert "SESSION-B-SECRET-ANSWER" in tail_b
+    assert "SESSION-B-SECRET-ANSWER" not in prefix_a
+    assert "list unpaid invoices in B" not in prefix_a
+    assert "how many customers in A" not in json.dumps(session_b[:n], ensure_ascii=False)
+    assert tail_a != tail_b
+    assert "answer A only" in tail_a
+    assert "answer A only" not in json.dumps(session_b[:n], ensure_ascii=False)
