@@ -70,8 +70,12 @@ def _count_kind_for_select(select: exp.Select) -> str | None:
     if not tables:
         return "other"
     if tables & _DETAIL_TABLES:
-        counts = [c for e in select.expressions for c in _counts_excluding_subqueries(e)]
-        if counts and all(_is_distinct_header_key(c) for c in counts):
+        header_aliases = set(_alias_to_header(select))
+        counts = [c for e in select.expressions for c in _counts_excluding_subqueries(e)
+                  if not _is_distinct_header_attribute(c, header_aliases)]
+        if not counts:
+            return "other"
+        if all(_is_distinct_header_key(c) for c in counts):
             return "header"
         return "lines"
     if tables <= _HEADER_TABLES:
@@ -161,6 +165,19 @@ def _distinct_value_columns(node: exp.Expression) -> list[exp.Column]:
             cols.extend(node.args["default"].find_all(exp.Column))
         return cols
     return list(node.find_all(exp.Column))
+
+
+def _is_distinct_header_attribute(count: exp.Count, header_aliases: set[str]) -> bool:
+    """COUNT(DISTINCT th.CustomerID): header-only columns that are not the
+    invoice key -- the detail join cannot inflate it, and it is not an
+    invoice count either."""
+    inner = count.this
+    if not isinstance(inner, exp.Distinct) or not header_aliases:
+        return False
+    cols = [c for e in inner.expressions for c in _distinct_value_columns(e)]
+    if not cols or "transactionno" in {_column_bare(c) for c in cols}:
+        return False
+    return all(_column_table_alias(c) in header_aliases for c in cols)
 
 
 def _is_distinct_header_key(count: exp.Count) -> bool:

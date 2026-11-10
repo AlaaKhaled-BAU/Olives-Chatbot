@@ -12,7 +12,7 @@ METRICS = {
         "aliases": ["مبيعات", "sales", "إجمالي المبيعات", "اجمالي المبيعات"],
         "description": (
             "Parameterized sales scan: gross_sales, returns, net_of_returns, "
-            "invoice_count, return_count (types 1/2, single SELECT)."
+            "invoice_count, return_count, customer_count (types 1/2, single SELECT)."
         ),
     },
     "net_sales": {
@@ -217,14 +217,12 @@ def build_sales_sql(company_id: int, filters: dict | None = None) -> str:
     amt = _sales_line_amount(tax)
     gross_expr = f"SUM(CASE WHEN th.TransactionTypeID = 1 THEN {amt} ELSE 0 END)"
     returns_expr = f"SUM(CASE WHEN th.TransactionTypeID = 2 THEN {amt} ELSE 0 END)"
-    invoice_cnt = (
-        "COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 "
-        "THEN th.TransactionNo END)"
+    header_key = (
+        "CAST(th.TransactionYear AS varchar(4)) + '-' + CAST(th.TransactionNo AS varchar(20))"
     )
-    return_cnt = (
-        "COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 "
-        "THEN th.TransactionNo END)"
-    )
+    invoice_cnt = f"COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN {header_key} END)"
+    return_cnt = f"COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 2 THEN {header_key} END)"
+    customer_cnt = "COUNT(DISTINCT CASE WHEN th.TransactionTypeID = 1 THEN th.CustomerID END)"
     select_dims = ""
     join_extra = ""
     group_by = ""
@@ -283,7 +281,8 @@ def build_sales_sql(company_id: int, filters: dict | None = None) -> str:
         + f"ISNULL({returns_expr}, 0) AS returns, "
         + f"ISNULL({gross_expr}, 0) - ISNULL({returns_expr}, 0) AS net_of_returns, "
         + f"ISNULL({invoice_cnt}, 0) AS invoice_count, "
-        + f"ISNULL({return_cnt}, 0) AS return_count "
+        + f"ISNULL({return_cnt}, 0) AS return_count, "
+        + f"ISNULL({customer_cnt}, 0) AS customer_count "
         "FROM t.TransactionsHeaders th "
         + _detail_join()
         + join_extra

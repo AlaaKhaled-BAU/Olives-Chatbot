@@ -158,7 +158,7 @@ def test_metrics_net_sales_by_salesperson_is_header_grain():
         (
             "SELECT COUNT(DISTINCT th.CustomerID) AS n FROM t.TransactionsHeaders th "
             "JOIN t.TransactionsDetails td ON td.TransactionNo = th.TransactionNo",
-            "lines",
+            "other",
         ),
         (
             "SELECT COUNT(DISTINCT td.ItemCode) AS n FROM t.TransactionsHeaders th "
@@ -173,7 +173,7 @@ def test_metrics_net_sales_by_salesperson_is_header_grain():
         (
             "SELECT COUNT(DISTINCT th.TransactionYear) AS n FROM t.TransactionsHeaders th "
             "JOIN t.TransactionsDetails td ON td.TransactionNo = th.TransactionNo",
-            "lines",
+            "other",
         ),
         (
             "SELECT COUNT(*) AS a, COUNT(DISTINCT th.TransactionNo) AS b "
@@ -190,3 +190,21 @@ def test_metrics_net_sales_by_salesperson_is_header_grain():
 def test_detail_join_count_grain_table(sql, kind):
     scopes = verify.count_scopes(sql)
     assert scopes and scopes[0]["kind"] == kind
+
+
+def test_sales_metric_with_customer_count_is_header_grain():
+    sql = metrics.build_sales_sql(1, {"from_date": "2026-10-01", "to_date": "2026-11-01"})
+    assert "customer_count" in sql
+    assert [s["kind"] for s in verify.count_scopes(sql)] == ["header"]
+
+
+def test_distinct_header_attribute_alone_is_not_a_line_count():
+    sql = ("SELECT COUNT(DISTINCT th.CustomerID) AS custs FROM t.TransactionsHeaders th "
+           "JOIN t.TransactionsDetails td ON th.TransactionNo = td.TransactionNo")
+    assert [s["kind"] for s in verify.count_scopes(sql)] == ["other"]
+
+
+def test_distinct_detail_column_still_counts_lines():
+    sql = ("SELECT COUNT(DISTINCT td.ItemCode) AS n FROM t.TransactionsHeaders th "
+           "JOIN t.TransactionsDetails td ON th.TransactionNo = td.TransactionNo")
+    assert [s["kind"] for s in verify.count_scopes(sql)] == ["lines"]
