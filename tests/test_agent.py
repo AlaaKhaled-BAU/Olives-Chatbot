@@ -734,6 +734,62 @@ def test_has_count_sql_intent():
     assert not agent._has_count_sql_intent("what is the price list")
 
 
+FAST_COUNT_YES = [
+    "كم عدد العملاء؟",
+    "كم زبون عندي",
+    "كم مندوب عنا",
+    "how many customers do I have",
+    "عدد الأصناف",
+    "كم صنف مسجل؟",
+    "كم عميل؟",
+]
+FAST_COUNT_NO = [
+    "كم عميل زار المندوب امس، وكم واحد اشترى منهم؟",
+    "كم عميل عندي وكم واحد منهم اشترى الشهر الماضي؟",
+    "how many customers did my best rep visit and how many bought",
+    "كم عميل خسرنا هذا الشهر ولماذا؟",
+    "كم زبون عند كل مندوب مرتبين من الاكثر للأقل مع خطة لتحسين الأضعف",
+    "كم زبائن اشترت وكم وحدة باعت كل مندوب امس؟",
+]
+HOWTO_YES = [
+    "كيف أضيف صنف جديد؟",
+    "طريقة تعديل سعر مادة",
+    "شلون أفعّل المندوب على الجهاز",
+    "كيف احول المندوب من فواتير الى طلبيات",
+    "how do I change a salesman to order taking",
+    "كيفية إلغاء فاتورة",
+    "how can I add a new item",
+]
+HOWTO_NO = [
+    "كيف أداء المناديب هذا الشهر؟",
+    "كيف المبيعات اليوم",
+    "كم طلب بيع عندي",
+    "how are sales this month",
+    "كيف كانت الطلبات امس",
+    "how many invoices today",
+]
+
+
+@pytest.mark.parametrize("q", FAST_COUNT_YES)
+def test_fast_count_accepts_single_clause_counts(q):
+    assert agent._is_fast_count_path(q) is True
+
+
+@pytest.mark.parametrize("q", FAST_COUNT_NO)
+def test_fast_count_rejects_multi_part_or_analytic(q):
+    assert agent._is_fast_count_path(q) is False
+
+
+@pytest.mark.parametrize("q", HOWTO_YES)
+def test_howto_action_grammar(q):
+    assert agent._is_howto_path(q, "105") is True
+
+
+@pytest.mark.parametrize("q", HOWTO_NO)
+def test_how_is_x_is_not_howto(q):
+    assert agent._is_howto_path(q, "105") is False
+
+
 def test_is_fast_count_path_for_masters_and_metrics():
     assert agent._is_fast_count_path("كم عدد العملاء؟")
     assert agent._is_fast_count_path("how many items")

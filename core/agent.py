@@ -408,6 +408,20 @@ _EXPLAIN_INTENT_RE = re.compile(
     re.IGNORECASE,
 )
 _COUNT_HINT_RE = re.compile(r"كم|عدد|how many|\bcount\b", re.IGNORECASE)
+_CLAUSE_SPLIT_RE = re.compile(
+    r"[،,؛;]|\s(?:و|and)\s*(?:كم|مين|من|شو|ما|ماذا|لماذا|ليش|how|what|why)\b",
+    re.I,
+)
+_QUESTION_WORD_RE = re.compile(
+    r"\b(?:كم|مين|شو|ماذا|لماذا|ليش|how many|what|why)\b",
+    re.I,
+)
+_FAST_COUNT_MAX_WORDS = 7
+_HOWTO_ACTION_RE = re.compile(
+    r"(?:كيف|كيفية|طريقة|شلون)\s+(?:ا|أ|ن)?\S*?(?:غير|عدل|ضيف|اضاف|إضاف|حذف|فعل|فعّل|حول|نشئ|ربط|وقف|لغي|إلغاء|الغاء|سجل|تعديل|تغيير|تحويل)\S*"
+    r"|\bhow (?:do|can|to|should) (?:i |we )?\w+",
+    re.I,
+)
 _MASTER_COUNT_TERMS = (
     "عميل", "عملاء", "زبائن", "زبون", "customer", "customers",
     "مندوب", "مناديب", "مندوبين", "salesperson", "salesman",
@@ -917,6 +931,9 @@ def _is_fast_count_path(question: str) -> bool:
         return False
     if not _COUNT_HINT_RE.search(q):
         return False
+    if (_CLAUSE_SPLIT_RE.search(q) or len(_QUESTION_WORD_RE.findall(q)) > 1
+            or len(q.split()) > _FAST_COUNT_MAX_WORDS):
+        return False
     q_lower = q.lower()
     if metrics.question_mentions_metric(q):
         return True
@@ -963,6 +980,8 @@ def _is_howto_path(question: str, client: str) -> bool:
     q = (question or "").strip()
     if not q:
         return False
+    if _HOWTO_ACTION_RE.search(q) and not _COUNT_HINT_RE.search(q):
+        return True
     if _has_count_sql_intent(q) or _is_fast_count_path(q):
         return False
     if metrics.question_mentions_metric(q):
