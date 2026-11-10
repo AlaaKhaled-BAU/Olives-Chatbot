@@ -133,7 +133,9 @@ def _column_bare(col: exp.Column) -> str:
     return (col.name or "").lower()
 
 
-_HEADER_KEY_COLS = frozenset({"transactionno"})
+_HEADER_PK_COLS = frozenset(
+    {"companyid", "transactiontypeid", "transactionyear", "transactionno"}
+)
 
 
 def _counts_excluding_subqueries(expr: exp.Expression) -> list[exp.Count]:
@@ -166,7 +168,12 @@ def _is_distinct_header_key(count: exp.Count) -> bool:
     if not isinstance(inner, exp.Distinct):
         return False
     cols = [c for e in inner.expressions for c in _distinct_value_columns(e)]
-    return bool(cols) and all(_column_bare(c) in _HEADER_KEY_COLS for c in cols)
+    if not cols:
+        return False
+    bare = {_column_bare(c) for c in cols}
+    if "transactionno" not in bare:
+        return False
+    return bare <= _HEADER_PK_COLS
 
 
 def _column_table_alias(col: exp.Column) -> str:

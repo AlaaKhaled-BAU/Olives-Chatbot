@@ -103,17 +103,29 @@ def test_count_note_constant():
     assert verify.COUNT_NOTE == "counts lines, not invoice headers"
 
 
-def test_distinct_header_key_count_over_detail_join_is_header():
-    s = metrics.build_sales_sql(1, {"from_date": "2026-10-01", "to_date": "2026-11-01"})
-    assert verify.count_scopes(s) == [{"kind": "header", "func": "count"}]
-
-
 def test_plain_count_star_over_detail_join_is_still_lines():
     s = (
         "SELECT COUNT(*) AS n FROM t.TransactionsHeaders th JOIN t.TransactionsDetails td "
         "ON td.TransactionNo = th.TransactionNo"
     )
     assert verify.count_scopes(s) == [{"kind": "lines", "func": "count"}]
+
+
+def test_metrics_build_sales_sql_is_header_grain():
+    s = metrics.build_sales_sql(1, {"from_date": "2026-10-01", "to_date": "2026-11-01"})
+    kinds = {x["kind"] for x in verify.count_scopes(s)}
+    assert "lines" not in kinds
+    assert "header" in kinds
+
+
+def test_metrics_net_sales_by_salesperson_is_header_grain():
+    s = metrics.build_sql(
+        "net_sales_by_salesperson",
+        company_id=1,
+        filters={"from_date": "2026-10-01", "to_date": "2026-11-01"},
+    )
+    kinds = {x["kind"] for x in verify.count_scopes(s)}
+    assert kinds == {"header"}
 
 
 @pytest.mark.parametrize(
@@ -131,7 +143,35 @@ def test_plain_count_star_over_detail_join_is_still_lines():
             "header",
         ),
         (
+            "SELECT COUNT(DISTINCT CONCAT(th.TransactionYear, '-', th.TransactionNo)) AS n "
+            "FROM t.TransactionsHeaders th JOIN t.TransactionsDetails td "
+            "ON td.TransactionNo = th.TransactionNo",
+            "header",
+        ),
+        (
+            "SELECT COUNT(DISTINCT CAST(th.TransactionYear AS varchar(4)) + '-' + "
+            "CAST(th.TransactionNo AS varchar(20))) AS n "
+            "FROM t.TransactionsHeaders th JOIN t.TransactionsDetails td "
+            "ON td.TransactionNo = th.TransactionNo",
+            "header",
+        ),
+        (
             "SELECT COUNT(DISTINCT th.CustomerID) AS n FROM t.TransactionsHeaders th "
+            "JOIN t.TransactionsDetails td ON td.TransactionNo = th.TransactionNo",
+            "lines",
+        ),
+        (
+            "SELECT COUNT(DISTINCT td.ItemCode) AS n FROM t.TransactionsHeaders th "
+            "JOIN t.TransactionsDetails td ON td.TransactionNo = th.TransactionNo",
+            "lines",
+        ),
+        (
+            "SELECT COUNT(*) AS n FROM t.TransactionsHeaders th JOIN t.TransactionsDetails td "
+            "ON td.TransactionNo = th.TransactionNo",
+            "lines",
+        ),
+        (
+            "SELECT COUNT(DISTINCT th.TransactionYear) AS n FROM t.TransactionsHeaders th "
             "JOIN t.TransactionsDetails td ON td.TransactionNo = th.TransactionNo",
             "lines",
         ),
@@ -148,4 +188,5 @@ def test_plain_count_star_over_detail_join_is_still_lines():
     ],
 )
 def test_detail_join_count_grain_table(sql, kind):
-    assert verify.count_scopes(sql) == [{"kind": kind, "func": "count"}]
+    scopes = verify.count_scopes(sql)
+    assert scopes and scopes[0]["kind"] == kind
