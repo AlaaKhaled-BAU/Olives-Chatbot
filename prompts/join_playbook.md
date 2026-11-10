@@ -12,8 +12,7 @@ Use these patterns when writing `SELECT` on `t.` views. Orders and invoices are 
 - **Line money.** `TransactionsDetails.Price` is the line total and already includes tax. Do not multiply `Price` by `Quantity`. Do not add `TaxAmount` on top of `Price`. `TaxAmount1` and `TaxAmount2` stay unused.
   - Charged total (default, what `run_metric` `net_sales` returns): `ABS(Price) - ABS(DiscountAmount) - ABS(VoucherDiscount) - ABS(ISNULL(CustomerDiscountAmount,0))`, type 1, not void.
   - Before tax, only when the user says قبل الضريبة / بدون ضريبة / before tax: charged total minus `ABS(TaxAmount)`.
-  - After returns, only when the user says بعد المرتجعات / net of returns: type 1 charged minus the same expression on type 2.
-  - «صافي» alone means the charged total, not "minus returns".
+  - «صافي» and «بعد المرتجعات» mean the same thing: the charged total minus returns (type 1 minus type 2). In accounting that is net sales. «مبيعات» without those words is the charged total before returns.
 - **run_metric `sales` (preferred for مبيعات):** pass `filters.tax` and `filters.returns`:
   - «مبيعات» / general sales → `tax=incl`, `returns=gross`.
   - «صافي» / «بعد المرتجعات» / net of credit notes → `tax=incl`, `returns=net`.
@@ -65,34 +64,37 @@ Historical weekly counts from `LogActionTransaction` where `ActionID = N'0'`, GR
 
 ## Deducing Salesperson Operational Mode (Cash Van vs. Order Taking) — Dynamic Inference (NO Hardcoding)
 Never hardcode or memorize which salesperson is Cash Van or Order Taking. Deduce dynamically:
-- **Call `lookup_hot('SalesPersons')`**: inspect `PositionID`, `CarID`, and `VehicleId`.
+- **Call `lookup_hot('SalesPersons')`**: inspect `PositionID`. Do not use `CarID` or `VehicleId` to classify a salesman.
 - **Call `lookup_hot('SalesPersonsDevicePermissions')`**: match `PositionsID = sp.PositionID`.
-  - **Cash Van (بيع مباشر من السيارة)**: `MakeSalesInvoice = 1` AND (`CarID > 0` OR `VehicleId IS NOT NULL` OR salesperson has active rows in `t.SalesPersonItemsBalance`).
+  - **Cash Van (بيع مباشر من السيارة)**: `MakeSalesInvoice = 1`.
     - Sales live in `t.TransactionsHeaders` (`TransactionTypeID = 1`, `ISNULL(IsVoid,0) = 0`).
-    - Vehicle inventory lives in `t.SalesPersonItemsBalance`.
+    - Tablet stock is `OT_StoreItemsQty` (`StoreNo` = salesman number). `t.SalesPersonItemsBalance` is the back-office balance only, not a substitute.
     - Warehouse ↔ van stock movements live in `t.TransfersOrdersHeaders` / `t.TransfersOrdersDetails`. Do not assume a `VouType` number means load or unload.
-  - **Order Taking / Pre-Sales (حجز طلبيات لتوصيل المستودع)**: `MakeOrderTaking = 1` AND `ISNULL(MakeSalesInvoice, 0) = 0` (or salesperson has NO delivery car and 0 van balance).
-    - Sales live in `t.OrdersHeaders` + `t.OrdersDetails` (check `WFApproved = 1` and `Approved = 1`).
-    - Available stock lives in `t.StoresBalances` (Central Warehouse) — they do NOT carry van custody stock.
+  - **Order Taking / Pre-Sales (حجز طلبيات لتوصيل المستودع)**: `MakeOrderTaking = 1` AND `ISNULL(MakeSalesInvoice, 0) = 0`.
+    - Sales live in `t.OrdersHeaders` + `t.OrdersDetails`. Do not require `WFApproved` or `Approved` unless the user asked for approved or pending orders.
+    - Tablet stock is `OT_StoreItemsQty_Main` (main store). Do not answer their stock from `t.StoresBalances` when the tablet table has rows.
   - **Hybrid (مندوب مزدوج)**: `MakeSalesInvoice = 1` AND `MakeOrderTaking = 1`.
     - When asked for "sales", lead with direct field invoices (`TransactionsHeaders`); if booked sales orders (`OrdersHeaders`) matter, show them as a separate labelled line. Never add the two amounts together.
+    - When asked for stock, lead with `OT_StoreItemsQty` (his van) and show `OT_StoreItemsQty_Main` (main store) as a second labelled line. Do not add the two quantities.
 
 ## Transfers orders
 `TransfersOrdersHeaders` / `TransfersOrdersDetails` are stock movements, not sales invoices and not `OrdersHeaders`. Do not map `VouType` or a `TransactionsHeaders.TransactionTypeID` to load or unload; that numbering is client-specific.
 Sales questions still require `TransactionTypeID = 1` and `ISNULL(IsVoid, 0) = 0`, because other transaction types share `TransactionsHeaders`.
 
 ## Inventory & Stock Tables Matrix
-- **`t.SalesPersonItemsBalance`**: The authoritative single source of truth for **Cash Van stock**. Primary key: `(CompanyID, SalesPersonID, ItemCode)`.
-- **`t.StoresBalances`**: Central warehouse stock for **Order Taking fulfillment**. Primary key: `(CompanyID, StoreNo, ItemCode)`.
-- **`OT_StoreItemsQty`** (OSFA mobile mirror): Van inventory on tablet where `StoreNo = SalesmanNo`.
-- **`OT_StoreItemsQty_Main`** (OSFA mobile mirror): Central warehouse stock available for pre-sales reps (Store `999999`).
-- **`OT_ItemsMF.QtyOH`** (OSFA mobile mirror): Master file on-hand quantity displayed on tablet. Mirrors van stock for Cash Vans; 0 or company stock for Pre-Sales.
+- **`t.SalesPersonItemsBalance`**: Back-office cash-van balance. Primary key: `(CompanyID, SalesPersonID, ItemCode)`.
+- **`t.StoresBalances`**: Central warehouse stock. Primary key: `(CompanyID, StoreNo, ItemCode)`.
+- Tablet stock, allowed to read. Role comes from `SalesPersonsDevicePermissions`, not from `CarID`:
+  - Cash van (`MakeSalesInvoice = 1`): `OT_StoreItemsQty`, where `StoreNo` is the salesman number.
+  - Order taking (`MakeOrderTaking = 1`): `OT_StoreItemsQty_Main`, the main-store quantity those reps sell from.
+  - If the table for that role has no quantity for him, use `OT_ItemsMF.QtyOH`.
 - **`t.SalesPersonStockTacking`**: Physical stock-taking counts submitted by reps to reconcile van shrinkage.
 
-## Van stock (SalesPersonItemsBalance)
-- Van quantity by salesperson + item: `SalesPersonItemsBalance` (live FKs to `SalesPersons`, `Items`, `Companies`).
-- Join pattern: `SalesPersonItemsBalance.SalesPersonID` → `SalesPersons.ID` and `SalesPersonItemsBalance.ItemCode` → `Items.ItemCode` (always include `CompanyID` on composite keys).
-- If querying stock for a Pre-Sales rep, explain that they do not hold van custody stock and check warehouse availability in `t.StoresBalances`.
+## Van and main-store stock
+- Cash van (`MakeSalesInvoice = 1` only): `OT_StoreItemsQty` where `StoreNo` is the salesman number. If that salesman has no rows, use `OT_ItemsMF.QtyOH`.
+- Order taker (`MakeOrderTaking = 1` and not `MakeSalesInvoice`): `OT_StoreItemsQty_Main`. If that table has no quantity, use `OT_ItemsMF.QtyOH`.
+- Hybrid (both flags): van quantity first, main-store quantity on a second labelled line. Never add them.
+- `t.SalesPersonItemsBalance` and `t.StoresBalances` are back-office balances. Use them only when the user asks for the back-office balance, not for tablet stock.
 
 ## ClientsActive
 - `(CompanyID, ClientID)` identifies which Olives product fork is active — not a shop or customer row.

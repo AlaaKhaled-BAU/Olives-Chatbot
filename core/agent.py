@@ -871,7 +871,7 @@ TOOLS = [
         "function": {
             "name": "lookup_hot",
             "description": (
-                "Load an L1 master snapshot (SalesPersons with CarID/VehicleId, SalesPersonsDevicePermissions, "
+                "Load an L1 master snapshot (SalesPersons, SalesPersonsDevicePermissions, "
                 "DeliveryCars, items, routes, LogActions ActionID codebook). "
                 "Pass LogActionTransaction for the same codebook (the fact log is not cached). "
                 "Never for invoices/orders/receipts/balances. Free — does not count against query budget."
