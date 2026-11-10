@@ -1317,6 +1317,69 @@ def _resolve_final_text(final_text: str | None, messages: list, state: dict) -> 
     return _build_arabic_stub(state)
 
 
+_QUERY_FAILURE_STEM_RE = re.compile(
+    r"(?:"
+    r"تعذّ?ر"
+    r"|(?:لم|لا)\s+(?:أ?تمكن|ي?كتمل|تُ?ستكمل)"
+    r"|(?:لم|لا)\s+ي?مكنني\s+(?:استخراج|تحديد|إكمال)"
+    r"|(?:(?:couldn'?t|could\s+not|unable\s+to|failed\s+to)\s+"
+    r"(?:extract|retrieve|get|obtain|complete|determine))"
+    r")",
+    re.IGNORECASE,
+)
+_QUERY_FAILURE_AR_RE = re.compile(
+    r"(?:تعذّ?ر|لم\s+أ?تمكن|لا\s+يمكنني)\s+.{0,48}?"
+    r"(?:استخراج|تحديد|إكمال|استكمال|القائمة|النتيج(?:ة|ه)|البيانات|المعلومات)",
+    re.IGNORECASE,
+)
+_CAPABILITY_REFUSAL_RE = re.compile(
+    r"لا\s+(?:أ?ستطيع|يمكنني)\s+(?:حذف|تنفيذ|عرض|تجاهل|الالتزام|تزويد)",
+    re.IGNORECASE,
+)
+
+
+def _text_claims_query_failure(text: str | None) -> bool:
+    """True when prose claims the last business query failed to yield an answer."""
+    if _is_blank(text):
+        return False
+    t = text.strip()
+    if _CAPABILITY_REFUSAL_RE.search(t):
+        return False
+    if _QUERY_FAILURE_STEM_RE.search(t):
+        return True
+    return bool(_QUERY_FAILURE_AR_RE.search(t))
+
+
+def _claims_failure_with_rows(final_text: str | None, state: dict) -> bool:
+    rows = state.get("last_rows")
+    if not (isinstance(rows, list) and rows):
+        return False
+    if state.get("recomposed"):
+        return False
+    return _text_claims_query_failure(final_text)
+
+
+def _recompose_if_false_failure(final_text: str | None, messages: list, state: dict) -> str | None:
+    if not _claims_failure_with_rows(final_text, state):
+        return final_text
+    rows = state["last_rows"]
+    nudge = {"role": "system", "content": (
+        f"The last query DID return {len(rows)} rows (in the tool results above). "
+        "Answer the user's question from those rows. Do not say the query failed.")}
+    text = None
+    for event in _stream_turn(
+        messages + [nudge],
+        None,
+        gear=state["gear"],
+        user_id=state.get("_user_id"),
+        usage_acc=state.get("_usage"),
+    ):
+        if event["type"] == "_turn_done":
+            text = _sanitize_final_text(event["message"].get("content"))
+    state["recomposed"] = True
+    return text if not _is_blank(text) else final_text
+
+
 def _analyze(args: dict) -> dict:
     """C4 + TRACK F3: exact arithmetic/trend computation the model can
     offload instead of computing (and potentially getting slightly wrong)
@@ -2153,6 +2216,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             result_rows=len(rows) if isinstance(rows, list) else 0,
             path=state.get("_path_flags"),
             tool_errors=state.get("tool_errors") or [],
+            recomposed=state.get("recomposed", False),
             **_timing_fields(),
             **usage_acc.totals(),
             **fields,
@@ -2299,6 +2363,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
 
     if _has_evidence(state):
         final_text = _resolve_final_text(final_text, messages, state)
+        final_text = _recompose_if_false_failure(final_text, messages, state)
         final_text = _apply_count_backstop(_strip_sql_fences(final_text), state)
         new_card = thread.card_from_query_log(state.get("query_log"))
         if new_card:
