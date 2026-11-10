@@ -1499,6 +1499,16 @@ def _after_business_sql(
 
 
 def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, client, state):
+    if name in ("run_select", "run_metric", "run_report") and (
+        "information_schema" not in str(args.get("sql", "")).lower()
+        and len(state.get("queries") or []) >= MAX_QUERIES
+    ):
+        return {
+            "status": "budget_spent",
+            "message": (
+                f"Query budget ({MAX_QUERIES}) is spent. Answer from results already returned."
+            ),
+        }
     if name == "introspect_schema":
         return _introspect(cache, catalog_procs, args.get("name", ""))
     if name == "analyze":

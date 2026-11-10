@@ -376,6 +376,79 @@ def test_query_budget_closes_after_max_queries_real_queries(monkeypatch, tmp_pat
     assert len(warnings) == 1, "the last-query reminder must be injected exactly once"
 
 
+def test_parallel_tool_calls_cannot_exceed_query_budget():
+    state = {"queries": ["q"] * agent.MAX_QUERIES, "question": "x"}
+    with patch.object(agent.sql, "run_select") as rs:
+        out = agent._run_tool(
+            "run_select", {"sql": "SELECT 1 FROM t.Items"}, {}, {}, [], 1, "morec", state,
+        )
+    rs.assert_not_called()
+    assert out["status"] == "budget_spent"
+    assert "error" not in out
+    assert len(state["queries"]) == agent.MAX_QUERIES
+
+
+@pytest.mark.parametrize(
+    "tool,args,patch_target",
+    [
+        ("run_select", {"sql": "SELECT 1 FROM t.Sales"}, "core.sql.run_select"),
+        ("run_metric", {"metric": "sales"}, "core.metrics.run_metric"),
+        ("run_report", {"name": "Rpt_Sales"}, "core.reports.run_report"),
+    ],
+)
+def test_business_tools_return_budget_spent_at_max_queries(tool, args, patch_target):
+    state = {"queries": ["spent"] * agent.MAX_QUERIES, "question": "test"}
+    import importlib
+    mod_path, attr = patch_target.rsplit(".", 1)
+    mod = importlib.import_module(mod_path)
+    with patch.object(mod, attr) as mocked:
+        if tool == "run_metric":
+            mocked.return_value = {"rows": [], "sql": "SELECT 1"}
+        elif tool == "run_report":
+            mocked.return_value = {"rows": [], "sql": "SELECT 2", "status": "ok"}
+        else:
+            mocked.return_value = [{"n": 1}]
+        out = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
+    mocked.assert_not_called()
+    assert out["status"] == "budget_spent"
+    assert len(state["queries"]) == agent.MAX_QUERIES
+
+
+@pytest.mark.parametrize(
+    "tool,args",
+    [
+        ("run_select", {"sql": "SELECT 1"}),
+        ("run_metric", {"metric": "sales"}),
+        ("run_report", {"name": "Rpt_Sales"}),
+    ],
+)
+def test_business_tools_run_when_budget_has_room(tool, args):
+    state = {"queries": ["q"] * (agent.MAX_QUERIES - 1), "question": "test", "last_rows": None}
+    if tool == "run_select":
+        with patch.object(agent.sql, "run_select", return_value=[{"n": 1}]) as rs:
+            out = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
+        rs.assert_called_once()
+    elif tool == "run_metric":
+        with patch.object(agent.metrics, "run_metric", return_value={"rows": [], "sql": "SELECT 1"}) as rm:
+            out = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
+        rm.assert_called_once()
+    else:
+        with patch.object(agent.reports, "run_report", return_value={"rows": [], "sql": "SELECT 2"}) as rr:
+            out = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
+        rr.assert_called_once()
+    assert len(state["queries"]) == agent.MAX_QUERIES
+
+
+def test_information_schema_probe_free_even_when_budget_spent():
+    state = {"queries": ["q"] * agent.MAX_QUERIES, "question": "schema", "last_rows": None}
+    sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS"
+    with patch.object(agent.sql, "run_select", return_value=[{"COLUMN_NAME": "x"}]) as rs:
+        out = agent._run_tool("run_select", {"sql": sql}, {}, {}, [], 1, "morec", state)
+    rs.assert_called_once()
+    assert not isinstance(out, dict) or out.get("status") != "budget_spent"
+    assert len(state["queries"]) == agent.MAX_QUERIES
+
+
 def test_analyze_tool_never_counts_against_the_budget(monkeypatch, tmp_path):
     monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
     calls = [
