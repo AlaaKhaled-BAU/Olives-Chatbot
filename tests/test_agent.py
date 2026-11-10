@@ -1486,6 +1486,7 @@ def test_no_recompose_without_rows():
 
 
 import hashlib
+import json
 import re
 
 _USER_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
@@ -1547,3 +1548,84 @@ def test_user_id_unknown_scope_stays_on_session(monkeypatch):
     assert shared == hashlib.sha256("morec|1".encode()).hexdigest()[:32]
     assert split_a != split_b
     assert split_a == hashlib.sha256("morec|1|s1".encode()).hexdigest()[:32]
+
+
+_TINY_CACHE = {
+    "has_tenant_view": {"dbo.Customers": True},
+    "tables": {
+        "dbo.Customers": [
+            {"column": "ID", "type": "int", "nullable": False},
+            {"column": "Name", "type": "nvarchar", "nullable": True},
+        ]
+    },
+}
+
+
+def _messages_like_ask_stream(client, cache, *, thread_head, history, transcript, question):
+    """Same boundary ask_stream uses: static prefix, then thread card, then
+    history/transcript/question. Skips few-shots and report cards, which are
+    also appended after _prefix_messages and are not part of prefix_hash."""
+    messages = agent._prefix_messages(client, cache, thread_head)
+    conv_block = agent._conversation_block(history)
+    if conv_block:
+        messages.append({"role": "system", "content": conv_block})
+    index_block = agent._transcript_index_block(transcript)
+    if index_block:
+        messages.append({"role": "system", "content": index_block})
+    messages.append({"role": "user", "content": question})
+    return messages
+
+
+def test_static_prefix_ignores_history_question_and_thread(monkeypatch):
+    monkeypatch.setattr(agent, "_all_cards_block", lambda client: "CARD-BLOCK")
+    static = agent._static_prefix("morec", _TINY_CACHE)
+    blob = json.dumps(static, ensure_ascii=False)
+    assert "SESSION-B-SECRET-ANSWER" not in blob
+    assert "how many customers" not in blob
+    assert "thread-title-b" not in blob
+    h1 = agent.prefix_hash("morec", _TINY_CACHE)
+    h2 = agent.prefix_hash("morec", _TINY_CACHE)
+    assert h1 == h2
+    assert len(h1) == 16
+    # prefix_hash has no thread_head parameter; the card must not affect it.
+    with_card = agent._prefix_messages("morec", _TINY_CACHE, {"title": "thread-title-b"})
+    without_card = agent._prefix_messages("morec", _TINY_CACHE, None)
+    assert without_card == static
+    assert with_card[: len(static)] == static
+    assert with_card[-1]["content"] != static[-1]["content"]
+    assert agent.prefix_hash("morec", _TINY_CACHE) == h1
+
+
+def test_two_sessions_share_static_prefix_bytes_and_differ_after_it(monkeypatch):
+    monkeypatch.setattr(agent, "_all_cards_block", lambda client: "CARD-BLOCK")
+    static = agent._static_prefix("morec", _TINY_CACHE)
+    session_a = _messages_like_ask_stream(
+        "morec",
+        _TINY_CACHE,
+        thread_head={"title": "card-A"},
+        history=[{"q": "question A only", "a": "answer A only"}],
+        transcript=[{"q": "question A only"}],
+        question="how many customers in A",
+    )
+    session_b = _messages_like_ask_stream(
+        "morec",
+        _TINY_CACHE,
+        thread_head={"title": "card-B"},
+        history=[{"q": "question B only", "a": "SESSION-B-SECRET-ANSWER"}],
+        transcript=[{"q": "question B only"}],
+        question="list unpaid invoices in B",
+    )
+    n = len(static)
+    assert session_a[:n] == static
+    assert session_b[:n] == static
+    assert session_a[:n] == session_b[:n]
+    tail_a = json.dumps(session_a[n:], ensure_ascii=False)
+    tail_b = json.dumps(session_b[n:], ensure_ascii=False)
+    prefix_a = json.dumps(session_a[:n], ensure_ascii=False)
+    assert "SESSION-B-SECRET-ANSWER" in tail_b
+    assert "SESSION-B-SECRET-ANSWER" not in prefix_a
+    assert "list unpaid invoices in B" not in prefix_a
+    assert "how many customers in A" not in json.dumps(session_b[:n], ensure_ascii=False)
+    assert tail_a != tail_b
+    assert "answer A only" in tail_a
+    assert "answer A only" not in json.dumps(session_b[:n], ensure_ascii=False)
