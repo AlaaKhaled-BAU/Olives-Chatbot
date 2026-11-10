@@ -15,6 +15,8 @@ import types
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core import agent, memory
 
@@ -1139,10 +1141,56 @@ WHERE th.CompanyID = 2
     assert state["query_log"][0]["sql"] == july_lines_sql
 
 
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        (
+            "النتيجة 5 عملاء.\n\n```sql\nSELECT 1\n```\n\nملاحظة.",
+            "النتيجة 5 عملاء.\n\nملاحظة.",
+        ),
+        (
+            "محمد المراهفه — 111 فاتورة.\n```tsql\nSELECT TOP 1 1\n```",
+            "محمد المراهفه — 111 فاتورة.",
+        ),
+        (
+            "خطوات التقرير:\n```python\nprint('ok')\n```\nانتهى.",
+            "خطوات التقرير:\n```python\nprint('ok')\n```\nانتهى.",
+        ),
+        (
+            "أ\n```\nSELECT COUNT(*) FROM t.X\n```\nب",
+            "أ\n\nب",
+        ),
+        (
+            "قبل\n```sql\nWITH x AS (SELECT 1 n) SELECT n FROM x\n```\n```\nmarkdown table\n```\nبعد",
+            "قبل\n\n```\nmarkdown table\n```\nبعد",
+        ),
+        (
+            "نهاية مفتوحة\n```sql\nSELECT 1\n",
+            "نهاية مفتوحة",
+        ),
+        (None, None),
+        ("", ""),
+    ],
+    ids=[
+        "sql_fence_arabic",
+        "tsql_fence",
+        "python_fence_kept",
+        "unlabeled_select",
+        "sql_then_plain_fence",
+        "unterminated_sql",
+        "none",
+        "empty",
+    ],
+)
+def test_strip_sql_fences_removes_sql_blocks_only(text, expected):
+    assert agent._strip_sql_fences(text) == expected
+
+
 def test_count_backstop_ignores_words_inside_code_fences():
     state = {"had_lines_count": True, "header_count": None}
     text = "باع لـ 5 عملاء عبر 9 فواتير.\n```sql\n-- حبيبات البنود\nSELECT 1\n```"
-    out = agent._apply_count_backstop(text, state)
+    stripped = agent._strip_sql_fences(text)
+    out = agent._apply_count_backstop(stripped, state)
     assert out.endswith(agent.locale_ar.COUNT_NOTE_USER)
 
 

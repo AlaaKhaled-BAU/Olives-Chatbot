@@ -1374,6 +1374,65 @@ def _analyze(args: dict) -> dict:
 _INVOICE_WORD_RE = re.compile(r"فاتور|فواتير|invoice", re.IGNORECASE)
 _LINES_WORD_RE = re.compile(r"بنود|سطور|\blines\b", re.IGNORECASE)
 _CODE_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
+_FENCE_OPEN_RE = re.compile(r"```(\w*)\s*\n")
+_SQL_LEAD_RE = re.compile(
+    r"^\s*(?:--[^\n]*\n\s*)*(?:SELECT|WITH)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+_NON_SQL_FENCE_LANGS = frozenset({"python", "json", "yaml", "yml", "md", "markdown", "text"})
+
+
+def _fence_body_looks_like_sql(body: str) -> bool:
+    raw = body.strip()
+    if not raw:
+        return False
+    if _SQL_LEAD_RE.match(raw):
+        return True
+    try:
+        import sqlglot
+        from sqlglot import exp
+
+        for stmt in sqlglot.parse(raw, read="tsql") or []:
+            if stmt is None or isinstance(stmt, exp.Command):
+                continue
+            if isinstance(stmt, exp.Select) or stmt.find(exp.Select):
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _strip_sql_fences(text: str | None) -> str | None:
+    """Remove SQL code fences from model prose; answer_sql is shown separately."""
+    if not text:
+        return text
+    parts: list[str] = []
+    pos = 0
+    while True:
+        m = _FENCE_OPEN_RE.search(text, pos)
+        if not m:
+            parts.append(text[pos:])
+            break
+        parts.append(text[pos:m.start()])
+        lang = (m.group(1) or "").lower()
+        body_start = m.end()
+        close = text.find("```", body_start)
+        if close == -1:
+            body = text[body_start:]
+            fence_end = len(text)
+        else:
+            body = text[body_start:close]
+            fence_end = close + 3
+        strip_fence = lang in ("sql", "tsql") or (
+            lang not in _NON_SQL_FENCE_LANGS and _fence_body_looks_like_sql(body)
+        )
+        if strip_fence:
+            parts.append("\n\n")
+        else:
+            parts.append(text[m.start():fence_end])
+        pos = fence_end
+    out = re.sub(r"\n{3,}", "\n\n", "".join(parts))
+    return out.strip()
 
 
 def _apply_count_backstop(final_text: str | None, state: dict) -> str:
@@ -2205,7 +2264,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
 
     if _has_evidence(state):
         final_text = _resolve_final_text(final_text, messages, state)
-        final_text = _apply_count_backstop(final_text, state)
+        final_text = _apply_count_backstop(_strip_sql_fences(final_text), state)
         new_card = thread.card_from_query_log(state.get("query_log"))
         if new_card:
             state["thread_head"] = new_card
@@ -2225,7 +2284,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         envelope = {"table": None, "chart": None, "sources": [], "followups": [], "doc_search_count": state.get("doc_searches", 0)}
     else:
         final_text = final_text.strip()
-        final_text = _apply_count_backstop(final_text, state)
+        final_text = _apply_count_backstop(_strip_sql_fences(final_text), state)
         new_card = thread.card_from_query_log(state.get("query_log"))
         if new_card:
             state["thread_head"] = new_card
