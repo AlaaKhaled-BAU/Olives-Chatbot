@@ -1326,6 +1326,56 @@ def test_count_backstop_ignores_words_inside_code_fences():
     assert out.endswith(agent.locale_ar.COUNT_NOTE_USER)
 
 
+def test_count_backstop_skips_when_prose_number_is_not_a_line_count():
+    state = {"had_lines_count": True, "header_count": None, "line_count_values": {2, 3, 7}}
+    text = "زار 4 عملاء وأصدر 4 فواتير."
+    assert agent._apply_count_backstop(text, state) == text
+
+
+def test_count_backstop_warns_when_prose_quotes_a_line_count():
+    state = {"had_lines_count": True, "header_count": None, "line_count_values": {19}}
+    out = agent._apply_count_backstop("عدد الفواتير الصادرة: 19 فاتورة.", state)
+    assert out.endswith(agent.locale_ar.COUNT_NOTE_USER)
+
+
+def test_count_backstop_ignores_tiny_line_counts_beside_invoice_words():
+    state = {
+        "had_lines_count": True,
+        "header_count": 4,
+        "line_count_values": {1, 2},
+        "line_count_sum": 6,
+    }
+    text = "فواتير النوع 1، وعدد الفواتير 4."
+    assert agent._apply_count_backstop(text, state) == text
+
+
+def test_count_backstop_warns_when_prose_quotes_sum_of_line_counts():
+    """Per-row line counts 2+2+1+1=6 stated as total invoices."""
+    state = {
+        "had_lines_count": True,
+        "header_count": None,
+        "line_count_values": {1, 2},
+        "line_count_sum": 6,
+    }
+    # Avoid bare 1/2 in prose so only the summed total triggers.
+    text = "أصدر المندوب 6 فواتير في ذلك اليوم."
+    out = agent._apply_count_backstop(text, state)
+    assert out.endswith(agent.locale_ar.COUNT_NOTE_USER)
+
+
+def test_after_business_sql_records_line_count_values():
+    sql_text = (
+        "SELECT th.CustomerID, COUNT(*) AS InvCount FROM t.TransactionsHeaders th "
+        "JOIN t.TransactionsDetails td ON td.TransactionNo = th.TransactionNo "
+        "GROUP BY th.CustomerID"
+    )
+    state = {}
+    rows = [{"CustomerID": 1, "InvCount": 6}, {"CustomerID": 2, "InvCount": 13}]
+    out = agent._after_business_sql("run_select", {}, sql_text, rows, {}, 1, "105", state, [])
+    assert out["line_count_columns"] == ["invcount"]
+    assert state["line_count_values"] == {6, 13}
+
+
 def test_visit_plan_ask_salesman_singular():
     assert agent._visit_plan_ask_salesman("الزيارات القادمة للمندوب")
     assert agent._visit_plan_ask_salesman("خطة المسار للمندوب للأسبوع القادم")

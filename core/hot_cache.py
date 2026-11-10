@@ -26,6 +26,7 @@ L1_QUERIES = {
     "ItemsCategories": "SELECT CategCode, Name, ForeignName FROM t.ItemsCategories",
     "RoutesInformation": "SELECT ID, Name FROM t.RoutesInformation",
     "Companies": "SELECT ID, Name FROM t.Companies",
+    # MISS: not master data (one ClientID for the license). Delete from the L1 cache.
     "ClientsActive": "SELECT ClientID FROM t.ClientsActive",
     "DocumentsTypes": "SELECT ID, Name, TransactionTypeID FROM t.DocumentsTypes",
     "TransactionsTypes": "SELECT ID, Name FROM t.TransactionsTypes",

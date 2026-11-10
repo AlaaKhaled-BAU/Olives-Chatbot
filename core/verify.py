@@ -7,7 +7,11 @@ import sqlglot
 from sqlglot import exp
 
 # Tool-result field (I1). English in JSON; user-facing copy lives in locale table.
-COUNT_NOTE = "counts lines, not invoice headers"
+COUNT_NOTE = (
+    "COUNT over header-detail join rows counts invoice lines, not invoices. "
+    "Do not state line_count_columns as invoices; an invoice count is "
+    "COUNT(DISTINCT CAST(TransactionYear AS varchar(4)) + '-' + CAST(TransactionNo AS varchar(20))) of the headers."
+)
 
 _HEADER_TABLES = frozenset({"transactionsheaders", "ordersheaders"})
 _DETAIL_TABLES = frozenset({"transactionsdetails", "ordersdetails"})
@@ -97,6 +101,45 @@ def count_scopes(sql: str) -> list[dict[str, str]]:
             if kind is not None:
                 scopes.append({"kind": kind, "func": "count"})
     return scopes
+
+
+def _is_line_count(count: exp.Count, header_aliases: set[str]) -> bool:
+    return not (_is_distinct_header_key(count)
+                or _is_distinct_header_attribute(count, header_aliases))
+
+
+def line_count_columns(sql: str) -> list[str]:
+    """Lower-cased output names carrying a line-grain COUNT, followed through
+    columns that re-aggregate them (``SUM(InvCount) AS InvoiceCount``)."""
+    raw = (sql or "").strip()
+    if not raw:
+        return []
+    selects = [s for stmt in sqlglot.parse(raw, read="tsql") if stmt is not None
+               for s in stmt.find_all(exp.Select)]
+    names: set[str] = set()
+    for select in selects:
+        if _count_kind_for_select(select) != "lines":
+            continue
+        header_aliases = set(_alias_to_header(select))
+        for e in select.expressions:
+            alias = (e.alias_or_name or "").lower()
+            if alias and any(_is_line_count(c, header_aliases)
+                             for c in _counts_excluding_subqueries(e)):
+                names.add(alias)
+    changed = bool(names)
+    while changed:
+        changed = False
+        for select in selects:
+            for e in select.expressions:
+                alias = (e.alias_or_name or "").lower()
+                if alias and alias not in names and any(
+                    isinstance(fn, (exp.Sum, exp.Count))
+                    and any(_column_bare(c) in names for c in fn.find_all(exp.Column))
+                    for fn in e.find_all(exp.AggFunc)
+                ):
+                    names.add(alias)
+                    changed = True
+    return sorted(names)
 
 
 def _header_columns(schema_cache: dict, bare: str) -> set[str]:

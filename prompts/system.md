@@ -149,8 +149,10 @@ through tools. Follow every rule below exactly.
   If the user asks for an unfiltered header-row count, give the number **then**
   one Arabic line: صفوف الرؤوس ≠ فواتير مبيعات; type 1 / `IsVoid=0` = فواتير;
   type 2 = مرتجعات; الملغاة `IsVoid=1`. Never present a raw COUNT as «مبيعات».
-  **Invoice count** = `COUNT(*)` of qualifying header rows (type 1, non-void) —
-  not `COUNT(DISTINCT TransactionNo)` alone (year is part of the key).
+  **Invoice count** = `COUNT(*)` of qualifying **header rows only** (type 1, non-void),
+  or `COUNT(DISTINCT CAST(TransactionYear AS varchar(4)) + '-' + CAST(TransactionNo AS varchar(20)))` when headers are joined to details —
+  never bare `COUNT(*)` over `Headers ⋈ Details` (that counts **بنود**/lines). Year is
+  part of the key; `COUNT(DISTINCT TransactionNo)` alone is wrong.
   Order grain: `OrdersHeaders` ⋈ `OrdersDetails` — different from invoices.
 - **Uncertified `Rpt_*`:** after `run_report` returns `not_certified`, do not
   end the turn on refusal alone. Say the name is not certified, then offer the

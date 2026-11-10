@@ -1532,6 +1532,13 @@ def _strip_sql_fences(text: str | None) -> str | None:
     return out.strip()
 
 
+def _prose_mentions_count(prose: str, v: int) -> bool:
+    return bool(
+        re.search(rf"(?<![\d.,]){re.escape(f'{v:,}')}(?![\d]|[.,]\d)", prose)
+        or re.search(rf"(?<![\d.,]){v}(?![\d]|[.,]\d)", prose)
+    )
+
+
 def _apply_count_backstop(final_text: str | None, state: dict) -> str:
     """Append header recount or line-grain warning when prose treats lines as invoices."""
     text = (final_text or "").strip()
@@ -1541,6 +1548,26 @@ def _apply_count_backstop(final_text: str | None, state: dict) -> str:
     if _LINES_WORD_RE.search(prose):
         return text
     if not _INVOICE_WORD_RE.search(prose):
+        return text
+    line_values = state.get("line_count_values")
+    line_sum = state.get("line_count_sum")
+    # Ignore 1–9: they collide with type ids, dates, and one-line invoices.
+    # The summed total is the number a wrong answer states as «فواتير».
+    candidates: set[int] = set()
+    if line_sum is not None and int(line_sum) >= 3:
+        candidates.add(int(line_sum))
+    for v in line_values or ():
+        if int(v) >= 10:
+            candidates.add(int(v))
+    hc_now = state.get("header_count")
+    if hc_now is not None:
+        candidates.discard(int(hc_now))
+    quoted = any(_prose_mentions_count(prose, v) for v in candidates)
+    if (
+        line_values is not None
+        and not state.get("line_count_unresolved")
+        and not quoted
+    ):
         return text
     hc = state.get("header_count")
     if hc is not None:
@@ -1577,6 +1604,33 @@ def _after_business_sql(
         extra["count_note"] = verify.COUNT_NOTE
         state["hold_stream"] = True
         state["had_lines_count"] = True
+        cols = verify.line_count_columns(sql_text)
+        if cols:
+            extra["line_count_columns"] = cols
+            values = state.setdefault("line_count_values", set())
+            batch_sum = 0
+            batch_n = 0
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                for key, val in row.items():
+                    if str(key).lower() not in cols:
+                        continue
+                    try:
+                        num = int(val)
+                    except (TypeError, ValueError):
+                        continue
+                    if isinstance(val, bool):
+                        continue
+                    values.add(num)
+                    batch_sum += num
+                    batch_n += 1
+            if batch_n:
+                state["line_count_sum"] = state.get("line_count_sum", 0) + batch_sum
+            elif not values:
+                state["line_count_unresolved"] = True
+        else:
+            state["line_count_unresolved"] = True
 
     if has_lines and verify.needs_header_recount(sql_text, cache):
         recount_sql = verify.header_recount_sql(sql_text)

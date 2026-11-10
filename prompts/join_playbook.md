@@ -70,22 +70,16 @@ Never hardcode or memorize which salesperson is Cash Van or Order Taking. Deduce
   - **Cash Van (بيع مباشر من السيارة)**: `MakeSalesInvoice = 1` AND (`CarID > 0` OR `VehicleId IS NOT NULL` OR salesperson has active rows in `t.SalesPersonItemsBalance`).
     - Sales live in `t.TransactionsHeaders` (`TransactionTypeID = 1`, `ISNULL(IsVoid,0) = 0`).
     - Vehicle inventory lives in `t.SalesPersonItemsBalance`.
-    - Restocking/unloading lives in `t.TransfersOrdersHeaders` (`VouType = 1` Load, `VouType = 2` Unload).
+    - Warehouse ↔ van stock movements live in `t.TransfersOrdersHeaders` / `t.TransfersOrdersDetails`. Do not assume a `VouType` number means load or unload.
   - **Order Taking / Pre-Sales (حجز طلبيات لتوصيل المستودع)**: `MakeOrderTaking = 1` AND `ISNULL(MakeSalesInvoice, 0) = 0` (or salesperson has NO delivery car and 0 van balance).
     - Sales live in `t.OrdersHeaders` + `t.OrdersDetails` (check `WFApproved = 1` and `Approved = 1`).
     - Available stock lives in `t.StoresBalances` (Central Warehouse) — they do NOT carry van custody stock.
   - **Hybrid (مندوب مزدوج)**: `MakeSalesInvoice = 1` AND `MakeOrderTaking = 1`.
     - When asked for "sales", lead with direct field invoices (`TransactionsHeaders`); if booked sales orders (`OrdersHeaders`) matter, show them as a separate labelled line. Never add the two amounts together.
 
-## Transfers Orders Lifecycle & TransactionsHeaders Types Warning
-`TransfersOrdersHeaders` records movements between warehouse stores and mobile vans (synced from mobile `OT_ConsOrderHF/DF` via `OT_ImportUploadOrders`):
-- **`VouType = 1` (أمر تحميل Load Order)**: Warehouse (`StoreNo`) → Salesperson's Van.
-  - Converted upon approval via `Pro_ConvertLoadOrderToTransaction` to **`TransactionsHeaders` with `TransactionTypeID = 6`**.
-  - Increments (+) `t.SalesPersonItemsBalance` via `Pro_CalcSalespersonItemBalance`.
-- **`VouType = 2` (أمر تفريغ/تنزيل Unload Order)**: Salesperson's Van → Warehouse (`StoreNo`).
-  - Converted upon approval via `Pro_ConvertUnloadOrderToTransaction` to **`TransactionsHeaders` with `TransactionTypeID = 7`**.
-  - Decrements (-) `t.SalesPersonItemsBalance` via `Pro_CalcSalespersonItemBalance`.
-- **CRITICAL QUERY RULE**: Because approved load/unload orders enter `TransactionsHeaders` as types 6 and 7, **NEVER query `TransactionsHeaders` for sales without filtering `TransactionTypeID = 1`**!
+## Transfers orders
+`TransfersOrdersHeaders` / `TransfersOrdersDetails` are stock movements, not sales invoices and not `OrdersHeaders`. Do not map `VouType` or a `TransactionsHeaders.TransactionTypeID` to load or unload; that numbering is client-specific.
+Sales questions still require `TransactionTypeID = 1` and `ISNULL(IsVoid, 0) = 0`, because other transaction types share `TransactionsHeaders`.
 
 ## Inventory & Stock Tables Matrix
 - **`t.SalesPersonItemsBalance`**: The authoritative single source of truth for **Cash Van stock**. Primary key: `(CompanyID, SalesPersonID, ItemCode)`.
