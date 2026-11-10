@@ -123,10 +123,19 @@ _DEFAULT_FOLLOWUPS = [
 
 
 def _user_id(client: str, company_id, subject: str | None) -> str:
-    """DeepSeek user_id (regex [a-zA-Z0-9_-]+): per-user KV-cache isolation,
-    scheduling isolation and audit-trail alignment. Hash of tenant scope +
-    session hash — no PII by construction."""
-    raw = f"{client}|{company_id}|{subject or 'anon'}"
+    """DeepSeek user_id (regex [a-zA-Z0-9_-]+).
+
+    CHATBOT_CACHE_SCOPE=session (default): hash of client|company_id|subject
+    so chats do not share a prefix-cache id.
+    CHATBOT_CACHE_SCOPE=tenant: hash of client|company_id only, so every chat
+    of that company reuses the prefix cache. Subject is ignored. Never drop
+    client or company_id. Session text is not part of this id.
+    """
+    scope = os.environ.get("CHATBOT_CACHE_SCOPE", "session").strip().lower()
+    if scope == "tenant":
+        raw = f"{client}|{company_id}"
+    else:
+        raw = f"{client}|{company_id}|{subject or 'anon'}"
     return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
 
