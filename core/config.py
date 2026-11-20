@@ -8,7 +8,9 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+from core.paths import app_root
+
+BASE_DIR = app_root()
 CLIENTS_DIR = BASE_DIR / "clients"
 
 # Automatically load .env if present

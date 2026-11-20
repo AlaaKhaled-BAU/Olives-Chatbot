@@ -49,7 +49,9 @@ from pathlib import Path
 
 from . import catalog, config
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+from core.paths import app_root
+
+BASE_DIR = app_root()
 CORPUS_DIR = BASE_DIR / "docs_corpus"
 
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$", re.MULTILINE)

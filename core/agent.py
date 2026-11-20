@@ -24,7 +24,9 @@ from pathlib import Path
 from . import catalog, config, docs, gate, hot_cache, llm, locale_ar, memory, metrics, params, reports, sql, tenant_pack, thread, trace, vault, verify
 from .usage import Usage
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+from core.paths import app_root
+
+BASE_DIR = app_root()
 # Live-tested at 6: a model that doesn't already know this schema's exact
 # naming (it isn't a standard one -- guesses like "OSFA_SalesmenAuthorization"
 # are reasonable-sounding but wrong) burns several turns on introspect_schema

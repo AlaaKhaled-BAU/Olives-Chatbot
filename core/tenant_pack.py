@@ -4,7 +4,9 @@ from pathlib import Path
 
 from . import sql
 
-_BASE_DIR = Path(__file__).resolve().parent.parent
+from core.paths import app_root
+
+_BASE_DIR = app_root()
 _SUMMARY_PATH = _BASE_DIR / "knowledge" / "reference" / "tables summary.md"
 
 # Distilled from knowledge/reference/tables summary.md — BO names, not OSFA OT_*.
