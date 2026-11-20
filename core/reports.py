@@ -5,7 +5,9 @@ from pathlib import Path
 
 from . import config, gate, sql
 
-_BASE_DIR = Path(__file__).resolve().parent.parent
+from core.paths import app_root
+
+_BASE_DIR = app_root()
 _TEMPLATES_PATH = _BASE_DIR / "knowledge" / "report_templates" / "templates.json"
 _TOKEN_RE = re.compile(r"[a-zA-Z\u0600-\u06FF]{3,}")
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")

@@ -165,7 +165,7 @@ def snapshot_defaults(client: str) -> dict:
     return {
         "host": os.environ.get("DB_HOST", "127.0.0.1"),
         "port": int(os.environ.get("DB_PORT", "1433")),
-        "user": "chatbot_ro",
+        "user": os.environ.get("DB_USER") or "chatbot_ro",
         "password": "••••••",
         "database": config.load_client(client)["db_name"],
         "bak_mount": os.environ.get("SQL_SNAPSHOT_MOUNT", "/snapshots"),

@@ -11,7 +11,9 @@ import time
 from collections import OrderedDict
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+from core.paths import app_root
+
+BASE_DIR = app_root()
 sys.path.insert(0, str(BASE_DIR))
 
 try:
@@ -622,16 +624,12 @@ def feedback(req: FeedbackRequest):
     return {"ok": True}
 
 
-def _client_names() -> list:
-    return sorted(p.stem for p in (BASE_DIR / "clients").glob("*.yaml") if not p.stem.startswith("_"))
-
-
 @app.get("/health")
 def health():
     provider_ok = llm.provider_health(timeout=5)
 
     clients = {}
-    for name in _client_names():
+    for name in (PINNED_CLIENT,):
         db_ok = False
         try:
             conn = sql.get_conn(name)

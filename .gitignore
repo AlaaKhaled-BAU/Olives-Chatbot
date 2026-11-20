@@ -10,6 +10,8 @@ build/
 dist/
 evals/*_run.log
 evals/*_run_*.log
+evals/*_results_*.json
+*.exe
 .~lock.*
 **/.~lock.*
 
