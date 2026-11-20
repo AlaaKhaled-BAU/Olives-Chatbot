@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['packaging/exe_entry.py'],
+    ['windows_packaging/exe_entry.py'],
     pathex=['.'],
     binaries=[],
     datas=[
