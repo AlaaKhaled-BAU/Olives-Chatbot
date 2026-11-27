@@ -8,15 +8,27 @@ built. Added the other three here, kept as the sole owner of Prometheus
 wiring -- core/agent.py calls these functions, never touches a Counter/
 Histogram object directly, same encapsulation as log_event()."""
 import json
-import subprocess
-import time
+import os
 from pathlib import Path
+import subprocess
+import threading
+import time
 
 from prometheus_client import Counter, Histogram
 
-TRACE_PATH = Path(__file__).resolve().parent.parent / "work" / "trace.jsonl"
-_REPO = TRACE_PATH.parent.parent
+_DEFAULT_TRACE_PATH = Path(__file__).resolve().parent.parent / "work" / "trace.jsonl"
+TRACE_PATH = _DEFAULT_TRACE_PATH
+_REPO = _DEFAULT_TRACE_PATH.parent.parent
 _PREFIX_HASHES: dict[str, str] = {}
+_TRACE_LOCK = threading.Lock()
+
+
+def _resolve_trace_path() -> Path:
+    if TRACE_PATH == _DEFAULT_TRACE_PATH:
+        env_work = os.environ.get("CHATBOT_WORK_DIR")
+        if env_work:
+            return Path(env_work) / "trace.jsonl"
+    return Path(TRACE_PATH)
 
 
 def _git_sha() -> str:
@@ -74,7 +86,8 @@ def log_event(client: str, question: str, event: str, subject: str | None = None
     caller (derived from their bearer token by api/server.py) -- never the
     raw token itself, so a leaked trace file can't be replayed as a
     credential."""
-    TRACE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    target_path = _resolve_trace_path()
+    target_path.parent.mkdir(parents=True, exist_ok=True)
     record = {
         "ts": time.time(), "client": client, "subject": subject,
         "question": question, "event": event,
@@ -82,6 +95,7 @@ def log_event(client: str, question: str, event: str, subject: str | None = None
         "prefix_hash": _PREFIX_HASHES.get(client),
         **fields,
     }
-    with TRACE_PATH.open("a") as f:
-        f.write(json.dumps(record, default=str) + "\n")
+    with _TRACE_LOCK:
+        with target_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, default=str, ensure_ascii=False) + "\n")
     REQUESTS.labels(client=client, event=event).inc()

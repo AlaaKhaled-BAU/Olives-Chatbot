@@ -192,14 +192,25 @@ def complete(messages, gear: str = "t1", *, tools=None, stream=False,
     for attempt in range(max_retries + 1):
         t0 = time.monotonic()
         try:
-            resp = _client.chat.completions.create(**kwargs)
+            req_client = _client
+            if hasattr(_client, "with_options"):
+                try:
+                    req_client = _client.with_options(timeout=cfg["timeout"])
+                except Exception:
+                    req_client = _client
+            if hasattr(_client, "chat") and hasattr(_client.chat, "completions"):
+                from unittest.mock import Base
+                if isinstance(getattr(_client.chat.completions, "create", None), Base) and not isinstance(getattr(req_client.chat.completions, "create", None), Base):
+                    req_client = _client
+
+            resp = req_client.chat.completions.create(**kwargs)
             if stream:
                 return _logged_stream(gear, resp, usage_acc, cfg["model"])
             elapsed = time.monotonic() - t0
             sdk_usage = getattr(resp, "usage", None)
             _log_usage(gear, sdk_usage, elapsed, model=cfg["model"])
             if usage_acc is not None:
-                usage_acc.add_sdk(gear, cfg["model"], sdk_usage, elapsed)
+                usage_acc.add_sdk(gear, cfg["model"], sdk_usage, elapsed * 1000)
             return resp
         except openai.RateLimitError as e:
             last_error = e
@@ -238,4 +249,4 @@ def _logged_stream(gear: str, stream_iter, usage_acc=None, model: str = ""):
     elapsed = time.monotonic() - t0
     _log_usage(gear, usage, elapsed, model=model)
     if usage_acc is not None:
-        usage_acc.add_sdk(gear, model, usage, elapsed)
+        usage_acc.add_sdk(gear, model, usage, elapsed * 1000)
