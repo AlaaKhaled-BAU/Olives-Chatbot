@@ -614,13 +614,14 @@ def test_sql_has_tenant_views_cache():
     from core import sql
     from unittest.mock import MagicMock
 
-    mock_conn = MagicMock()
+    mock_conn = MagicMock(spec=[])  # simulate C extension object without __dict__ or _server_key
     mock_cursor = MagicMock()
-    mock_conn.cursor.return_value = mock_cursor
+    mock_conn.cursor = MagicMock(return_value=mock_cursor)
     mock_cursor.fetchone.return_value = [1]
-    mock_conn._server_key = ("127.0.0.1", 1433, "test_cache_db")
+    server_key = ("127.0.0.1", 1433, "test_cache_db")
+    sql._CONN_KEYS[id(mock_conn)] = server_key
 
-    sql._TENANT_VIEW_SUPPORT.pop(mock_conn._server_key, None)
+    sql._TENANT_VIEW_SUPPORT.pop(server_key, None)
 
     # First call queries DB
     assert sql.has_tenant_views(mock_conn) is True
