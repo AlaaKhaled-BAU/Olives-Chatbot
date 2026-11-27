@@ -54,7 +54,7 @@ def get_conn(client: str):
             conn_kwargs["user"] = override.get("user", "")
             conn_kwargs["password"] = override.get("password", "")
         conn = pymssql.connect(**conn_kwargs)
-        conn._server_key = (host, port, database)
+        _CONN_KEYS[id(conn)] = (host, port, database)
         return conn
     user = os.environ.get("DB_USER") or "chatbot_ro"
     password = os.environ.get("DB_PASSWORD")
@@ -74,17 +74,18 @@ def get_conn(client: str):
         database=database,
         timeout=30, login_timeout=10,
     )
-    conn._server_key = (host, port, database)
+    _CONN_KEYS[id(conn)] = (host, port, database)
     return conn
 
 
+_CONN_KEYS: dict[int, tuple[str, int, str]] = {}
 _TENANT_VIEW_SUPPORT: dict[tuple | str, bool] = {}
 
 
 def has_tenant_views(conn, server_key: tuple | str | None = None) -> bool:
     """Check if the connected database has the t schema created."""
     if server_key is None:
-        server_key = getattr(conn, "_server_key", None)
+        server_key = _CONN_KEYS.get(id(conn)) or getattr(conn, "_server_key", None)
     if server_key is None:
         try:
             cur = conn.cursor()
