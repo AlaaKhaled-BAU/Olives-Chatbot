@@ -1,180 +1,187 @@
 # Olives Client Chatbot
 
-Arabic-first assistant that answers from **indexed documentation** and **read-only SQL** against the customer’s **Olives_BO** database. This repository is the **pilot FastAPI service** (`api/server.py`) plus the agent stack in `core/`; a small static UI ships under `static/`.
+An Arabic-first, tenant-isolated AI copilot for **Olives_BO** (an enterprise FMCG distribution and van-sales ERP running on SQL Server and IIS). It answers operational "how-to" questions from indexed product documentation and executes verified, read-only natural-language-to-SQL (NL2SQL) queries against live customer databases.
 
-**Operator’s contract:** the runtime uses a dedicated SQL login and tenant-scoped views (`t.*`). It does not use the IIS application login or SA at request time. Details and non-negotiables live in **[AGENTS.md](AGENTS.md)**.
+> **Security Contract:** At runtime, the service connects exclusively through a restricted `chatbot_ro` SQL Server login with zero base-table grants and zero `EXECUTE` permissions. All data access is mediated by `t.*` views scoped via `SESSION_CONTEXT('CompanyID')` and validated through a `sqlglot` AST safety gate.
 
 ---
 
-## What you get
+## Architecture
 
-| Layer | Role |
-|--------|------|
-| **FastAPI** | `POST /ask` (SSE), `GET /context`, `GET /health`, `GET /metrics`, static UI |
-| **Agent** | Tool loop: doc search, schema help, gated `SELECT` / metrics / reports |
-| **SQL** | `pymssql` + `sqlglot` gate + `SESSION_CONTEXT('CompanyID')` via `core/sql.py` |
-| **LLM** | OpenAI-compatible client; default provider is **DeepSeek** (`core/llm.py`) |
-| **Memory** | SQLite: plan cache, verified queries, short result cache (`work/`, gitignored) |
-| **Knowledge** | FTS over assembled corpus; large Obsidian vault under `obsidian/olives/` |
+```
+Browser / Embedded Widget (static/index.html + app.js, Arabic RTL)
+  │  POST /ask (SSE + heartbeat), GET /context, POST /feedback, GET /metrics
+  ▼
+FastAPI Service (api/server.py)
+  ├─ Env-pinned tenant (CHATBOT_CLIENT → clients/<name>.yaml; browser cannot switch)
+  ├─ Per-session rate limiting (slowapi, 30 req/min) & LRU session state
+  └─ SSE stream pump with keep-alive heartbeats & disconnect cancellation
+  │
+  ▼
+Agent Pipeline (core/agent.py)
+  ├─ 1. Scope & Guards     ──► CompanyID resolution (core/params.py) + empty-calendar guard
+  ├─ 2. Routing & Memory   ──► Intent router (fast-count / report / how-to / NL2SQL)
+  │                            SQLite plan, result & few-shot caches (core/memory.py)
+  ├─ 3. Prompt Assembly    ──► Byte-stable static prefix (system + playbook + t.* schema + vault cards)
+  │                            followed by dynamic per-turn context (KV-cache friendly)
+  ├─ 4. Tool Loop (≤12)    ──► DeepSeek gears (f0 / t1 / t2 / p) via core/llm.py
+  │                            Tools: run_select, run_metric, run_report, lookup_hot,
+  │                                   search_docs, search_schema_notes, get_joins, analyze, ask_user
+  └─ 5. Verification & Out ──► Header-vs-line grain check (core/verify.py), JSON envelope,
+                               JSONL tracing & Prometheus metrics (core/trace.py)
+  │
+  ├─────────────────────────┬─────────────────────────┐
+  ▼                         ▼                         ▼
+SQL Safety & Exec        Knowledge & Schema        L1 / L2 Caches
+core/gate.py (sqlglot)   core/docs.py (FTS5)       work/<client>/cache.sqlite
+core/sql.py (pymssql)    core/vault.py (cards)     core/hot_cache.py (master TTL)
+  │
+  ▼
+SQL Server (Olives_BO)
+  └─ Login: chatbot_ro → Schema: t.* views → WHERE CompanyID = SESSION_CONTEXT('CompanyID')
+```
+
+---
+
+## Key Engineering Highlights
+
+### 1. Five-Layer Tenant Isolation & SQL Safety Wall
+No single layer trusts another:
+1. **Tenant Pinning:** `CHATBOT_CLIENT` in `.env` pins the deployment to a single `clients/<name>.yaml`; request bodies cannot override the tenant.
+2. **Least-Privilege SQL Login:** `chatbot_ro` (`db/01_readonly_login.sql`) is intentionally **not** in `db_datareader` and holds zero base-table `SELECT` or `EXECUTE` grants.
+3. **Engine-Enforced View Scoping:** `db/02_tenant_views.sql` generates `t.*` views filtered by `SESSION_CONTEXT('CompanyID')`. Unset session context evaluates to `NULL` and fails closed to zero rows.
+4. **AST-Level SQL Gate (`core/gate.py`):** Parses every query with `sqlglot` (TSQL dialect). Enforces single `SELECT` statements, blocks DDL/DML/`EXEC`/`OPENROWSET`/`xp_*`, rejects cross-company literals, injects tenant predicates, N-prefixes Arabic string literals (`N'...'`), and caps results (`TOP 200`).
+5. **Context & UI Caps:** Model context is capped at 50 rows and UI tables at 100 rows to prevent token bloat and OOMs.
+
+### 2. Cost & Latency Optimization via DeepSeek Gears & Prefix Caching
+- **Gear Routing (`core/llm.py`):** Maps task complexity to model/thinking profiles rather than hardcoding model names:
+  - `f0` (`deepseek-v4-flash`, thinking off): docs Q&A, fast-count SQL, report paths, JSON envelope formatting.
+  - `t1` (`deepseek-v4-flash`, thinking low): standard interactive NL2SQL.
+  - `t2` (`deepseek-v4-flash`, thinking high): mid-turn escalation on gate/tool errors or analytical queries.
+  - `p` (`deepseek-v4-pro`, thinking high): non-streaming rescue path for empty-final retries only.
+- **Byte-Stable Prefix Caching:** System instructions, join playbook, queryable `t.*` schema, and compiled vault cards are placed in an immutable leading prefix (`messages[0..2]`) with a fixed tool list per turn, preserving DeepSeek's disk KV-cache across turns.
+- **Thinking + Tool Echo:** Accumulates and echoes `reasoning_content` across multi-turn tool calls as required by DeepSeek's thinking API contract.
+
+### 3. Domain-Specific Reliability & Arabic-First Design
+- **Arabic Morphology & Normalization (`core/docs.py`, `core/locale_ar.py`):** FTS5 search handles Arabic normalization, singular/plural/prefixed forms, and bilingual schema preservation (schema identifiers stay in English; Arabic string literals receive `N'...'`).
+- **Grain & Calendar Honesty (`core/verify.py`, `core/agent.py`):** Detects header-vs-line `COUNT` traps when joining `TransactionsHeaders` with `TransactionsDetails`, and intercepts relative-date queries (e.g., "this month") when the database's latest posting period is empty before spending LLM tokens.
+- **Human-in-the-Loop Learning (`POST /feedback`):** Thumbs-up feedback re-validates the executed SQL through `core/gate.py` before promoting it to `verified_queries` few-shots; thumbs-down invalidates the plan cache and records a negative example.
+
+---
+
+## Repository Layout
+
+| Path | Purpose |
+|------|---------|
+| `api/server.py` | FastAPI HTTP/SSE server, rate limiting, session store, `/health`, `/metrics`, `/feedback` |
+| `core/agent.py` | Turn pipeline, intent router, tool loop, budget enforcement, answer contract |
+| `core/gate.py` | `sqlglot` AST validator/rewriter (single `SELECT`, `TOP` injection, tenant predicates) |
+| `core/sql.py` | `chatbot_ro` connection factory, `SESSION_CONTEXT` binding, `run_select` |
+| `core/llm.py` | OpenAI-compatible DeepSeek adapter, gear table, retry policy, token/cache accounting |
+| `core/memory.py` | SQLite caches (`verified_queries`, `negative_queries`, `plan_cache`, `result_cache`) scoped by `client + CompanyID + model + schema_version` |
+| `core/docs.py` | FTS5 documentation search with Arabic morphology support |
+| `core/vault.py` | Compiled Obsidian vault table/relation cards and join lookup |
+| `core/metrics.py` & `core/reports.py` | Deterministic parameterized `SELECT` templates for KPIs and certified reports |
+| `core/hot_cache.py` & `core/tenant_pack.py` | L1 master-table TTL cache and live per-company prompt facts |
+| `core/verify.py` & `core/trace.py` | Header/line grain verifier, JSONL event tracing, Prometheus metrics |
+| `db/` | Setup-time SQL (`01_readonly_login.sql`, `02_tenant_views.sql`) and table classification |
+| `setup/` | SA bootstrap scripts: DB restore, schema introspection, `t.*` view creation, FTS indexing, vault card compilation |
+| `clients/` | Per-tenant YAML configs (`_example.yaml` template; real client configs are gitignored) |
+| `obsidian/olives/` | Domain knowledge vault (tables, procedures, relations, runbooks) |
+| `knowledge/` | Curated user-guide and reference markdown sources for FTS5 indexing |
+| `static/` | Arabic RTL web chat UI |
+| `evals/` & `tests/` | Unit test suite (`pytest`) and offline accuracy/isolation evaluation batteries |
+| `windows_packaging/` & `docker/` | PyInstaller standalone Windows `.exe` entry point and Docker build/compose helpers |
 
 ---
 
 ## Prerequisites
 
-- **Python 3.13** (see `requirements.txt`; do not rely on older interpreters).
-- **SQL Server** reachable from the app host, with **Olives_BO** (or your target DB) and scripts from `setup/` applied so **`chatbot_ro`** and **`t.`** views exist (`db/`, `setup/03_apply_db_sql.py`).
-- **Tenant config:** `clients/<name>.yaml` (real files are gitignored; copy from `clients/_example.yaml`).
-- **Secrets:** create `.env` from `.env.example` (never commit `.env`).
+- **Python 3.13** (`python3.13` on Linux/macOS, `py -3.13` on Windows).
+- **SQL Server** reachable from the host with `Olives_BO` (or target database) restored.
+- **Environment & Client Config:** `.env` (from `.env.example`) and `clients/<name>.yaml` (from `clients/_example.yaml`).
 
 ---
 
-## Quick start
+## Quick Start
 
-### 1. Install dependencies
+### 1. Install Dependencies
 
 ```bash
 python3.13 -m pip install -r requirements.txt
 ```
 
-On Windows, if you use the launcher:
-
-```powershell
-py -3.13 -m pip install -r requirements.txt
-```
-
-### 2. Configure environment
+### 2. Configure Environment
 
 ```bash
 cp .env.example .env
 ```
 
-Set at minimum:
+Set the required variables in `.env`:
 
-- `DEEPSEEK_API_KEY` — primary secret for the default DeepSeek endpoint (or set `CHATBOT_LLM_API_KEY` when using `CHATBOT_LLM_BASE_URL`).
-- `CHATBOT_CLIENT` — must match a `clients/<name>.yaml` file on disk.
-- `DB_SA_PASSWORD` — only for **setup** scripts that connect as SA (not used by the running API for chat SQL).
+| Variable | Description |
+|----------|-------------|
+| `CHATBOT_CLIENT` | Pinned tenant matching `clients/<name>.yaml` (**required**) |
+| `DEEPSEEK_API_KEY` | DeepSeek API key (or `CHATBOT_LLM_API_KEY` + `CHATBOT_LLM_BASE_URL` for compatible endpoints) |
+| `CHATBOT_MODEL_FAST` / `CHATBOT_MODEL_HEAVY` | Model IDs for interactive vs. rescue gears |
+| `DB_HOST` / `DB_PORT` | SQL Server host and port (default `127.0.0.1:1433`) |
+| `DB_SA_USER` / `DB_SA_PASSWORD` | SA credentials used **only** by `setup/` scripts |
 
-See **[.env.example](.env.example)** for DB host/port and optional LLM overrides.
+### 3. Bootstrap Database & Indexes (Setup-Time SA)
 
-### 3. Bootstrap against an existing database (SA)
-
-Skip if `schema_cache`, `t.` views, and docs index are already in place for your client.
+Applies `chatbot_ro`, builds `t.*` tenant views, introspects live schema to `work/<client>/schema_cache.json`, and builds the FTS5 docs index:
 
 ```bash
-set -a && source .env && set +a   # Linux / WSL / Git Bash
+set -a && source .env && set +a
 python3.13 setup/native_bootstrap.py --client <client_name>
 ```
 
-Restore from `.bak` first when needed (native SQL Server, snapshot path as in `AGENTS.md`):
+If restoring from a `.bak` snapshot first:
 
 ```bash
 python3.13 setup/01_db_up.py --mode native --db-name Olives_BO --bak "<path-to.bak>"
 python3.13 setup/native_bootstrap.py --client <client_name> --db-name Olives_BO
 ```
 
-### 4. Run the API
-
-**Linux / macOS / WSL** (loads `.env`, enforces key presence):
+To refresh schema metadata and `t.*` views after customer schema changes:
 
 ```bash
+python3.13 setup/refresh.py --client <client_name>
+```
+
+### 4. Run the Service
+
+```bash
+# Linux / macOS / WSL
 ./run.sh
-```
 
-**Windows** (PowerShell, same port convention):
-
-```powershell
+# Windows (PowerShell)
 .\run.ps1
-```
 
-**Manual** (after exporting env vars):
-
-```bash
+# Or directly
 python3.13 -m uvicorn api.server:app --host 127.0.0.1 --port 8100
 ```
 
-Open **http://127.0.0.1:8100**. The UI expects the tenant pinned in `CHATBOT_CLIENT`; the browser does not switch YAML clients.
+Open `http://127.0.0.1:8100`.
 
 ---
 
-## Environment variables (reference)
-
-| Variable | Purpose |
-|----------|---------|
-| `CHATBOT_CLIENT` | Pinned tenant; loads `clients/<name>.yaml` at startup (**required**) |
-| `DEEPSEEK_API_KEY` | Default API key for DeepSeek (`https://api.deepseek.com`) |
-| `CHATBOT_LLM_BASE_URL` | Optional alternate OpenAI-compatible base URL |
-| `CHATBOT_LLM_API_KEY` | Optional key when not using `DEEPSEEK_API_KEY` alone |
-| `CHATBOT_MODEL_FAST` / `CHATBOT_MODEL_HEAVY` | Model names for interactive vs rescue gears |
-| `DB_HOST` / `DB_PORT` | SQL Server endpoint for runtime and setup tools (default `127.0.0.1:1433`) |
-| `DB_SA_USER` / `DB_SA_PASSWORD` | Setup only — **not** the chatbot runtime login |
-
-Runtime SQL uses **`chatbot_ro`** as described in `db/01_readonly_login.sql`; keep SA credentials out of `core/` and `api/`.
-
----
-
-## When the customer schema changes
-
-Introspection and `t.` views do not auto-heal in the pilot. Re-run as SA:
+## Testing & Evaluation
 
 ```bash
-python3.13 setup/refresh.py --client <name>
+# Unit & integration tests (offline tests run without live DB; multi-client/isolation tests require bootstrapped clients)
+python3.13 -m pytest -q
+
+# Offline accuracy & isolation evaluation harness
+python3.13 evals/run_evals.py
 ```
 
-This rebuilds `work/<client>/schema_cache.json` and reapplies tenant views. See **FIXPLAN.md** (e.g. M7) for edge cases that were live-tested.
-
 ---
 
-## Tests and evals
+## Security & Operational Rules
 
-```bash
-python3.13 -m pytest
-python3.13 evals/run_evals.py    # optional harness / gate
-```
-
-Eval assets and large result JSON under `evals/` are for quality gates and offline analysis, not required to boot the server.
-
----
-
-## Repository layout (high level)
-
-```
-api/           FastAPI app and HTTP surface
-core/          Agent, LLM adapter, SQL, gate, memory, metrics, tracing
-static/        Chat UI (served by FastAPI)
-setup/         DB bootstrap, introspection, docs corpus, refresh
-db/            SQL for chatbot_ro and t.* tenant views
-knowledge/     Source markdown for FTS corpus (via assemble + index scripts)
-obsidian/      Customer vault (tables, relations, runbooks) — large, load-bearing
-tests/         Pytest suite
-evals/         Offline eval runners and fixtures
-sqlmcp/        MCP-style SQL tooling (optional; see sqlmcp/README.md)
-docker/        Optional container build helpers
-```
-
-Optional: **`obsidian-mcp-server.py`** for editor MCP integration; runtime chat uses FTS, not MCP, unless you wire it separately.
-
----
-
-## Documentation map
-
-| Document | Contents |
-|----------|-----------|
-| [AGENTS.md](AGENTS.md) | Golden rules, architecture, env, setup commands (**read first**) |
-| [PLAN.md](PLAN.md) | Original phased plan (some paths superseded by DeepSeek-direct stack) |
-| [FIXPLAN.md](FIXPLAN.md) | Known gaps and tested fixes |
-| [TOOLS-REVIEW.md](TOOLS-REVIEW.md) | Tooling decisions |
-| [plans/deepseek_swap_parallel_plan.md](plans/deepseek_swap_parallel_plan.md) | LLM gear semantics and API notes |
-
----
-
-## Security notes
-
-- Do not commit `.env`, `work/`, real `clients/*.yaml`, or database backups.
-- Do not grant base-table `SELECT` to `chatbot_ro`; tenant access is through **`t.`** views and procedure allow-lists as defined in the gate and catalog.
-- Procedure bodies are not returned to the model or end users (see **AGENTS.md**).
-
----
-
-## License / upstream
-
-Internal Olives pilot; coordinate with the repo owner for redistribution and customer deployments.
+- **Never** commit `.env`, `work/`, `.bak` files, or real `clients/*.yaml` configs.
+- **Never** grant `db_datareader` or base-table `SELECT` to `chatbot_ro`, and never use SA or IIS `cds` credentials in `core/` or `api/`.
+- **Never** return stored procedure bodies to the model or end users.
+- **Always** route runtime SQL through `core/sql.py` + `core/gate.py` so `SESSION_CONTEXT` and AST checks cannot be bypassed.
+- See [AGENTS.md](AGENTS.md) and [docs/SYSTEM_BLUEPRINT.md](docs/SYSTEM_BLUEPRINT.md) for the full architectural invariants and lifecycle documentation.
