@@ -5,11 +5,31 @@ result_cache stores identical SQL row payloads for ~45s only — never treat
 cached numbers or answer text as long-term truth."""
 import hashlib
 import json
-import sqlite3
-import time
+import os
 from pathlib import Path
+import sqlite3
+import threading
+import time
 
-DB_PATH = Path(__file__).resolve().parent.parent / "work" / "cache.sqlite"
+_DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "work" / "cache.sqlite"
+DB_PATH = _DEFAULT_DB_PATH
+
+_INIT_LOCK = threading.Lock()
+_INITIALIZED_PATHS: set[str] = set()
+
+_NORM_TRANS = str.maketrans({
+    "؟": "", "?": "", ".": "", "!": "", "،": "", ",": "",
+    "أ": "ا", "إ": "ا", "آ": "ا",
+})
+
+
+def _resolve_db_path() -> Path:
+    if DB_PATH == _DEFAULT_DB_PATH:
+        env_work = os.environ.get("CHATBOT_WORK_DIR")
+        if env_work:
+            return Path(env_work) / "cache.sqlite"
+    return Path(DB_PATH)
+
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS verified_queries (
@@ -44,44 +64,66 @@ CREATE TABLE IF NOT EXISTS result_cache (
 """
 
 
-def _conn():
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.executescript(_SCHEMA)
-    for stmt in (
-        "ALTER TABLE plan_cache ADD COLUMN client TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE verified_queries ADD COLUMN source TEXT NOT NULL DEFAULT 'unknown'",
-        "ALTER TABLE verified_queries ADD COLUMN company_id INTEGER NOT NULL DEFAULT 0",
-    ):
+def _ensure_schema(path: Path):
+    path_str = str(path.resolve())
+    if path_str in _INITIALIZED_PATHS:
+        return
+    with _INIT_LOCK:
+        if path_str in _INITIALIZED_PATHS:
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(path, timeout=5.0)
         try:
-            conn.execute(stmt)
-        except sqlite3.OperationalError:
-            pass
-    conn.execute(
-        "CREATE VIRTUAL TABLE IF NOT EXISTS verified_queries_fts USING fts5("
-        "question_norm, proc_or_sql, client UNINDEXED, company_id UNINDEXED)"
-    )
-    # backfill fts if empty
-    try:
-        count = conn.execute("SELECT COUNT(*) FROM verified_queries_fts").fetchone()[0]
-        if count == 0:
-            rows = conn.execute(
-                "SELECT client, company_id, question_norm, proc_or_sql FROM verified_queries "
-                "WHERE source IN ('user_feedback', 'eval')"
-            ).fetchall()
-            for r in rows:
-                conn.execute(
-                    "INSERT INTO verified_queries_fts (question_norm, proc_or_sql, client, company_id) "
-                    "VALUES (?, ?, ?, ?)",
-                    (r[2], r[3], r[0], str(r[1])),
-                )
-    except sqlite3.OperationalError:
-        pass
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA busy_timeout=5000")
+            conn.executescript(_SCHEMA)
+            for stmt in (
+                "ALTER TABLE plan_cache ADD COLUMN client TEXT NOT NULL DEFAULT ''",
+                "ALTER TABLE verified_queries ADD COLUMN source TEXT NOT NULL DEFAULT 'unknown'",
+                "ALTER TABLE verified_queries ADD COLUMN company_id INTEGER NOT NULL DEFAULT 0",
+            ):
+                try:
+                    conn.execute(stmt)
+                except sqlite3.OperationalError:
+                    pass
+            conn.execute(
+                "CREATE VIRTUAL TABLE IF NOT EXISTS verified_queries_fts USING fts5("
+                "question_norm, proc_or_sql, client UNINDEXED, company_id UNINDEXED)"
+            )
+            # backfill fts if empty
+            try:
+                count = conn.execute("SELECT COUNT(*) FROM verified_queries_fts").fetchone()[0]
+                if count == 0:
+                    rows = conn.execute(
+                        "SELECT client, company_id, question_norm, proc_or_sql FROM verified_queries "
+                        "WHERE source IN ('user_feedback', 'eval')"
+                    ).fetchall()
+                    for r in rows:
+                        conn.execute(
+                            "INSERT INTO verified_queries_fts (question_norm, proc_or_sql, client, company_id) "
+                            "VALUES (?, ?, ?, ?)",
+                            (r[2], r[3], r[0], str(r[1])),
+                        )
+            except sqlite3.OperationalError:
+                pass
+            conn.commit()
+            _INITIALIZED_PATHS.add(path_str)
+        finally:
+            conn.close()
+
+
+def _conn():
+    path = _resolve_db_path()
+    _ensure_schema(path)
+    conn = sqlite3.connect(path, timeout=5.0)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     return conn
 
 
 def normalize_question(question: str) -> str:
-    return " ".join(question.strip().lower().split())
+    cleaned = question.translate(_NORM_TRANS)
+    return " ".join(cleaned.strip().lower().split())
 
 
 def cache_key(

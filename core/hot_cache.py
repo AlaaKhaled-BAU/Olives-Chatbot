@@ -3,7 +3,7 @@ import hashlib
 import json
 import time
 
-from . import config, memory, sql
+from . import cache_loader, config, memory, sql
 
 TTL_SECONDS = 600  # 10 minutes
 
@@ -48,7 +48,7 @@ _CUSTOMERS_BASE_COLS = ("ID", "Name", "ForeignName", "IsSuspended")
 
 
 def _schema_cache(client: str) -> dict:
-    return json.loads((config.work_dir(client) / "schema_cache.json").read_text())
+    return cache_loader.load_schema_cache(client)
 
 
 def _table_columns(client: str, table: str) -> set[str]:
@@ -105,11 +105,12 @@ def lookup(table_name: str, company_id: int, client: str) -> dict:
     out = {"table": base, "rows": rows, "source": source}
     if codebook_alias:
         out["requested"] = requested
-        out["note"] = (
-            "LogActionTransaction is a high-volume fact log and is not snapshotted. "
-            "These rows are t.LogActions (ActionID codebook). "
-            "Customer visits: ActionID N'0' CustEntry / N'3' CustLeave, Data1=customer. "
-            "Do not count ActionID 7 SystemLogin. Document actions 4/5/9/12 use Data1=year, Data2=doc no. "
-            "Query facts with run_select on t.LogActionTransaction."
-        )
+        if requested.lower() == "logactiontransaction":
+            out["note"] = (
+                "LogActionTransaction is a high-volume fact log and is not snapshotted. "
+                "These rows are t.LogActions (ActionID codebook). "
+                "Customer visits: ActionID N'0' CustEntry / N'3' CustLeave, Data1=customer. "
+                "Do not count ActionID 7 SystemLogin. Document actions 4/5/9/12 use Data1=year, Data2=doc no. "
+                "Query facts with run_select on t.LogActionTransaction."
+            )
     return out

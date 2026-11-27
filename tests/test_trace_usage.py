@@ -99,3 +99,82 @@ def test_complete_non_stream_records_usage():
         llm.complete([{"role": "user", "content": "hi"}], gear="f0", usage_acc=usage)
     assert usage.totals()["prompt_tokens"] == 7
     assert usage.totals()["calls"][0]["gear"] == "f0"
+
+
+def test_llm_per_gear_timeout():
+    recorded_timeouts = []
+
+    class DummyClient:
+        def __init__(self, timeout=None):
+            self.timeout = timeout
+            self.chat = types.SimpleNamespace(
+                completions=types.SimpleNamespace(
+                    create=lambda **kw: types.SimpleNamespace(
+                        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="ok"))],
+                        usage=types.SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+                    )
+                )
+            )
+
+        def with_options(self, timeout=None):
+            recorded_timeouts.append(timeout)
+            return DummyClient(timeout=timeout)
+
+    dummy = DummyClient()
+    with patch.object(llm, "_client", dummy):
+        with patch.object(llm, "llm_api_key", return_value="test-key"):
+            llm.complete([{"role": "user", "content": "hi"}], gear="f0")
+            assert recorded_timeouts[-1] == 30
+            llm.complete([{"role": "user", "content": "hi"}], gear="t1")
+            assert recorded_timeouts[-1] == 60
+            llm.complete([{"role": "user", "content": "hi"}], gear="t2")
+            assert recorded_timeouts[-1] == 90
+            llm.complete([{"role": "user", "content": "hi"}], gear="p")
+            assert recorded_timeouts[-1] == 300
+
+
+def test_llm_usage_recorded_in_milliseconds():
+    usage = Usage()
+    fake_resp = types.SimpleNamespace(
+        choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="ok"))],
+        usage=types.SimpleNamespace(prompt_tokens=5, completion_tokens=2, total_tokens=7),
+    )
+    with patch.object(llm._client.chat.completions, "create", return_value=fake_resp):
+        with patch.object(llm, "llm_api_key", return_value="test-key"):
+            llm.complete([{"role": "user", "content": "hi"}], gear="f0", usage_acc=usage)
+    # The elapsed time in ms should be > 0 (typically 0.1 ms - a few ms)
+    call_entry = usage.totals()["calls"][0]
+    assert call_entry["ms"] >= 0.0
+    # Streamed call elapsed in ms
+    chunk = types.SimpleNamespace(
+        choices=[],
+        usage=types.SimpleNamespace(prompt_tokens=2, completion_tokens=1, total_tokens=3),
+    )
+    stream_usage = Usage()
+    list(llm._logged_stream("f0", iter([chunk]), stream_usage, "test-model"))
+    assert stream_usage.totals()["calls"][0]["ms"] >= 0.0
+
+
+def test_trace_utf8_logging(tmp_path, monkeypatch):
+    trace_file = tmp_path / "trace.jsonl"
+    monkeypatch.setattr(trace, "TRACE_PATH", trace_file)
+    arabic_q = "كم مبيعات يوليو وأغسطس؟"
+    arabic_note = "تجربة التحقق من دعم اللغة العربية"
+    trace.log_event("morec", arabic_q, event="answer", note=arabic_note)
+
+    content = trace_file.read_text(encoding="utf-8")
+    assert arabic_q in content
+    assert arabic_note in content
+
+
+def test_trace_honors_chatbot_work_dir_when_default(tmp_path, monkeypatch):
+    monkeypatch.setattr(trace, "TRACE_PATH", trace._DEFAULT_TRACE_PATH)
+    monkeypatch.setenv("CHATBOT_WORK_DIR", str(tmp_path / "custom_work"))
+
+    resolved = trace._resolve_trace_path()
+    assert resolved == tmp_path / "custom_work" / "trace.jsonl"
+
+    # Respects monkeypatch
+    monkeypatch.setattr(trace, "TRACE_PATH", tmp_path / "other_trace.jsonl")
+    assert trace._resolve_trace_path() == tmp_path / "other_trace.jsonl"
+

@@ -32,7 +32,7 @@ import re
 
 import yaml
 
-from . import config
+from . import cache_loader, config
 
 CLIENT_NAME_TOKENS = {
     "abutawileh", "abuoda", "alameen", "alalameen", "alpha", "awa2el", "awael",
@@ -51,7 +51,7 @@ _SEGMENT_RE = re.compile(r"[^a-z0-9]+")
 
 
 def _schema_cache(client_name: str):
-    return json.loads((config.work_dir(client_name) / "schema_cache.json").read_text())
+    return cache_loader.load_schema_cache(client_name)
 
 
 def _registered_client_tokens() -> set:
@@ -78,9 +78,7 @@ def _entitled(proc_name: str, own_tokens: set, all_tokens: set) -> bool:
     return hit <= own_tokens  # entitled only if every hit is this client's own name
 
 
-def for_client(client_name: str, own_name_aliases=None) -> dict:
-    """{proc_name: [params]} entitled to this client: generic procs plus any
-    carrying the client's own name; excludes anything naming another client."""
+def _compute_for_client(client_name: str, own_name_aliases=None) -> dict:
     own_tokens = {a.lower() for a in (own_name_aliases or [client_name])}
     all_tokens = CLIENT_NAME_TOKENS | _registered_client_tokens()
     return {
@@ -88,6 +86,12 @@ def for_client(client_name: str, own_name_aliases=None) -> dict:
         for name, params in _schema_cache(client_name)["procs"].items()
         if _entitled(name, own_tokens, all_tokens)
     }
+
+
+def for_client(client_name: str, own_name_aliases=None) -> dict:
+    """{proc_name: [params]} entitled to this client: generic procs plus any
+    carrying the client's own name; excludes anything naming another client."""
+    return cache_loader.load_catalog_procs(client_name, own_name_aliases)
 
 
 def excluded_count(client_name: str, own_name_aliases=None) -> int:
