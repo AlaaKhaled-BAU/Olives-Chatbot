@@ -224,18 +224,46 @@ def _reject_cross_company_literals(stmt, company_id: int, schema_cache: dict):
                             )
 
 
+def _conjunctive_terms(expr):
+    """Yield all terms in a top-level AND conjunction, unwrapping Parens and recursing into exp.And only."""
+    if expr is None:
+        return
+    stack = [expr]
+    while stack:
+        node = stack.pop()
+        while isinstance(node, exp.Paren):
+            node = node.this
+        if isinstance(node, exp.And):
+            stack.append(node.expression)
+            stack.append(node.this)
+        else:
+            yield node
+
+
 def _tenant_pred_satisfied(where_expr, alias: str, col_name: str, company_id: int, bare: str) -> bool:
     if where_expr is None:
         return False
     cid = int(company_id)
-    for eq in where_expr.find_all(exp.EQ):
-        if not isinstance(eq.this, exp.Column):
+    for term in _conjunctive_terms(where_expr):
+        while isinstance(term, exp.Paren):
+            term = term.this
+        if not isinstance(term, exp.EQ):
             continue
-        if not isinstance(eq.expression, exp.Literal) or not eq.expression.is_int:
-            continue
-        if int(eq.expression.this) != cid:
-            continue
-        if _col_matches(eq.this, alias, col_name, bare):
+        if (
+            isinstance(term.this, exp.Column)
+            and isinstance(term.expression, exp.Literal)
+            and term.expression.is_int
+            and int(term.expression.this) == cid
+            and _col_matches(term.this, alias, col_name, bare)
+        ):
+            return True
+        if (
+            isinstance(term.expression, exp.Column)
+            and isinstance(term.this, exp.Literal)
+            and term.this.is_int
+            and int(term.this.this) == cid
+            and _col_matches(term.expression, alias, col_name, bare)
+        ):
             return True
     return False
 
@@ -255,7 +283,7 @@ def _append_where(select: exp.Select, predicate: exp.Expression):
     if where is None:
         select.set("where", exp.Where(this=predicate))
     else:
-        select.set("where", exp.Where(this=exp.And(this=where.this, expression=predicate)))
+        select.set("where", exp.Where(this=exp.And(this=exp.paren(where.this), expression=predicate)))
 
 
 def _inject_tenant_on_select(select: exp.Select, company_id: int, schema_cache: dict):
@@ -279,9 +307,15 @@ def _inject_tenant_predicates(stmt, company_id: int, schema_cache: dict):
     _verify_tenant_coverage(stmt, company_id, schema_cache)
 
 
-def _skip_tenant_rewrite(raw: str) -> bool:
-    lower = raw.lower()
-    return "information_schema" in lower or "sys." in lower
+def _skip_tenant_rewrite(stmt) -> bool:
+    cte_names = {c.alias_or_name.lower() for c in stmt.find_all(exp.CTE)}
+    non_cte_tables = [
+        tbl for tbl in stmt.find_all(exp.Table)
+        if _table_bare_name(tbl) not in cte_names
+    ]
+    if not non_cte_tables:
+        return False
+    return all((tbl.db or "").lower() == "information_schema" for tbl in non_cte_tables)
 
 
 def validate(
@@ -328,10 +362,19 @@ def validate(
     if next(stmt.find_all(_WRITE_TYPES), None) is not None:
         raise GateError("write/DDL is not allowed inside a SELECT")
 
+    cte_names = {c.alias_or_name.lower() for c in stmt.find_all(exp.CTE)}
+    for tbl in stmt.find_all(exp.Table):
+        bare = _table_bare_name(tbl)
+        if bare not in cte_names:
+            if (tbl.db or "").lower() not in ("t", "information_schema"):
+                raise GateError(
+                    f"table {tbl.sql(dialect='tsql')} not allowed; only t.* and INFORMATION_SCHEMA.* are permitted"
+                )
+
     if (
         company_id is not None
         and schema_cache is not None
-        and not _skip_tenant_rewrite(raw)
+        and not _skip_tenant_rewrite(stmt)
     ):
         _reject_cross_company_literals(stmt, company_id, schema_cache)
         _inject_tenant_predicates(stmt, company_id, schema_cache)

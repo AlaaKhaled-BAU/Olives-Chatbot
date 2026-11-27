@@ -208,10 +208,45 @@ def test_customers_card_has_purpose_not_reads_708():
     cards = vault._load_cards("morec")
     customers = next(c for c in cards if c["kind"] == "table" and c["name"] == "Customers")
     assert customers["purpose"]
-    assert "Central registry" in customers["purpose"]
+    assert "central customer master registry" in customers["purpose"].lower()
     blob = json.dumps(customers)
     assert "Reads (708)" not in blob
     assert "Impact / Procedures" not in blob
+
+
+def test_read_schema_note_path_traversal_rejected():
+    res1 = vault.read_schema_note(path="../../.env")
+    assert res1 == {"error": "Invalid note path."}
+
+    res2 = vault.read_schema_note(path="/etc/passwd")
+    assert res2 == {"error": "Invalid note path."}
+
+    res3 = vault.read_schema_note(path="../../../etc/shadow")
+    assert res3 == {"error": "Invalid note path."}
+
+
+def test_search_schema_notes_uses_cache_and_monkeypatch(tmp_path, monkeypatch):
+    vault._NOTE_CONTENT_CACHE.clear()
+    results = vault.search_schema_notes("TransactionsHeaders", type_filter="table")
+    assert results
+    assert len(vault._NOTE_CONTENT_CACHE) > 0
+
+    # Ensure second search does not open files (test monkeypatching NOTES_INDEX with new temp note)
+    test_note = tmp_path / "TestTable.md"
+    test_note.write_text("---\ntype: table\nname: TestTable\n---\n# TestTable\nDescription\n", encoding="utf-8")
+    mock_index = [{
+        "path": str(test_note),
+        "rel": "TestTable.md",
+        "db": "Olives_BO",
+        "subdir": "Tables",
+        "fname": "TestTable.md",
+    }]
+    monkeypatch.setattr(vault, "NOTES_INDEX", mock_index)
+    res = vault.search_schema_notes("TestTable", type_filter="table")
+    assert len(res) == 1
+    assert res[0]["name"] == "TestTable"
+    # Cached now
+    assert str(test_note) in vault._NOTE_CONTENT_CACHE
 
 
 def test_retrieve_territory_question_includes_cfd_and_playbook_override():
