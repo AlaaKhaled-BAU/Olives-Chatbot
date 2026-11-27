@@ -538,3 +538,128 @@ def test_global_reference_table_case_insensitive(sql, schema_cache):
 def test_unknown_t_table_nope_fail_closed(schema_cache):
     with pytest.raises(GateError, match=r"unknown table t\.Nope"):
         validate("SELECT * FROM t.Nope", company_id=1, schema_cache=schema_cache)
+
+
+def test_schema_whitelist_rejects_dbo_and_sys_tables():
+    with pytest.raises(GateError, match=r"only t\.\* and INFORMATION_SCHEMA\.\*"):
+        validate("SELECT * FROM dbo.Customers")
+
+    with pytest.raises(GateError, match=r"only t\.\* and INFORMATION_SCHEMA\.\*"):
+        validate("SELECT * FROM sys.sql_modules")
+
+    with pytest.raises(GateError, match=r"only t\.\* and INFORMATION_SCHEMA\.\*"):
+        validate("SELECT * FROM Customers")
+
+
+def test_cte_allowed_and_cte_referencing_dbo_rejected():
+    # CTE referencing t.Customers is allowed
+    out = validate("WITH x AS (SELECT ID FROM t.Customers) SELECT * FROM x")
+    assert "TOP" in out
+
+    # CTE referencing dbo.Customers is rejected
+    with pytest.raises(GateError, match=r"only t\.\* and INFORMATION_SCHEMA\.\*"):
+        validate("WITH x AS (SELECT ID FROM dbo.Customers) SELECT * FROM x")
+
+
+def test_comment_bypass_rejected_for_tenant_rewrite(schema_cache):
+    # Comments like -- sys. or /* sys. */ must NOT bypass tenant rewrite
+    out1 = validate(
+        "SELECT * FROM t.Customers -- sys.",
+        company_id=1,
+        schema_cache=schema_cache,
+    )
+    assert "Customers.CompanyID = 1" in out1
+
+    out2 = validate(
+        "SELECT * FROM t.Customers /* sys. */",
+        company_id=1,
+        schema_cache=schema_cache,
+    )
+    assert "Customers.CompanyID = 1" in out2
+
+
+def test_or_bypass_rejected_in_tenant_satisfaction(schema_cache):
+    # WHERE CompanyID = 1 OR 1 = 1 should NOT satisfy tenant check on its own,
+    # so validate must inject the required conjunctive CompanyID = 1 predicate.
+    out = validate(
+        "SELECT * FROM t.Customers WHERE CompanyID = 1 OR 1 = 1",
+        company_id=1,
+        schema_cache=schema_cache,
+    )
+    # The rewritten WHERE clause must have Customers.CompanyID = 1 as a top-level conjunct
+    stmt = sqlglot.parse_one(out, read="tsql")
+    where_expr = stmt.args.get("where").this
+    terms = list(gate._conjunctive_terms(where_expr))
+    assert any(
+        isinstance(t, exp.EQ)
+        and isinstance(t.this, exp.Column)
+        and t.this.name.lower() == "companyid"
+        and isinstance(t.expression, exp.Literal)
+        and int(t.expression.this) == 1
+        for t in terms
+    )
+
+    # Directly verify _tenant_pred_satisfied behavior
+    or_where = sqlglot.parse_one("SELECT * FROM t.Customers WHERE CompanyID = 1 OR 1 = 1", read="tsql").args.get("where").this
+    assert not gate._tenant_pred_satisfied(or_where, "Customers", "CompanyID", 1, "Customers")
+
+    nested_or_where = sqlglot.parse_one(
+        "SELECT * FROM t.Customers WHERE (CompanyID = 1 OR 1 = 1) AND ID = 5",
+        read="tsql",
+    ).args.get("where").this
+    assert not gate._tenant_pred_satisfied(nested_or_where, "Customers", "CompanyID", 1, "Customers")
+
+
+def test_sql_has_tenant_views_cache():
+    from core import sql
+    from unittest.mock import MagicMock
+
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.fetchone.return_value = [1]
+    mock_conn._server_key = ("127.0.0.1", 1433, "test_cache_db")
+
+    sql._TENANT_VIEW_SUPPORT.pop(mock_conn._server_key, None)
+
+    # First call queries DB
+    assert sql.has_tenant_views(mock_conn) is True
+    assert mock_cursor.execute.call_count == 1
+
+    # Second call uses cache
+    assert sql.has_tenant_views(mock_conn) is True
+    assert mock_cursor.execute.call_count == 1
+
+
+def test_sql_lab_db_gating(monkeypatch, schema_cache):
+    from core import sql
+    from unittest.mock import MagicMock
+
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.fetchone.return_value = [0]  # sys.schemas has 0 't'
+    mock_conn._server_key = ("127.0.0.1", 1433, "test_lab_db")
+    sql._TENANT_VIEW_SUPPORT[mock_conn._server_key] = False
+
+    monkeypatch.setattr(sql, "get_conn", lambda client: mock_conn)
+    monkeypatch.setattr(sql, "_schema_cache", lambda client: schema_cache)
+    monkeypatch.setattr(sql.memory, "get_result", lambda key, ttl_seconds: None)
+    monkeypatch.setattr(sql.memory, "set_result", lambda key, val: None)
+
+    # When CHATBOT_LAB_DB is not set or empty, fail closed
+    monkeypatch.delenv("CHATBOT_LAB_DB", raising=False)
+    with pytest.raises(GateError, match="Database is missing 't' tenant views schema"):
+        sql.run_select("SELECT * FROM t.Customers", company_id=1, client="demo")
+
+    # When CHATBOT_LAB_DB is "1", allow rewrite to dbo.
+    executed_queries = []
+    def record_execute(query, *args):
+        executed_queries.append(query)
+    mock_cursor.execute = record_execute
+    mock_cursor.fetchall.return_value = [{"ID": 1}]
+
+    monkeypatch.setenv("CHATBOT_LAB_DB", "1")
+    rows = sql.run_select("SELECT * FROM t.Customers", company_id=1, client="demo")
+    assert rows == [{"ID": 1}]
+    assert any("FROM dbo.Customers" in q for q in executed_queries)

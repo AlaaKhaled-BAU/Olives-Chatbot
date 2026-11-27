@@ -191,6 +191,20 @@ def sanitize_note_content(content: str, fm: dict, subdir: str) -> dict | str:
     return content
 
 
+_NOTE_CONTENT_CACHE: dict[str, str] = {}
+
+
+def _populate_content_cache():
+    for n in NOTES_INDEX:
+        p = n["path"]
+        if p not in _NOTE_CONTENT_CACHE:
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    _NOTE_CONTENT_CACHE[p] = f.read()
+            except OSError:
+                pass
+
+
 def search_schema_notes(
     pattern: str,
     database: str = "Olives_BO",
@@ -201,26 +215,35 @@ def search_schema_notes(
         rx = re.compile(pattern, re.IGNORECASE)
     except re.error as e:
         return [{"error": f"Invalid regex: {e}"}]
+
+    if not _NOTE_CONTENT_CACHE:
+        _populate_content_cache()
+
     results = []
     for n in NOTES_INDEX:
         if database and n["db"] != database:
             continue
-        try:
-            with open(n["path"], "r", encoding="utf-8") as f:
-                content = f.read()
-        except OSError:
-            continue
+        p = n["path"]
+        content = _NOTE_CONTENT_CACHE.get(p)
+        if content is None:
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    content = f.read()
+                _NOTE_CONTENT_CACHE[p] = content
+            except OSError:
+                continue
         fm = parse_frontmatter(content)
         note_type = fm.get("type", "")
         if type_filter and note_type.lower() != type_filter.lower():
             continue
         if n["subdir"] in ("Tables", "Procedures", "Relations") or note_type in ("table", "procedure", "relation"):
-            if not rx.search(content):
+            m = rx.search(content)
+            if not m:
                 continue
             name = fm.get("name", n["fname"].replace(".md", ""))
             if str(name).lower() in gate.HIDDEN_TABLES:
                 continue
-            excerpt = content[max(0, rx.search(content).start() - 60):rx.search(content).start() + 80].replace("\n", " ")
+            excerpt = content[max(0, m.start() - 60):m.start() + 80].replace("\n", " ")
             results.append({
                 "path": n["rel"],
                 "name": fm.get("name", n["fname"].replace(".md", "")),
@@ -240,9 +263,14 @@ def read_schema_note(
     type_filter: str | None = None,
 ) -> dict:
     if path:
-        cand = VAULT / path
+        vault_root = VAULT.resolve()
+        cand = (VAULT / path).resolve()
+        if not cand.is_relative_to(vault_root):
+            return {"error": "Invalid note path."}
         if not cand.exists() and not path.endswith(".md"):
-            cand = VAULT / (path + ".md")
+            cand = (VAULT / (path + ".md")).resolve()
+            if not cand.is_relative_to(vault_root):
+                return {"error": "Invalid note path."}
         if not cand.exists():
             return {"error": f"Note at path '{path}' not found."}
         if cand.stem.lower() in gate.HIDDEN_TABLES:

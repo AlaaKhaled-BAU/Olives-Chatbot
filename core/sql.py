@@ -41,16 +41,21 @@ def get_conn(client: str):
     except Exception:  # noqa: BLE001
         override = None
     if override:
+        host = override["host"]
+        port = int(override.get("port") or 1433)
+        database = override.get("database") or db_name
         conn_kwargs = dict(
-            server=override["host"],
-            port=int(override.get("port") or 1433),
-            database=override.get("database") or db_name,
+            server=host,
+            port=port,
+            database=database,
             timeout=30, login_timeout=10,
         )
         if not override.get("trusted"):
             conn_kwargs["user"] = override.get("user", "")
             conn_kwargs["password"] = override.get("password", "")
-        return pymssql.connect(**conn_kwargs)
+        conn = pymssql.connect(**conn_kwargs)
+        conn._server_key = (host, port, database)
+        return conn
     user = os.environ.get("DB_USER") or "chatbot_ro"
     password = os.environ.get("DB_PASSWORD")
     if not password:
@@ -58,22 +63,37 @@ def get_conn(client: str):
             password = _ro_password()
         except Exception:
             password = ""
-    return pymssql.connect(
-        server=os.environ.get("DB_HOST", "127.0.0.1"),
-        port=int(os.environ.get("DB_PORT", "1433")),
+    host = os.environ.get("DB_HOST", "127.0.0.1")
+    port = int(os.environ.get("DB_PORT", "1433"))
+    database = db_name
+    conn = pymssql.connect(
+        server=host,
+        port=port,
         user=user,
         password=password,
-        database=db_name,
+        database=database,
         timeout=30, login_timeout=10,
     )
+    conn._server_key = (host, port, database)
+    return conn
 
 
-_TENANT_VIEW_SUPPORT: dict[str, bool] = {}
+_TENANT_VIEW_SUPPORT: dict[tuple | str, bool] = {}
 
 
-def has_tenant_views(conn) -> bool:
+def has_tenant_views(conn, server_key: tuple | str | None = None) -> bool:
     """Check if the connected database has the t schema created."""
-    server_key = getattr(conn, "_server_key", None)
+    if server_key is None:
+        server_key = getattr(conn, "_server_key", None)
+    if server_key is None:
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT CAST(SERVERPROPERTY('MachineName') AS VARCHAR), DB_NAME()")
+            row = cur.fetchone()
+            if row:
+                server_key = (str(row[0]), str(row[1]))
+        except Exception:
+            pass
     if server_key and server_key in _TENANT_VIEW_SUPPORT:
         return _TENANT_VIEW_SUPPORT[server_key]
     try:
@@ -129,6 +149,12 @@ def run_select(
         set_tenant(conn, company_id)
         exec_sql = safe_sql
         if not has_tenant_views(conn):
+            lab_db = os.environ.get("CHATBOT_LAB_DB", "").strip().lower() in ("1", "true", "yes")
+            if not lab_db:
+                raise gate.GateError(
+                    "Database is missing 't' tenant views schema (fail closed). "
+                    "Run setup/03_apply_db_sql.py to create tenant views, or set CHATBOT_LAB_DB=1 for lab testing."
+                )
             # Remote server connected with base tables (e.g. direct cds login)
             import re
             exec_sql = re.sub(r"(?i)\bfrom\s+t\.", "FROM dbo.", exec_sql)
