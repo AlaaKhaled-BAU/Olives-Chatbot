@@ -1,6 +1,7 @@
 """Phase 7 acceptance: /health, /metrics, /ask SSE, /context."""
 import json
 import sys
+import time
 import types
 from pathlib import Path
 from unittest.mock import patch
@@ -208,3 +209,126 @@ def test_six_asks_transcript_keeps_six_history_keeps_four():
     assert ctx["transcript"][0]["sql"] == "SELECT 0"
     assert len(captured[5]) == 4
     SESSIONS.pop(sid, None)
+
+
+def test_feedback_works_after_restart_via_sessions_load(monkeypatch, tmp_path):
+    import api.server as server
+    from core import memory
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    sid = "test-feedback-restart"
+    SESSIONS.pop(sid, None)
+
+    events = [{
+        "type": "done",
+        "answer": "Total is 42",
+        "needs_ask": None,
+        "answer_sql": "SELECT COUNT(*) FROM t.Companies",
+        "cache_key": "k-restart",
+    }]
+    with patch("api.server.agent.ask_stream", return_value=events):
+        resp = client.post("/ask", json={"question": "how many companies?", "session_id": sid},
+                           headers={"X-Session-Id": sid})
+        assert resp.status_code == 200
+        list(resp.iter_lines())
+
+    # Simulate server restart by clearing in-RAM SESSIONS
+    with server._SESSIONS_LOCK:
+        server.SESSIONS.pop(sid, None)
+    assert sid not in server.SESSIONS
+
+    # Feedback should fall back to sessions.load(sid)
+    fb_resp = client.post("/feedback", json={"session_id": sid, "helpful": True},
+                          headers={"X-Session-Id": sid})
+    assert fb_resp.status_code == 200
+    assert fb_resp.json() == {"ok": True}
+
+    stored = memory.get_verified_query("morec", 1, "how many companies?")
+    assert stored is not None
+    assert stored["proc_or_sql"] == "SELECT COUNT(*) FROM t.Companies"
+    server.SESSIONS.pop(sid, None)
+
+
+def test_feedback_promotes_multi_query_turns(monkeypatch, tmp_path):
+    import api.server as server
+    from core import memory
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    sid = "test-feedback-multi-query"
+    server.SESSIONS.pop(sid, None)
+
+    q1 = "SELECT COUNT(*) FROM t.Companies"
+    q2 = "SELECT COUNT(*) FROM t.Customers"
+    combined_sql = f"{q1}; {q2}"
+    events = [{
+        "type": "done",
+        "answer": "Companies and customers counted.",
+        "needs_ask": None,
+        "answer_sql": combined_sql,
+        "queries": [q1, q2],
+        "cache_key": "k-multi",
+    }]
+    with patch("api.server.agent.ask_stream", return_value=events):
+        resp = client.post("/ask", json={"question": "count companies and customers", "session_id": sid},
+                           headers={"X-Session-Id": sid})
+        assert resp.status_code == 200
+        list(resp.iter_lines())
+
+    fb_resp = client.post("/feedback", json={"session_id": sid, "helpful": True},
+                          headers={"X-Session-Id": sid})
+    assert fb_resp.status_code == 200
+    assert fb_resp.json() == {"ok": True}
+
+    stored = memory.get_verified_query("morec", 1, "count companies and customers")
+    assert stored is not None
+    assert stored["proc_or_sql"] == combined_sql
+    server.SESSIONS.pop(sid, None)
+
+
+def test_pending_ask_propagates_ask_kind_to_conversation():
+    import api.server as server
+    sid = "test-pending-ask-kind"
+    server.SESSIONS.pop(sid, None)
+
+    events = [{
+        "type": "done",
+        "needs_ask": "Which branch?",
+        "ask_kind": "branch_selection",
+    }]
+    with patch("api.server.agent.ask_stream", return_value=events):
+        resp = client.post("/ask", json={"question": "sales report", "session_id": sid},
+                           headers={"X-Session-Id": sid})
+        assert resp.status_code == 200
+        list(resp.iter_lines())
+
+    session = server.SESSIONS[sid]
+    assert session["pending_ask"] == "branch_selection"
+    assert session["conversation"]["pending_ask"] == "branch_selection"
+
+    # Next turn should pass pending_ask in conversation to agent.ask_stream
+    captured_conv = {}
+    def check_stream(*args, **kwargs):
+        captured_conv.update(kwargs.get("conversation") or {})
+        return [{"type": "done", "answer": "Done", "needs_ask": None}]
+
+    with patch("api.server.agent.ask_stream", side_effect=check_stream):
+        resp2 = client.post("/ask", json={"question": "branch 1", "session_id": sid},
+                            headers={"X-Session-Id": sid})
+        assert resp2.status_code == 200
+        list(resp2.iter_lines())
+
+    assert captured_conv.get("pending_ask") == "branch_selection"
+    assert server.SESSIONS[sid]["pending_ask"] is None
+    assert server.SESSIONS[sid]["conversation"]["pending_ask"] is None
+    server.SESSIONS.pop(sid, None)
+
+
+def test_touch_session_throttles_sweep():
+    import api.server as server
+    with patch("api.server.sessions.sweep") as mock_sweep:
+        server._last_sweep_ts = time.time()
+        server._touch_session("throttle-test", lambda: {})
+        assert mock_sweep.call_count == 0
+
+        server._last_sweep_ts = time.time() - 601.0
+        server._touch_session("throttle-test", lambda: {})
+        assert mock_sweep.call_count == 1
+    server.SESSIONS.pop("throttle-test", None)

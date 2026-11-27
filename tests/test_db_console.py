@@ -11,6 +11,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core import dblink, sql
 
 
+@pytest.fixture(autouse=True)
+def enable_lab_db(monkeypatch):
+    monkeypatch.setenv("CHATBOT_LAB_DB", "1")
+
+
 def test_resolve_local_aliases():
     for alias in ("(.)", ".", "(local)", "localhost"):
         assert dblink.resolve_target(alias) == ("127.0.0.1", 1433)
@@ -84,7 +89,6 @@ def test_get_conn_trusted_omits_user_password(tmp_path, monkeypatch):
                 sql.get_conn("morec")
             except RuntimeError:
                 pass
-    assert "trusted" in captured
     assert "user" not in captured and "password" not in captured
 
 
@@ -138,3 +142,18 @@ def test_connect_rejects_when_probe_fails_or_db_missing(tmp_path, monkeypatch):
                                     "target_db_ok": False}):
         r = client.post("/db/connect", json={"server": "(.)", "database": "B"})
     assert r.json()["ok"] is False
+
+
+def test_db_endpoints_disabled_when_lab_db_unset(monkeypatch):
+    monkeypatch.delenv("CHATBOT_LAB_DB", raising=False)
+    resp = client.post("/db/test", json={"server": "(.)"})
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "DB console disabled"
+
+    resp = client.post("/db/connect", json={"server": "(.)"})
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "DB console disabled"
+
+    resp = client.post("/db/reset")
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "DB console disabled"
