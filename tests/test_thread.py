@@ -37,3 +37,15 @@ def test_card_followups_three_suggestions():
     fu = thread.card_followups(card)
     assert len(fu) == 3
     assert any("الضريبة" in x for x in fu)
+    assert "عرض المبلغ قبل الضريبة" in fu[0]
+
+
+def test_card_followups_tax_excl_msa():
+    card = thread.make_card(
+        "run_metric",
+        {"metric": "sales", "filters": {"from_date": "2025-07-01", "to_date": "2025-08-01", "tax": "excl"}},
+        {"gross_sales": 1},
+    )
+    fu = thread.card_followups(card)
+    assert len(fu) == 3
+    assert "عرض المبلغ شاملاً الضريبة" in fu[0]

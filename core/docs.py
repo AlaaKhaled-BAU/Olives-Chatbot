@@ -268,9 +268,9 @@ _ALEF_VARIANTS = str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ى": "ي"})
 def _unify_alef(text: str) -> str:
     """TRACK C: fold alef seat variants (أإآ→ا) and alef maqsura (ى→ي) so
     trigram matching survives spelling drift («أضيف» vs «اضيف»). Applied to
-    BOTH index-time and query-time text when DOCS_AR_NORM=1. ة is NOT folded
-    (folding it into ه swaps real word identities)."""
-    if not os.environ.get("DOCS_AR_NORM"):
+    BOTH index-time and query-time text unless DOCS_AR_NORM=0 (default ON).
+    ة is NOT folded (folding it into ه swaps real word identities)."""
+    if os.environ.get("DOCS_AR_NORM", "1").strip() == "0":
         return text
     return text.translate(_ALEF_VARIANTS)
 
