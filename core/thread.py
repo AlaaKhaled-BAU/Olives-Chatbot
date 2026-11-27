@@ -91,9 +91,9 @@ def card_followups(card: dict) -> list[str]:
     period_bit = f" {period}" if period else ""
     out: list[str] = []
     if tax != "excl":
-        out.append(f"طيب قبل الضريبة{period_bit}".strip())
+        out.append(f"عرض المبلغ قبل الضريبة{period_bit}".strip())
     else:
-        out.append(f"وش الرقم شامل الضريبة{period_bit}".strip())
+        out.append(f"عرض المبلغ شاملاً الضريبة{period_bit}".strip())
     if returns != "net":
         out.append(f"وبعد المرتجعات{period_bit}".strip())
     else:

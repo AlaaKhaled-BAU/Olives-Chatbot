@@ -81,20 +81,18 @@ Never hardcode or memorize which salesperson is Cash Van or Order Taking. Deduce
 `TransfersOrdersHeaders` / `TransfersOrdersDetails` are stock movements, not sales invoices and not `OrdersHeaders`. Do not map `VouType` or a `TransactionsHeaders.TransactionTypeID` to load or unload; that numbering is client-specific.
 Sales questions still require `TransactionTypeID = 1` and `ISNULL(IsVoid, 0) = 0`, because other transaction types share `TransactionsHeaders`.
 
-## Inventory & Stock Tables Matrix
-- **`t.SalesPersonItemsBalance`**: Back-office cash-van balance. Primary key: `(CompanyID, SalesPersonID, ItemCode)`.
-- **`t.StoresBalances`**: Central warehouse stock. Primary key: `(CompanyID, StoreNo, ItemCode)`.
-- Tablet stock, allowed to read. Role comes from `SalesPersonsDevicePermissions`, not from `CarID`:
-  - Cash van (`MakeSalesInvoice = 1`): `OT_StoreItemsQty`, where `StoreNo` is the salesman number.
-  - Order taking (`MakeOrderTaking = 1`): `OT_StoreItemsQty_Main`, the main-store quantity those reps sell from.
-  - If the table for that role has no quantity for him, use `OT_ItemsMF.QtyOH`.
-- **`t.SalesPersonStockTacking`**: Physical stock-taking counts submitted by reps to reconcile van shrinkage.
-
-## Van and main-store stock
-- Cash van (`MakeSalesInvoice = 1` only): `OT_StoreItemsQty` where `StoreNo` is the salesman number. If that salesman has no rows, use `OT_ItemsMF.QtyOH`.
-- Order taker (`MakeOrderTaking = 1` and not `MakeSalesInvoice`): `OT_StoreItemsQty_Main`. If that table has no quantity, use `OT_ItemsMF.QtyOH`.
-- Hybrid (both flags): van quantity first, main-store quantity on a second labelled line. Never add them.
-- `t.SalesPersonItemsBalance` and `t.StoresBalances` are back-office balances. Use them only when the user asks for the back-office balance, not for tablet stock.
+## Inventory & Stock Tables Matrix (Van and Main-Store Stock)
+Authoritative guide for van, tablet, and back-office stock:
+- **Tablet Stock (Field Quantities)**: Salesperson role comes dynamically from `SalesPersonsDevicePermissions` (never from `CarID` or `VehicleId`):
+  - **Cash Van (`MakeSalesInvoice = 1`)**: `OT_StoreItemsQty` where `StoreNo` is the salesman number.
+  - **Order Taking (`MakeOrderTaking = 1` and not `MakeSalesInvoice`)**: `OT_StoreItemsQty_Main`, the main-store quantity those reps sell from. Do not answer from `t.StoresBalances` when this tablet table has rows.
+  - **Fallback**: If the table for that role (`OT_StoreItemsQty` or `OT_StoreItemsQty_Main`) has no quantity for that salesperson, use `OT_ItemsMF.QtyOH`.
+  - **Hybrid (both flags)**: Show van quantity (`OT_StoreItemsQty`) first, and main-store quantity (`OT_StoreItemsQty_Main`) as a second labelled line. Never add the two quantities together.
+- **Back-Office Balances (Use ONLY when user asks for back-office balances, NOT for tablet stock)**:
+  - **`t.SalesPersonItemsBalance`**: Back-office cash-van balance. Primary key: `(CompanyID, SalesPersonID, ItemCode)`.
+  - **`t.StoresBalances`**: Central warehouse stock. Primary key: `(CompanyID, StoreNo, ItemCode)`.
+- **Physical Reconciliation**:
+  - **`t.SalesPersonStockTacking`**: Physical stock-taking counts submitted by reps to reconcile van shrinkage.
 
 ## ClientsActive
 - `(CompanyID, ClientID)` identifies which Olives product fork is active — not a shop or customer row.

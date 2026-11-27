@@ -479,3 +479,18 @@ def test_morphology_roundtrip_fawateer_finds_fatura_chunk(tmp_path, monkeypatch)
     hits = docs.search("morec", "ما هي الفواتير", locale="ar")
     assert len(hits) >= 1
 
+
+def test_unify_alef_default_on(monkeypatch):
+    monkeypatch.delenv("DOCS_AR_NORM", raising=False)
+    assert docs._unify_alef("أضيف إدارة إلى المستخدمى") == "اضيف ادارة الي المستخدمي"
+
+
+def test_unify_alef_explicit_zero_disabled(monkeypatch):
+    monkeypatch.setenv("DOCS_AR_NORM", "0")
+    assert docs._unify_alef("أضيف إدارة إلى المستخدمى") == "أضيف إدارة إلى المستخدمى"
+
+
+def test_unify_alef_explicit_one_enabled(monkeypatch):
+    monkeypatch.setenv("DOCS_AR_NORM", "1")
+    assert docs._unify_alef("أضيف إدارة إلى المستخدمى") == "اضيف ادارة الي المستخدمي"
+
