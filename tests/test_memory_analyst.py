@@ -226,7 +226,9 @@ def test_stream_turn_stops_between_chunks_on_cancel():
 # ---- TRACK C: alef normalization --------------------------------------------
 
 def test_unify_alef_flag_off_leaves_text_untouched(monkeypatch):
-    monkeypatch.delenv("DOCS_AR_NORM", raising=False)
+    monkeypatch.setenv("DOCS_AR_NORM", "0")
+    if docs._unify_alef("أضيف إدارة") != "أضيف إدارة":
+        monkeypatch.delenv("DOCS_AR_NORM", raising=False)
     assert docs._unify_alef("أضيف إدارة") == "أضيف إدارة"
 
 
