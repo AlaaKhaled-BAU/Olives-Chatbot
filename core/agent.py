@@ -19,12 +19,38 @@ import os
 import re
 import threading
 import time
-from pathlib import Path
-
-from . import catalog, config, docs, gate, hot_cache, llm, locale_ar, memory, metrics, params, reports, sql, tenant_pack, thread, trace, vault, verify
+from . import cache_loader, catalog, config, context, docs, gate, hot_cache, llm, locale_ar, memory, metrics, params, postprocess, reports, sql, tenant_pack, thread, trace, vault, verify
+from .tools import TOOLS, analyze as _analyze
+from .postprocess import (
+    DEFAULT_FOLLOWUPS as _DEFAULT_FOLLOWUPS,
+    ROW_DISPLAY_CAP as _ROW_DISPLAY_CAP,
+    SOURCE_TABLE_RE as _SOURCE_TABLE_RE,
+    TABLE_ROW_CAP as _TABLE_ROW_CAP,
+    UNRESOLVED_TOKEN_RE as _UNRESOLVED_TOKEN_RE,
+    answer_sql as _answer_sql,
+    apply_count_backstop as _apply_count_backstop,
+    build_arabic_stub as _build_arabic_stub,
+    build_chart as _build_chart,
+    build_sources as _build_sources,
+    build_table as _build_table,
+    cap_for_context as _cap_for_context,
+    evidence_confidence as _evidence_confidence,
+    is_blank as _is_blank,
+    strip_sql_fences as _strip_sql_fences,
+)
 from .usage import Usage
 
 from core.paths import app_root
+
+__all__ = [
+    "TOOLS", "_analyze",
+    "_schema_block", "_all_cards_block", "_static_prefix", "prefix_hash",
+    "_build_table", "_build_chart", "_build_sources", "_strip_sql_fences",
+    "_apply_count_backstop", "_cap_for_context", "_build_arabic_stub",
+    "_answer_sql", "_evidence_confidence", "_DEFAULT_FOLLOWUPS",
+    "_UNRESOLVED_TOKEN_RE", "_SOURCE_TABLE_RE", "_ROW_DISPLAY_CAP",
+    "_TABLE_ROW_CAP", "ask", "ask_stream",
+]
 
 BASE_DIR = app_root()
 # Live-tested at 6: a model that doesn't already know this schema's exact
@@ -114,26 +140,20 @@ _CONTRACT_SYSTEM = (
 
 # TRACK F1-era guard (live QA ISSUE-001): unresolved template tokens in a
 # final answer mean the model shipped an unexecuted plan instead of data.
-_UNRESOLVED_TOKEN_RE = re.compile(r"<[a-z_][a-z_0-9]{3,}>", re.IGNORECASE)
 
 # Deterministic fallback when the contract returns no follow-ups.
-_DEFAULT_FOLLOWUPS = [
-    "وزع هذا الرقم حسب المندوبين؟",
-    "ما المقارنة مع الفترة السابقة؟",
-    "وش أكثر الأصناف المساهمة فيه؟",
-]
 
 
 def _user_id(client: str, company_id, subject: str | None) -> str:
     """DeepSeek user_id (regex [a-zA-Z0-9_-]+).
 
-    CHATBOT_CACHE_SCOPE=session (default): hash of client|company_id|subject
-    so chats do not share a prefix-cache id.
-    CHATBOT_CACHE_SCOPE=tenant: hash of client|company_id only, so every chat
-    of that company reuses the prefix cache. Subject is ignored. Never drop
+    CHATBOT_CACHE_SCOPE=tenant (default): hash of client|company_id only, so every chat
+    of that company reuses the prefix cache.
+    CHATBOT_CACHE_SCOPE=session: hash of client|company_id|subject
+    so chats do not share a prefix-cache id. Subject is ignored. Never drop
     client or company_id. Session text is not part of this id.
     """
-    scope = os.environ.get("CHATBOT_CACHE_SCOPE", "session").strip().lower()
+    scope = os.environ.get("CHATBOT_CACHE_SCOPE", "tenant").strip().lower()
     if scope == "tenant":
         raw = f"{client}|{company_id}"
     else:
@@ -296,64 +316,34 @@ def _needs_recall_nudge(question: str | None, history: list | None) -> bool:
     return bool(qtok) and len(qtok & htok) == 0
 
 
+
+
+
+
+def _core_only() -> bool:
+    return os.environ.get("CHATBOT_CORE_ONLY", "1") == "1"
+
+
 def _schema_block(cache: dict) -> str:
-    """A4/C1: full queryable-schema block. Byte-stable for a given
-    schema_cache.json — only t.-view tables when the view map exists."""
-    views = cache.get("has_tenant_view") or {}
-    tables = cache.get("tables") or {}
-    lines = [
-        "## Full schema of queryable tenant views",
-        "Every table below is a `t.*` view automatically scoped to the session CompanyID.",
-        "Write SQL directly against these; introspect_schema is only for anything NOT listed here.",
-    ]
-    hidden = gate.HIDDEN_TABLES
-    for name in sorted(tables):
-        bare = name.split(".")[-1].lower()
-        if bare in hidden:
-            continue
-        if views and not views.get(name, False):
-            continue
-        if bare.endswith("_old") or bare.endswith("_temp") or bare.endswith("_"):
-            continue
-        cols = tables[name] or []
-        names = [
-            c.get("column") for c in cols
-            if isinstance(c, dict) and c.get("column")
-            and str(c.get("column")).lower() != "companyid"
-        ]
-        lines.append(f"- {name}({', '.join(names)})")
-    return "\n".join(lines)
+    return context.schema_block(cache, core_only=_core_only())
 
 
 def _all_cards_block(client: str) -> str:
-    """A4/C1: every compiled vault card in one byte-stable block (table cards
-    compact; relation cards carry join semantics). Empty string when the
-    client has no compiled cards DB."""
-    try:
-        cards = vault._load_cards(client)
-    except Exception:  # noqa: BLE001 — missing/corrupt cards DB must not kill a turn
-        return ""
-    if not cards:
-        return ""
-    lines = ["## Vault knowledge cards (compiled schema memory)"]
-    for card in sorted(cards, key=lambda c: (c.get("kind", ""), c.get("name", ""))):
-        if card.get("kind") == "relation":
-            lines.append(f"- REL {card.get('parent')}→{card.get('referenced')}: "
-                         f"{str(card.get('columns', ''))[:120]}"
-                         + (f" — {str(card.get('business_meaning'))[:100]}" if card.get("business_meaning") else ""))
-        else:
-            name = str(card.get("name") or "")
-            if name.lower() in gate.HIDDEN_TABLES:
-                continue
-            purpose = str(card.get("purpose", ""))[:110]
-            fk = str(card.get("foreign_keys", ""))[:80]
-            line = f"- TBL {card.get('name')}"
-            if purpose:
-                line += f" — {purpose}"
-            if fk:
-                line += f" | FK {fk}"
-            lines.append(line)
-    return "\n".join(lines)
+    if hasattr(vault, "cards_db_path"):
+        try:
+            if not vault.cards_db_path(client).exists():
+                return ""
+        except Exception:
+            return ""
+    return context.all_cards_block(client, core_only=_core_only())
+
+
+def _static_prefix(client: str, cache: dict) -> list[dict]:
+    return context.static_prefix(client, cache, max_queries=MAX_QUERIES, core_only=_core_only())
+
+
+def prefix_hash(client: str, cache: dict) -> str:
+    return context.prefix_hash(client, cache, max_queries=MAX_QUERIES, core_only=_core_only())
 
 
 def _prefix_messages(client: str, cache: dict, thread_head: dict | None = None) -> list[dict]:
@@ -364,27 +354,8 @@ def _prefix_messages(client: str, cache: dict, thread_head: dict | None = None) 
     return msgs
 
 
-def _static_prefix(client: str, cache: dict) -> list[dict]:
-    """Messages [0..n] whose bytes NEVER change across turns for this client.
-    DeepSeek disk-caches whole prefix units, so stable content goes first and
-    dynamic content strictly after (plan C1)."""
-    base = (BASE_DIR / "prompts" / "system.md").read_text(encoding="utf-8")
-    base = base.replace("{{CLIENT}}", client).replace("{{MAX_QUERIES}}", str(MAX_QUERIES))
-    playbook = BASE_DIR / "prompts" / "join_playbook.md"
-    if playbook.exists():
-        base += "\n\n## Join playbook\n" + playbook.read_text(encoding="utf-8")
-    msgs = [{"role": "system", "content": base}]
-    msgs.append({"role": "system", "content": _schema_block(cache)})
-    cards = _all_cards_block(client)
-    if cards:
-        msgs.append({"role": "system", "content": cards})
-    return msgs
 
 
-def prefix_hash(client: str, cache: dict) -> str:
-    """Identity of the cached prefix. A playbook or schema edit changes it."""
-    blob = json.dumps(_static_prefix(client, cache), ensure_ascii=False, sort_keys=True)
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 _DOCS_ONLY_SCHEMA_TOOLS = frozenset({
     "introspect_schema", "search_schema_notes", "read_schema_note", "get_joins",
@@ -471,7 +442,6 @@ _COUNT_SQL_INTENT_RE = re.compile(
 # exactly the condition that produces a confident wrong total. 50 rows of
 # ordinary relational data comfortably fits any reasonable context budget
 # without needing a second byte-level safety net on top.
-_ROW_DISPLAY_CAP = 50
 
 # C7: leaked tool-call markup from several gateways/models. Content is
 # buffered (never forwarded) until enough has arrived to rule these out.
@@ -603,7 +573,7 @@ def _stream_turn(messages, tools, gear: str = DEFAULT_GEAR, user_id: str | None 
             if rc:
                 reasoning = rc
     message = {"role": "assistant", "content": buffer or None}
-    if llm.GEARS[gear]["thinking"]:
+    if llm.resolve_gear(gear)["thinking"]:
         # DeepSeek requires echoing this key on every follow-up in thinking mode,
         # even when the model answered without tool_calls (e.g. recall nudge loop).
         message["reasoning_content"] = reasoning
@@ -614,313 +584,11 @@ def _stream_turn(messages, tools, gear: str = DEFAULT_GEAR, user_id: str | None 
     yield {"type": "_turn_done", "message": message}
 
 
-def _cap_for_context(result):
-    """result is whatever sql.run_select() returned -- a list of row dicts
-    (or occasionally a non-list for an edge-case query shape; passed
-    through unchanged if so, nothing to cap). total_rows_returned is
-    len(result) as ACTUALLY RETURNED, which is itself already capped at
-    gate.DEFAULT_ROW_CAP (200, injected as TOP N by the gate) -- so when
-    it equals 200 exactly, it's a floor on the true match count, not a
-    proven total. The note says this explicitly rather than implying an
-    exact count the tool can't actually back up."""
-    if not isinstance(result, list) or len(result) <= _ROW_DISPLAY_CAP:
-        return result
-    return {
-        "rows": result[:_ROW_DISPLAY_CAP],
-        "shown": _ROW_DISPLAY_CAP,
-        "total_rows_returned": len(result),
-        "note": (f"Only the first {_ROW_DISPLAY_CAP} of {len(result)} returned rows are shown "
-                 f"above. Never infer a count/sum/average from this partial list -- if you need "
-                 f"one, write a dedicated aggregate query (COUNT/SUM/AVG) instead."),
-    }
 
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "introspect_schema",
-            "description": (
-                "Look up columns for a table, or parameters for an allow-listed "
-                "procedure, by name (case-insensitive)."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {"name": {"type": "string"}},
-                "required": ["name"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "run_select",
-            "description": "Run exactly one read-only SELECT against the t. (tenant-scoped) views.",
-            "parameters": {
-                "type": "object",
-                "properties": {"sql": {"type": "string"}},
-                "required": ["sql"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "ask_user",
-            "description": (
-                "Block only for identity/policy that is NOT company: "
-                "which of several hot-cache people/items, EXEC/proc body, or كل الشركات. "
-                "CompanyID is already pinned by the UI — never ask which company, never list companies. "
-                "Do NOT block for grain ambiguity (best salesman, sales vs orders, cash vs credit) — "
-                "state one Arabic assumption, run run_metric/run_select, then offer an alternate "
-                "('إذا تقصد عدد الفواتير أو زبائن المنطقة، قل.')."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {"question": {"type": "string"}},
-                "required": ["question"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "analyze",
-            "description": (
-                "Exact computation offload. Arithmetic: percent_change, difference, ratio "
-                "(before/after). Trend analysis for forecasts: trend_direction (pass 'series' "
-                "= oldest-to-newest weekly/monthly numbers from ONE grouped query; returns "
-                "direction, slope %/step, and projected_next_bucket_estimate labeled ESTIMATE), "
-                "growth_compare (before/after), top_movers ({label:value} dicts for current vs "
-                "previous period). Never touches the database, never counts against the query "
-                "budget. Use this instead of computing in prose -- it's exact and the forecast "
-                "numbers it emits are honest estimates with stated basis."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "operation": {"type": "string",
-                                  "enum": ["percent_change", "difference", "ratio",
-                                           "trend_direction", "growth_compare", "top_movers"]},
-                    "series": {"type": "array", "items": {"type": "number"}},
-                    "current": {"type": "object", "additionalProperties": {"type": "number"}},
-                    "previous": {"type": "object", "additionalProperties": {"type": "number"}},
-                    "before": {"type": "number"},
-                    "after": {"type": "number"},
-                },
-                "required": ["operation", "before", "after"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "search_docs",
-            "description": (
-                "Search the Olives user/system documentation for how a feature, screen, or system "
-                "option works -- conceptual/how-to questions, not this client's own numbers. Returns "
-                "the best-matching excerpts with their source. Never counts against the query budget."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {"query": {"type": "string"}},
-                "required": ["query"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "search_schema_notes",
-            "description": (
-                "Regex search over vault schema notes (tables, procedures metadata, relations) in Olives_BO. "
-                "Never returns procedure bodies. Does not count against query budget."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "pattern": {"type": "string"},
-                    "type": {"type": "string", "description": "Optional: table, procedure, or relation"},
-                },
-                "required": ["pattern"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "read_schema_note",
-            "description": (
-                "Read a vault schema note by name or path. Procedures return metadata only (params, tables read) — "
-                "never CREATE PROCEDURE text. Does not count against query budget."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "path": {"type": "string"},
-                    "type": {"type": "string"},
-                },
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_joins",
-            "description": (
-                "Get FK relation notes and graph dependencies for a BO table name. "
-                "Does not count against query budget."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {"table": {"type": "string"}},
-                "required": ["table"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "run_metric",
-            "description": (
-                "Run a named business metric with the correct grain — prefer over run_select for "
-                "sales, salesperson rank, returns, orders, van stock, or customer-to-salesperson "
-                "assignment. Counts against the query budget. "
-                "Ranked questions over any dimension (best/worst/top/bottom salesman, customer, item, day): "
-                "metric=sales with group_by + order (desc for best, asc for worst) + limit, so the database ranks. "
-                "For worst/bottom items also call unsold_items for the same period."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "metric": {
-                        "type": "string",
-                        "description": (
-                            "Prefer sales (مبيعات) with filters tax and returns. "
-                            "Also: net_sales_by_salesperson (أفضل مندوب), "
-                            "daily_sales_pack (محصلة يومية), returns (مرتجعات), orders (طلبات), "
-                            "van_stock (رصيد السيارة), cfd_assignment (عملاء المندوب), "
-                            "unsold_items (مواد راكدة: active items with no sales in the period). "
-                            "Legacy net_sales remains for old plans only."
-                        ),
-                    },
-                    "filters": {
-                        "type": "object",
-                        "properties": {
-                            "from_date": {"type": "string", "description": "YYYY-MM-DD"},
-                            "to_date": {"type": "string", "description": "YYYY-MM-DD (half-open end)"},
-                            "tax": {
-                                "type": "string",
-                                "enum": ["incl", "excl"],
-                                "description": "incl=charged total (default); excl=before tax (قبل الضريبة)",
-                            },
-                            "returns": {
-                                "type": "string",
-                                "enum": ["gross", "net"],
-                                "description": "gross=sales only (default); net=gross minus returns (بعد المرتجعات)",
-                            },
-                            "group_by": {
-                                "type": "string",
-                                "enum": ["salesperson", "customer", "item", "day"],
-                            },
-                            "order": {
-                                "type": "string",
-                                "enum": ["asc", "desc"],
-                                "description": "With group_by: rank by the primary measure (asc = lowest first).",
-                            },
-                            "limit": {
-                                "type": "integer",
-                                "description": (
-                                    "Only with group_by and order: top N rows, 1-50 (default 10). "
-                                    "Ignored or rejected if order is omitted."
-                                ),
-                            },
-                            "sales_person_id": {"type": "integer"},
-                            "undelivered_only": {"type": "boolean"},
-                        },
-                    },
-                },
-                "required": ["metric"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "run_report",
-            "description": (
-                "Run a named Olives BO report from the catalog. Uses a certified SELECT template on "
-                "t. when available; otherwise returns catalog purpose and a not-certified notice. "
-                "Never EXEC stored procedures in this release. Counts against the query budget when "
-                "a SELECT template runs."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "Catalog report name, e.g. Rpt_SalesmanSalesSummary",
-                    },
-                    "params": {
-                        "type": "object",
-                        "description": "Optional filters: from_date, to_date, sales_person_id, customer_id, item_code",
-                        "properties": {
-                            "from_date": {"type": "string"},
-                            "to_date": {"type": "string"},
-                            "sales_person_id": {"type": "integer"},
-                            "customer_id": {"type": "integer"},
-                            "item_code": {"type": "string"},
-                        },
-                    },
-                },
-                "required": ["name"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "lookup_hot",
-            "description": (
-                "Load an L1 master snapshot (SalesPersons, SalesPersonsDevicePermissions, "
-                "DeliveryCars, items, routes, LogActions ActionID codebook). "
-                "Pass LogActionTransaction for the same codebook (the fact log is not cached). "
-                "Never for invoices/orders/receipts/balances. Free — does not count against query budget."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {"table": {"type": "string"}},
-                "required": ["table"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "recall_turns",
-            "description": (
-                "Search earlier questions in this session (beyond the last 4 turns). "
-                "Returns question text and SQL to rewrite for the NEW dates/grain. "
-                "Retrieved answer snippets are not numbers to copy — re-run SQL. "
-                "Does not count against the query budget."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Follow-up text or search terms (names, dates, tables).",
-                    },
-                },
-                "required": ["query"],
-            },
-        },
-    },
-]
 
 
 def _schema_cache(client: str):
-    return json.loads((config.work_dir(client) / "schema_cache.json").read_text())
+    return cache_loader.load_schema_cache(client)
 
 
 def _schema_version(cache: dict) -> str:
@@ -1170,7 +838,7 @@ def _calendar_confirm_system_note(client: str, company_id: int) -> str | None:
     first, _last = _month_bounds(max_invoice.year, max_invoice.month)
     to_exclusive = _half_open_month_end(max_invoice.year, max_invoice.month)
     return (
-        f"User confirmed last posting month. Use run_metric(net_sales, "
+        f"User confirmed last posting month. Use run_metric(sales, "
         f"from_date={first.isoformat()}, to_date={to_exclusive.isoformat()}). "
         "Do not label that period as هذا الشهر or the current calendar month."
     )
@@ -1239,6 +907,8 @@ def _introspect(cache, catalog_procs, name: str):
     has_view = cache.get("has_tenant_view")
     for table_name, cols in cache["tables"].items():
         if table_name.split(".")[-1].lower() == low:
+            if low in gate.HIDDEN_TABLES and low != "salesmanvisitssummary":
+                return {"error": f"Table {name} is not available for querying."}
             if low in gate.HIDDEN_TABLES:
                 return {
                     "error": (
@@ -1264,8 +934,6 @@ def _sanitize_final_text(text: str | None) -> str | None:
     return text
 
 
-def _is_blank(text: str | None) -> bool:
-    return not text or not str(text).strip()
 
 
 def _has_evidence(state: dict) -> bool:
@@ -1275,33 +943,8 @@ def _has_evidence(state: dict) -> bool:
     return bool(state.get("doc_source_pairs"))
 
 
-def _format_stub_number(val) -> str:
-    if isinstance(val, float) and val == int(val):
-        return str(int(val))
-    return str(val)
 
 
-def _build_arabic_stub(state: dict) -> str:
-    """Deterministic Arabic fallback when the model returns empty after tools."""
-    rows = state.get("last_rows")
-    if isinstance(rows, list) and rows:
-        row = rows[0]
-        if len(rows) == 1:
-            if len(row) == 1:
-                val = next(iter(row.values()))
-                if isinstance(val, (int, float)) and not isinstance(val, bool):
-                    return f"النتيجة: {_format_stub_number(val)}."
-            nums = [
-                (k, v) for k, v in row.items()
-                if isinstance(v, (int, float)) and not isinstance(v, bool)
-            ]
-            if nums:
-                parts = [f"{k}: {_format_stub_number(v)}" for k, v in nums[:3]]
-                return "النتيجة: " + "، ".join(parts) + "."
-        return "النتيجة في الجدول أدناه."
-    if state.get("doc_source_pairs"):
-        return "الإجابة في المصادر أدناه."
-    return "تعذر صياغة الإجابة من البيانات المتاحة."
 
 
 def _retry_empty_final(messages: list, user_id: str | None = None, usage_acc=None) -> str | None:
@@ -1378,7 +1021,8 @@ def _claims_failure_with_rows(final_text: str | None, state: dict) -> bool:
     return _text_claims_query_failure(final_text)
 
 
-def _recompose_if_false_failure(final_text: str | None, messages: list, state: dict) -> str | None:
+def _recompose_if_false_failure(final_text: str | None, messages: list, state: dict,
+                                cancel=None) -> str | None:
     if not _claims_failure_with_rows(final_text, state):
         return final_text
     rows = state["last_rows"]
@@ -1388,9 +1032,10 @@ def _recompose_if_false_failure(final_text: str | None, messages: list, state: d
     text = None
     for event in _stream_turn(
         messages + [nudge],
-        state.get("turn_tools"),
+        None,
         gear=state["gear"],
         user_id=state.get("_user_id"),
+        cancel=cancel,
         usage_acc=state.get("_usage"),
     ):
         if event["type"] == "_turn_done":
@@ -1399,195 +1044,16 @@ def _recompose_if_false_failure(final_text: str | None, messages: list, state: d
     return text if not _is_blank(text) else final_text
 
 
-def _analyze(args: dict) -> dict:
-    """C4 + TRACK F3: exact arithmetic/trend computation the model can
-    offload instead of computing (and potentially getting slightly wrong)
-    in prose -- no DB access, doesn't touch state, so it never counts
-    against MAX_QUERIES. Trend ops are DETERMINISTIC helpers; any number
-    they emit is labeled an estimate by the analyst pack, never a promise."""
-    op = args.get("operation")
-    if op == "trend_direction":
-        series = args.get("series")
-        if not isinstance(series, list) or len(series) < 2:
-            return {"error": "series must be a list of >=2 numbers (oldest to newest)"}
-        try:
-            values = [float(v) for v in series]
-        except (TypeError, ValueError):
-            return {"error": "series must contain only numbers"}
-        n = len(values)
-        # Least-squares slope on bucket index -> % of mean per step.
-        mean = sum(values) / n
-        if mean == 0:
-            return {"direction": "flat", "slope_pct_per_step": 0.0,
-                    "note": "mean is 0 -- no trend computable"}
-        denom = sum((i - (n - 1) / 2) ** 2 for i in range(n))
-        slope = sum((i - (n - 1) / 2) * (v - mean) for i, v in enumerate(values)) / denom
-        slope_pct = slope / mean * 100
-        window = min(3, n)
-        moving_avg = sum(values[-window:]) / window
-        projected = max(0.0, moving_avg * (1 + slope_pct / 100))
-        direction = "up" if slope_pct > 1 else ("down" if slope_pct < -1 else "flat")
-        return {"direction": direction,
-                "slope_pct_per_step": round(slope_pct, 2),
-                "last_value": values[-1],
-                "moving_average_last3": round(moving_avg, 4),
-                "projected_next_bucket_estimate": round(projected, 4),
-                "basis_buckets": n,
-                "estimate_label": "ESTIMATE -- not a guarantee"}
-    if op == "growth_compare":
-        try:
-            before, after = float(args["before"]), float(args["after"])
-        except (KeyError, TypeError, ValueError):
-            return {"error": "before/after must both be numbers"}
-        if before == 0:
-            return {"error": "before is 0 -- growth is undefined"}
-        pct = (after - before) / before * 100
-        return {"delta": after - before, "growth_pct": round(pct, 2)}
-    if op == "top_movers":
-        current, previous = args.get("current"), args.get("previous")
-        if not isinstance(current, dict) or not isinstance(previous, dict):
-            return {"error": "current/previous must be {label: number} dicts"}
-        movers = []
-        for label, val in current.items():
-            try:
-                v = float(val)
-                p = float(previous.get(label, 0))
-            except (TypeError, ValueError):
-                continue
-            delta = v - p
-            pct = (delta / p * 100) if p else None
-            movers.append({"label": label, "value": v, "previous": p,
-                           "delta": round(delta, 4),
-                           "pct_change": round(pct, 2) if pct is not None else "new"})
-        movers.sort(key=lambda m: -abs(m["delta"]))
-        return {"movers": movers[:10]}
-    try:
-        before, after = float(args["before"]), float(args["after"])
-    except (KeyError, TypeError, ValueError):
-        return {"error": "before/after must both be numbers"}
-    if op == "difference":
-        return {"result": after - before}
-    if op == "ratio":
-        if not before:
-            return {"error": "before is 0 -- ratio is undefined"}
-        return {"result": after / before}
-    if op == "percent_change":
-        if not before:
-            return {"error": "before is 0 -- percent change is undefined"}
-        return {"result": (after - before) / before * 100}
-    return {"error": f"unknown operation {op!r} -- use percent_change, difference, ratio, "
-                     f"trend_direction, growth_compare, or top_movers"}
 
 
-_INVOICE_WORD_RE = re.compile(r"فاتور|فواتير|invoice", re.IGNORECASE)
-_LINES_WORD_RE = re.compile(r"بنود|سطور|\blines\b", re.IGNORECASE)
-_CODE_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
-_FENCE_OPEN_RE = re.compile(r"```(\w*)\s*\n")
-_SQL_LEAD_RE = re.compile(
-    r"^\s*(?:--[^\n]*\n\s*)*(?:SELECT|WITH)\b",
-    re.IGNORECASE | re.DOTALL,
-)
-_NON_SQL_FENCE_LANGS = frozenset({"python", "json", "yaml", "yml", "md", "markdown", "text"})
 
 
-def _fence_body_looks_like_sql(body: str) -> bool:
-    raw = body.strip()
-    if not raw:
-        return False
-    if _SQL_LEAD_RE.match(raw):
-        return True
-    try:
-        import sqlglot
-        from sqlglot import exp
-
-        for stmt in sqlglot.parse(raw, read="tsql") or []:
-            if stmt is None or isinstance(stmt, exp.Command):
-                continue
-            if isinstance(stmt, exp.Select) or stmt.find(exp.Select):
-                return True
-    except Exception:
-        pass
-    return False
 
 
-def _strip_sql_fences(text: str | None) -> str | None:
-    """Remove SQL code fences from model prose; answer_sql is shown separately."""
-    if not text:
-        return text
-    parts: list[str] = []
-    pos = 0
-    while True:
-        m = _FENCE_OPEN_RE.search(text, pos)
-        if not m:
-            parts.append(text[pos:])
-            break
-        parts.append(text[pos:m.start()])
-        lang = (m.group(1) or "").lower()
-        body_start = m.end()
-        close = text.find("```", body_start)
-        if close == -1:
-            body = text[body_start:]
-            fence_end = len(text)
-        else:
-            body = text[body_start:close]
-            fence_end = close + 3
-        strip_fence = lang in ("sql", "tsql") or (
-            lang not in _NON_SQL_FENCE_LANGS and _fence_body_looks_like_sql(body)
-        )
-        if strip_fence:
-            parts.append("\n\n")
-        else:
-            parts.append(text[m.start():fence_end])
-        pos = fence_end
-    out = re.sub(r"\n{3,}", "\n\n", "".join(parts))
-    return out.strip()
 
 
-def _prose_mentions_count(prose: str, v: int) -> bool:
-    return bool(
-        re.search(rf"(?<![\d.,]){re.escape(f'{v:,}')}(?![\d]|[.,]\d)", prose)
-        or re.search(rf"(?<![\d.,]){v}(?![\d]|[.,]\d)", prose)
-    )
 
 
-def _apply_count_backstop(final_text: str | None, state: dict) -> str:
-    """Append header recount or line-grain warning when prose treats lines as invoices."""
-    text = (final_text or "").strip()
-    if not text or not state.get("had_lines_count"):
-        return text
-    prose = _CODE_FENCE_RE.sub("", text)
-    if _LINES_WORD_RE.search(prose):
-        return text
-    if not _INVOICE_WORD_RE.search(prose):
-        return text
-    line_values = state.get("line_count_values")
-    line_sum = state.get("line_count_sum")
-    # Ignore 1–9: they collide with type ids, dates, and one-line invoices.
-    # The summed total is the number a wrong answer states as «فواتير».
-    candidates: set[int] = set()
-    if line_sum is not None and int(line_sum) >= 3:
-        candidates.add(int(line_sum))
-    for v in line_values or ():
-        if int(v) >= 10:
-            candidates.add(int(v))
-    hc_now = state.get("header_count")
-    if hc_now is not None:
-        candidates.discard(int(hc_now))
-    quoted = any(_prose_mentions_count(prose, v) for v in candidates)
-    if (
-        line_values is not None
-        and not state.get("line_count_unresolved")
-        and not quoted
-    ):
-        return text
-    hc = state.get("header_count")
-    if hc is not None:
-        suffix = locale_ar.HEADER_COUNT_SUFFIX.format(n=hc)
-        if suffix not in text:
-            return f"{text}\n{suffix}"
-    elif locale_ar.COUNT_NOTE_USER not in text:
-        return f"{text}\n{locale_ar.COUNT_NOTE_USER}"
-    return text
 
 
 def _after_business_sql(
@@ -1671,6 +1137,10 @@ def _mid_turn_block_reason(name: str, state: dict) -> str | None:
         return "recall_turns is not available after business rows were returned."
     if name in _DOCS_ONLY_SCHEMA_TOOLS and state.get("docs_only"):
         return "Schema tools are not available in docs-only mode."
+    if "queries" in state:
+        active = _active_tools(state)
+        if active is not None and name not in {t["function"]["name"] for t in active}:
+            return f"Tool {name} is not available for this question."
     return None
 
 
@@ -1771,6 +1241,9 @@ def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, 
             rows = result.get("rows")
             if isinstance(rows, list) and (state["last_rows"] is None or len(rows) > len(state["last_rows"])):
                 state["last_rows"] = rows
+            result = _after_business_sql(
+                name, args, result["sql"], result, cache, company_id, client, state, allowed_proc_names,
+            )
         return result
     if name == "run_select":
         sql_text = args["sql"]
@@ -1814,61 +1287,17 @@ def _run_tool(name, args, cache, catalog_procs, allowed_proc_names, company_id, 
 # reasonably show more rows than are worth spending model-context tokens
 # on, and the two caps changing together for unrelated reasons would be a
 # coincidence, not a real coupling.
-_TABLE_ROW_CAP = 100
-
-_SOURCE_TABLE_RE = re.compile(r"\bt\.(\w+)", re.IGNORECASE)
 
 
-def _build_table(rows: list | None) -> dict | None:
-    """C8: {columns, rows} from the most substantive business query's OWN
-    result rows -- never re-derived from the model's prose, so it can't
-    drift from what was actually returned. None when there's nothing worth
-    showing: no business query ran, it returned zero rows, or it's a
-    single scalar (1 row, 1 column -- e.g. a COUNT(*) or a date lookup),
-    which only repeats a number the prose answer already states."""
-    if not rows or (len(rows) == 1 and len(rows[0]) <= 1):
-        return None
-    columns = list(rows[0].keys())
-    return {"columns": columns, "rows": [[row.get(c) for c in columns] for row in rows[:_TABLE_ROW_CAP]]}
 
 
-_TIME_LIKE_COLUMN_RE = re.compile(r"month|date|day|year|week", re.IGNORECASE)
 
 
-def _build_chart(table: dict | None) -> dict | None:
-    """C8: a heuristic, not a model judgment call -- deliberately cheap
-    ('the differentiator, and cheap once C4 and C6a land'). Offers a chart
-    only for the shape it's unambiguous for: exactly one label column and
-    one numeric column, few enough rows to be readable. Any other shape
-    (single value, wide result, non-numeric second column) yields no chart
-    rather than a misleading one. "line" only when the label column reads
-    as a time series (its own header says so) -- a bar is the safer
-    default otherwise, since an arbitrary label axis has no implied order
-    a connecting line would honestly represent."""
-    if not table or len(table["columns"]) != 2 or not (1 < len(table["rows"]) <= 20):
-        return None
-    label, value = table["rows"][0]
-    if not (isinstance(value, (int, float)) and not isinstance(value, bool) and not isinstance(label, (int, float))):
-        return None
-    kind = "line" if _TIME_LIKE_COLUMN_RE.search(table["columns"][0]) else "bar"
-    return {"kind": kind, "x": table["columns"][0], "y": table["columns"][1]}
 
 
-def _format_doc_sources(doc_source_pairs: list[tuple[str, str]]) -> list[str]:
-    formatted = []
-    for source, heading in doc_source_pairs:
-        formatted.append(f"{source} › {heading}" if heading else source)
-    return formatted
 
 
-def _build_sources(queries: list, doc_source_pairs: list[tuple[str, str]]) -> list:
-    """C8: 'always cite' -- table names come straight from the SQL actually
-    run (every client-facing table this project has is queried as
-    `t.TableName`, confirmed throughout this codebase), never a second
-    guess at what the model "meant" to query. Doc sources were already
-    recorded verbatim by _run_tool's search_docs branch."""
-    tables = sorted(set(m.group(1) for q in queries for m in _SOURCE_TABLE_RE.finditer(q)))
-    return tables + _format_doc_sources(doc_source_pairs)
+
 
 
 def _final_contract(question: str, final_text: str, user_id: str | None, usage_acc=None) -> dict | None:
@@ -1900,17 +1329,8 @@ def _final_contract(question: str, final_text: str, user_id: str | None, usage_a
         return None
 
 
-def _answer_sql(state: dict) -> str | None:
-    parts = list(state.get("queries") or []) + list(state.get("hot_sql") or [])
-    return "; ".join(parts) if parts else None
 
 
-def _evidence_confidence(state: dict) -> str:
-    if state.get("tool_errors"):
-        return "medium"
-    if isinstance(state.get("last_rows"), list) and state["last_rows"]:
-        return "high"
-    return "medium" if state.get("doc_source_pairs") else "low"
 
 
 def _build_envelope(question: str, final_text: str, state: dict) -> dict:
@@ -1922,14 +1342,16 @@ def _build_envelope(question: str, final_text: str, state: dict) -> dict:
     thread_head = state.get("thread_head")
     use_card = bool(thread_head) and state.get("card_is_new", True)
     contract = None
-    if final_text and not use_card:
-        contract = _final_contract(question, final_text, state.get("_user_id"), state.get("_usage"))
-    if use_card:
-        followups = thread.card_followups(thread_head)
-    else:
-        followups = (contract or {}).get("followups") or []
-        if not followups and final_text:
-            followups = list(_DEFAULT_FOLLOWUPS)
+    followups = list(state.get("_delimited_followups") or [])
+    if not followups:
+        if use_card:
+            followups = thread.card_followups(thread_head)
+        else:
+            if final_text and os.environ.get("CHATBOT_CONTRACT_CALL", "0") == "1":
+                contract = _final_contract(question, final_text, state.get("_user_id"), state.get("_usage"))
+            followups = (contract or {}).get("followups") or []
+            if not followups and final_text:
+                followups = list(_DEFAULT_FOLLOWUPS)
     out: dict = {
         "table": table,
         "chart": _build_chart(table),
@@ -2021,7 +1443,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         trace.log_event(client, question, event="needs_ask", subject=subject, param="calendar_period",
                         queries=0, result_rows=0, **_timing_fields(), **usage_acc.totals())
         _record_latency()
-        yield {"type": "done", "answer": None, "needs_ask": calendar_ask}
+        yield {"type": "done", "answer": None, "needs_ask": calendar_ask, "ask_kind": "calendar_period"}
         return
 
     skip_plan_cache = _needs_honesty_preamble(question)
@@ -2141,7 +1563,11 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
     fast_count = _is_fast_count_path(question)
     howto_path = _is_howto_path(question, client)
     if not fast_count and not report_path:
-        vault_hits = vault.retrieve_cards(question, client, limit=3)
+        vault_hits = [
+            h for h in vault.retrieve_cards(question, client, limit=3)
+            if not (h.get("kind") == "table"
+                    and str(h.get("name") or "").split(".")[-1].lower() in context.CORE_TABLES)
+        ]
         if vault_hits:
             vault_block = vault.format_retrieved_cards(question, vault_hits)
             messages.append({"role": "system", "content": vault_block})
@@ -2172,7 +1598,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         })
     if _needs_honesty_preamble(question):
         messages.append({"role": "system", "content": _honesty_preamble(client, company_id)})
-    if _user_confirmed_last_posting(question):
+    if _user_confirmed_last_posting(question) and conversation.get("pending_ask") == "calendar_period":
         confirm_note = _calendar_confirm_system_note(client, company_id)
         if confirm_note:
             messages.append({"role": "system", "content": confirm_note})
@@ -2247,6 +1673,9 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                 "Do not treat this recall question as the user's first question."
             ),
         })
+    freshness = context.tenant_freshness(client, company_id)
+    if freshness:
+        messages.append({"role": "system", "content": context.format_tenant_context(client, company_id, freshness)})
     messages.append({
         "role": "system",
         "content": (
@@ -2323,12 +1752,14 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             **fields,
         )
 
-    state["turn_tools"] = _active_tools(state)
+    constant_tools = os.environ.get("CHATBOT_CONSTANT_TOOLS", "1") == "1"
+    state["turn_tools"] = TOOLS if constant_tools else _active_tools(state)
     for _ in range(MAX_TURNS):
         if cancel is not None and cancel.is_set():
             raise TurnCancelled("client disconnected")
         if state.get("report_unlock") and not state.get("_tools_unlocked"):
-            state["turn_tools"] = _active_tools(state)
+            if not constant_tools:
+                state["turn_tools"] = _active_tools(state)
             state["_tools_unlocked"] = True
         tools = state["turn_tools"]
         msg = None
@@ -2337,6 +1768,8 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
                                   usage_acc=usage_acc):
             if event["type"] == "_turn_done":
                 msg = event["message"]
+            elif event["type"] == "answer_chunk" and state.get("hold_stream"):
+                continue  # unverified line-count prose is held until done
             else:
                 _mark_ttft_from_event(event)
                 yield event
@@ -2466,22 +1899,15 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
             })
             state["warned_vault_search_cap"] = True
 
+    refused = False
     if _has_evidence(state):
         final_text = _resolve_final_text(final_text, messages, state)
-        final_text = _recompose_if_false_failure(final_text, messages, state)
-        final_text = _apply_count_backstop(_strip_sql_fences(final_text), state)
-        new_card = thread.card_from_query_log(state.get("query_log"))
-        state["card_is_new"] = bool(new_card)
-        if new_card:
-            state["thread_head"] = new_card
-        _kw = {"company_id": company_id}
-        if state.get("tools_ms"):
-            _kw["tools_ms"] = state["tools_ms"]
-        if state["queries"] and not state.get("report_path"):
-            memory.set_plan(key, client, {"queries": state["queries"]})
-        envelope = _build_envelope(question, final_text, state)
-        _turn_trace("answer", **_kw)
+        final_text = _recompose_if_false_failure(final_text, messages, state, cancel=cancel)
     elif _is_blank(final_text):
+        refused = True
+    else:
+        final_text = final_text.strip()
+    if refused:
         final_text = "I can't answer that confidently from the available data."
         _kw = {}
         if state.get("tools_ms"):
@@ -2489,7 +1915,7 @@ def ask_stream(client: str, question: str, conversation: dict = None, role: str 
         _turn_trace("refused", **_kw)
         envelope = {"table": None, "chart": None, "sources": [], "followups": [], "doc_search_count": state.get("doc_searches", 0)}
     else:
-        final_text = final_text.strip()
+        final_text, state["_delimited_followups"] = postprocess.parse_delimited_followups(final_text)
         final_text = _apply_count_backstop(_strip_sql_fences(final_text), state)
         new_card = thread.card_from_query_log(state.get("query_log"))
         state["card_is_new"] = bool(new_card)

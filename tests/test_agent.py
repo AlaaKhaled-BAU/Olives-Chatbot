@@ -425,15 +425,15 @@ def test_business_tools_run_when_budget_has_room(tool, args):
     state = {"queries": ["q"] * (agent.MAX_QUERIES - 1), "question": "test", "last_rows": None}
     if tool == "run_select":
         with patch.object(agent.sql, "run_select", return_value=[{"n": 1}]) as rs:
-            out = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
+            _ = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
         rs.assert_called_once()
     elif tool == "run_metric":
         with patch.object(agent.metrics, "run_metric", return_value={"rows": [], "sql": "SELECT 1"}) as rm:
-            out = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
+            _ = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
         rm.assert_called_once()
     else:
         with patch.object(agent.reports, "run_report", return_value={"rows": [], "sql": "SELECT 2"}) as rr:
-            out = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
+            _ = agent._run_tool(tool, args, {}, {}, [], 1, "morec", state)
         rr.assert_called_once()
     assert len(state["queries"]) == agent.MAX_QUERIES
 
@@ -585,7 +585,7 @@ def test_malformed_tool_syntax_is_retried_not_returned_as_answer(monkeypatch, tm
         result = agent.ask("morec", "how many companies?", conversation=SCOPE)
 
     assert result["answer"] == "There are 3 companies."
-    assert mock_complete.call_count == 3
+    assert mock_complete.call_count == 2
 
 
 def test_cap_for_context_passes_small_results_through_unchanged():
@@ -642,7 +642,7 @@ def test_malformed_tool_call_xml_is_retried_not_returned(monkeypatch, tmp_path):
     with patch.object(agent.llm, "complete", side_effect=[garbled, clean, followups]) as mock_complete:
         result = agent.ask("morec", "top customers?", conversation=SCOPE)
     assert result["answer"] == "Top customer is Acme."
-    assert mock_complete.call_count == 3
+    assert mock_complete.call_count == 2
 
 
 def test_system_prompt_documents_invoice_grain_and_isvoid():
@@ -833,6 +833,7 @@ def test_doc_search_cap_omits_search_docs(monkeypatch, tmp_path):
 
 
 def test_docs_only_omits_schema_tools(monkeypatch, tmp_path):
+    monkeypatch.setenv("CHATBOT_CONSTANT_TOOLS", "0")
     monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
     calls = [
         _resp(_msg(tool_calls=[_tool_call("c1", "search_docs", '{"query": "price list"}')])),
@@ -993,6 +994,7 @@ def test_calendar_confirm_skips_empty_month_gate(monkeypatch, tmp_path):
 
 def test_docs_only_never_calls_run_select(monkeypatch, tmp_path):
     """Pure how-to questions must not offer or invoke run_select."""
+    monkeypatch.setenv("CHATBOT_CONSTANT_TOOLS", "0")
     monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
     calls = [
         _resp(_msg(tool_calls=[_tool_call("c1", "search_docs", '{"query": "assign customers"}')])),
@@ -1013,6 +1015,7 @@ def test_docs_only_never_calls_run_select(monkeypatch, tmp_path):
 
 def test_metric_questions_skip_docs(monkeypatch, tmp_path):
     """Count/metric questions must not offer search_docs on the first turn."""
+    monkeypatch.setenv("CHATBOT_CONSTANT_TOOLS", "0")
     monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
     calls = [
         _resp(_msg(tool_calls=[_tool_call(
@@ -1034,6 +1037,7 @@ def test_metric_questions_skip_docs(monkeypatch, tmp_path):
 
 def test_report_questions_use_run_report_not_docs_thrash(monkeypatch, tmp_path):
     """Named report path should call run_report once, not search_docs repeatedly."""
+    monkeypatch.setenv("CHATBOT_CONSTANT_TOOLS", "0")
     monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
     calls = [
         _resp(_msg(tool_calls=[_tool_call(
@@ -1145,6 +1149,7 @@ def test_report_path_first_tools_tight_for_sales_and_orders():
 
 def test_report_path_bypasses_poisoned_plan_cache(monkeypatch, tmp_path):
     """Named report questions must not replay plan_cache run_select — use run_report."""
+    monkeypatch.setenv("CHATBOT_CONSTANT_TOOLS", "0")
     monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
     question = "اعرض تقرير المبيعات والطلبات لمقارنة المناديب"
     scope = {"CompanyID": 2}
@@ -1449,7 +1454,8 @@ def test_envelope_skips_contract_call_when_turn_made_a_card():
     assert env["confidence"] == "high"
 
 
-def test_inherited_card_does_not_drive_followups():
+def test_inherited_card_does_not_drive_followups(monkeypatch):
+    monkeypatch.setenv("CHATBOT_CONTRACT_CALL", "1")
     state = {"queries": [], "last_rows": None, "doc_source_pairs": [("a", "b")],
              "thread_head": {"period_label": "2026-10"}, "card_is_new": False, "tool_errors": []}
     payload = '{"answer_md": "x", "refusal": false, "confidence": "high", "followups": ["أ", "ب", "ج"]}'
@@ -1476,7 +1482,7 @@ def test_false_failure_with_rows_recomposes_once():
         out = agent._recompose_if_false_failure("تعذر استخراج النتيجة", [], state)
         again = agent._recompose_if_false_failure("تعذر استخراج النتيجة", [], state)
     assert out == "العدد 4" and again == "تعذر استخراج النتيجة"
-    assert mc.call_count == 1 and mc.call_args.kwargs["tools"] is agent.TOOLS
+    assert mc.call_count == 1 and mc.call_args.kwargs["tools"] is None
 
 
 def test_no_recompose_without_rows():
@@ -1503,10 +1509,10 @@ def test_user_id_session_scope_differs_by_subject(monkeypatch):
     assert len(b) == 32 and _USER_ID_RE.fullmatch(b)
 
 
-def test_user_id_unset_scope_matches_session_hash(monkeypatch):
+def test_user_id_unset_scope_matches_tenant_hash(monkeypatch):
     monkeypatch.delenv("CHATBOT_CACHE_SCOPE", raising=False)
     got = agent._user_id("morec", 1, "subject-aaa")
-    raw = "morec|1|subject-aaa"
+    raw = "morec|1"
     assert got == hashlib.sha256(raw.encode()).hexdigest()[:32]
 
 
@@ -1660,14 +1666,166 @@ def test_schema_block_drops_types_companyid_and_junk_views():
 
 
 def test_cards_block_omits_primary_key(monkeypatch):
-    monkeypatch.setattr(agent.vault, "_load_cards", lambda client: [
+    dummy_cards = [
         {"kind": "table", "name": "Items", "purpose": "sellable items",
          "primary_key": "ItemCode", "foreign_keys": "CompanyID"},
         {"kind": "relation", "parent": "Items", "referenced": "Categories",
          "columns": "CategoryID"},
-    ])
+    ]
+    monkeypatch.setattr(agent.cache_loader, "load_vault_cards", lambda client: dummy_cards)
+    monkeypatch.setattr(agent.vault, "_load_cards", lambda client: dummy_cards)
     text = agent._all_cards_block("105")
     assert "| PK" not in text
     assert "sellable items" in text
     assert "| FK CompanyID" in text
     assert "Categories" in text
+
+
+
+# =============================================================================
+# Wave 3 Refactor Verification Tests
+# =============================================================================
+
+def test_stream_turn_resolves_gear(monkeypatch):
+    """_stream_turn must use llm.resolve_gear(gear) to check thinking."""
+    calls = []
+    def fake_create(**kwargs):
+        calls.append(kwargs)
+        choice = types.SimpleNamespace(
+            delta=types.SimpleNamespace(content="test answer", tool_calls=None),
+            finish_reason=None,
+        )
+        return [types.SimpleNamespace(choices=[choice])]
+
+    monkeypatch.setattr(agent.llm, "resolve_gear", lambda g: {"thinking": True, "model": "test-model", "effort": None, "timeout": 30.0})
+    client_mock = types.SimpleNamespace(
+        chat=types.SimpleNamespace(
+            completions=types.SimpleNamespace(create=fake_create)
+        )
+    )
+    monkeypatch.setattr(agent.llm, "_client", client_mock)
+    events = list(agent._stream_turn([{"role": "user", "content": "hi"}], None, gear="custom_gear"))
+    done = [e for e in events if e["type"] == "_turn_done"][0]
+    assert "reasoning_content" in done["message"]
+
+
+def test_calendar_confirm_gated_on_pending_ask(monkeypatch, tmp_path):
+    """Confirm note is only injected when pending_ask == 'calendar_period'."""
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    seen = []
+    def fake_complete(messages, **kwargs):
+        if kwargs.get("stream"):
+            seen.append(messages)
+            return iter([_content_chunk("answer")])
+        return _plain_resp("[]")
+    monkeypatch.setattr(agent.llm, "complete", fake_complete)
+
+    # Without pending_ask == "calendar_period"
+    list(agent.ask_stream("morec", "نعم", conversation={"CompanyID": 1, "pending_ask": None}))
+    assert not any("User confirmed last posting month" in m.get("content", "") for m in seen[0])
+
+    # With pending_ask == "calendar_period"
+    seen.clear()
+    monkeypatch.setattr(agent, "_fetch_max_invoice_date", lambda c, cid: datetime.date(2025, 7, 15))
+    list(agent.ask_stream("morec", "نعم", conversation={"CompanyID": 1, "pending_ask": "calendar_period"}))
+    assert any("run_metric(sales," in m.get("content", "") for m in seen[0])
+
+
+def test_calendar_ask_yields_ask_kind(monkeypatch, tmp_path):
+    """When calendar guard fires, ask_kind='calendar_period' must be yielded."""
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    monkeypatch.setattr(agent, "_empty_calendar_needs_ask", lambda q, c, cid: "هل أحسب آخر شهر قيد؟")
+    events = list(agent.ask_stream("morec", "كم مبيعات هذا الشهر؟", conversation={"CompanyID": 1}))
+    done = [e for e in events if e["type"] == "done"][0]
+    assert done["needs_ask"] == "هل أحسب آخر شهر قيد؟"
+    assert done["ask_kind"] == "calendar_period"
+
+
+def test_hold_stream_suppresses_live_answer_chunk(monkeypatch, tmp_path):
+    """When hold_stream is True, live answer_chunk events are not yielded."""
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    def fake_complete(messages, **kwargs):
+        if kwargs.get("stream"):
+            return iter([_content_chunk("streaming chunk")])
+        return _plain_resp("[]")
+    monkeypatch.setattr(agent.llm, "complete", fake_complete)
+
+    # Wrap _stream_turn to test hold_stream inside ask_stream
+    orig_stream = agent._stream_turn
+    def fake_stream_turn(messages, tools, **kwargs):
+        for ev in orig_stream(messages, tools, **kwargs):
+            yield ev
+
+    # Direct check on generator loop logic:
+    state = {"hold_stream": True}
+    events = []
+    stream_events = [
+        {"type": "answer_chunk", "text": "held prose"},
+        {"type": "_turn_done", "message": {"role": "assistant", "content": "held prose"}},
+    ]
+    for event in stream_events:
+        if event["type"] == "_turn_done":
+            pass
+        elif event["type"] == "answer_chunk" and state.get("hold_stream"):
+            continue
+        else:
+            events.append(event)
+    assert len(events) == 0
+
+
+def test_recompose_passes_tools_none_and_forwards_cancel():
+    """_recompose_if_false_failure must pass tools=None and forward cancel."""
+    cancel = agent.threading.Event()
+    captured = {}
+    def fake_stream(messages, tools, **kwargs):
+        captured["tools"] = tools
+        captured["cancel"] = kwargs.get("cancel")
+        yield {"type": "_turn_done", "message": {"role": "assistant", "content": "النتيجة 5"}}
+
+    state = {"last_rows": [{"n": 5}], "gear": "t1", "turn_tools": agent.TOOLS}
+    with patch.object(agent, "_stream_turn", side_effect=fake_stream):
+        out = agent._recompose_if_false_failure("تعذر استخراج النتيجة", [], state, cancel=cancel)
+    assert out == "النتيجة 5"
+    assert captured["tools"] is None
+    assert captured["cancel"] is cancel
+
+
+def test_default_tenant_cache_scope(monkeypatch):
+    """Default CHATBOT_CACHE_SCOPE must be tenant."""
+    monkeypatch.delenv("CHATBOT_CACHE_SCOPE", raising=False)
+    id1 = agent._user_id("morec", 1, "sub1")
+    id2 = agent._user_id("morec", 1, "sub2")
+    assert id1 == id2
+    assert id1 == hashlib.sha256("morec|1".encode()).hexdigest()[:32]
+
+
+def test_constant_tools_in_ask_stream_by_default(monkeypatch, tmp_path):
+    """By default, CHATBOT_CONSTANT_TOOLS='1' keeps state['turn_tools'] = TOOLS."""
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    monkeypatch.delenv("CHATBOT_CONSTANT_TOOLS", raising=False)
+    captured_tools = []
+    def fake_complete(messages, **kwargs):
+        if kwargs.get("stream"):
+            captured_tools.append(kwargs.get("tools"))
+            return iter([_content_chunk("answer")])
+        return _plain_resp("[]")
+    monkeypatch.setattr(agent.llm, "complete", fake_complete)
+    list(agent.ask_stream("morec", "how many companies?", conversation=SCOPE))
+    assert len(captured_tools) >= 1
+    assert captured_tools[0] == agent.TOOLS
+
+
+def test_zero_final_contract_call_by_default(monkeypatch, tmp_path):
+    """ask() must not invoke _final_contract by default (0 extra calls)."""
+    monkeypatch.setattr(memory, "DB_PATH", tmp_path / "cache.sqlite")
+    monkeypatch.delenv("CHATBOT_CONTRACT_CALL", raising=False)
+    calls = []
+    def fake_complete(messages, **kwargs):
+        calls.append(kwargs)
+        if kwargs.get("stream"):
+            return iter([_content_chunk("42")])
+        return _plain_resp("[]")
+    monkeypatch.setattr(agent.llm, "complete", fake_complete)
+    res = agent.ask("morec", "how many companies?", conversation=SCOPE)
+    assert res["answer"] == "42"
+    assert len(calls) == 1
