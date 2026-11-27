@@ -101,7 +101,12 @@ class DbConnectRequest(BaseModel):
 SESSIONS: OrderedDict = OrderedDict()
 SESSION_MAX = 500
 SESSION_IDLE_SECONDS = 3600
-_NUMBER_RE = re.compile(r"\d+")
+_SESSIONS_LOCK = threading.Lock()
+_last_sweep_ts: float = 0.0
+
+
+def _lab_db_enabled() -> bool:
+    return os.environ.get("CHATBOT_LAB_DB", "").strip().lower() in ("1", "true", "yes")
 
 
 def _with_heartbeat(gen, interval: float = 15.0):
@@ -148,38 +153,29 @@ def _persist_session(session_id: str | None, state: dict) -> None:
 
 
 def _touch_session(session_id: str, default_factory) -> dict:
+    global _last_sweep_ts
     now = time.time()
-    for sid in [sid for sid, s in SESSIONS.items() if now - s["_touched"] > SESSION_IDLE_SECONDS]:
-        del SESSIONS[sid]
-    sessions.sweep()
-    if session_id in SESSIONS:
-        SESSIONS.move_to_end(session_id)
-        SESSIONS[session_id]["_touched"] = now
-    else:
-        persisted = sessions.load(session_id)
-        state = persisted if isinstance(persisted, dict) else default_factory()
-        state["_touched"] = now
-        state.setdefault("conversation", {})
-        state.setdefault("pending_ask", None)
-        state.setdefault("history", [])
-        state.setdefault("transcript", [])
-        SESSIONS[session_id] = state
-        while len(SESSIONS) > SESSION_MAX:
-            SESSIONS.popitem(last=False)
-    return SESSIONS[session_id]
-
-
-def _match_company(question: str, companies: list) -> int | None:
-    ids = {c["id"] for c in companies}
-    m = _NUMBER_RE.search(question)
-    if m and int(m.group()) in ids:
-        return int(m.group())
-    q_lower = question.strip().lower()
-    for c in companies:
-        name_lower = str(c["name"]).lower()
-        if name_lower and (name_lower in q_lower or q_lower in name_lower):
-            return c["id"]
-    return None
+    with _SESSIONS_LOCK:
+        for sid in [sid for sid, s in SESSIONS.items() if now - s["_touched"] > SESSION_IDLE_SECONDS]:
+            del SESSIONS[sid]
+        if now - _last_sweep_ts > 600.0:
+            sessions.sweep()
+            _last_sweep_ts = now
+        if session_id in SESSIONS:
+            SESSIONS.move_to_end(session_id)
+            SESSIONS[session_id]["_touched"] = now
+        else:
+            persisted = sessions.load(session_id)
+            state = persisted if isinstance(persisted, dict) else default_factory()
+            state["_touched"] = now
+            state.setdefault("conversation", {})
+            state.setdefault("pending_ask", None)
+            state.setdefault("history", [])
+            state.setdefault("transcript", [])
+            SESSIONS[session_id] = state
+            while len(SESSIONS) > SESSION_MAX:
+                SESSIONS.popitem(last=False)
+        return SESSIONS[session_id]
 
 
 def _apply_pending_answer(session: dict, question: str, client: str) -> None:
@@ -325,7 +321,8 @@ def get_sessions():
 @app.delete("/sessions/{sid}")
 def delete_session(sid: str):
     """Delete a session from both memory cache and backing SQLite."""
-    SESSIONS.pop(sid, None)
+    with _SESSIONS_LOCK:
+        SESSIONS.pop(sid, None)
     sessions.delete(sid)
     return {"ok": True, "deleted": sid}
 
@@ -333,6 +330,8 @@ def delete_session(sid: str):
 @app.post("/db/test")
 def db_test(req: DbConnectRequest):
     """Probe a server without persisting — drift-tool's picker semantics."""
+    if not _lab_db_enabled():
+        raise HTTPException(status_code=403, detail="DB console disabled")
     return dblink.test_connection(
         req.server, req.user, req.password,
         database=req.database, port=req.port, trusted=req.trusted)
@@ -344,6 +343,8 @@ def db_connect(req: DbConnectRequest):
     calls hit this server. Password stored 0600 in gitignored work/ and
     never echoed back (GETs return bullets). Empty password reuses the
     stored one when host+user match — reconnects don't demand retyping."""
+    if not _lab_db_enabled():
+        raise HTTPException(status_code=403, detail="DB console disabled")
     if not req.password:
         prev = dblink.raw_override()
         try:
@@ -371,6 +372,8 @@ def db_connect(req: DbConnectRequest):
 @app.post("/db/reset")
 def db_reset():
     """Back to the .env snapshot source."""
+    if not _lab_db_enabled():
+        raise HTTPException(status_code=403, detail="DB console disabled")
     dblink.clear_override()
     return {"ok": True, "active": None}
 
@@ -413,6 +416,7 @@ async def ask(request: Request, req: AskRequest):
 
     session = _touch_session(req.session_id, lambda: {"conversation": {}, "pending_ask": None}) \
         if req.session_id else {"conversation": {}, "pending_ask": None}
+    session.setdefault("conversation", {})["pending_ask"] = session.get("pending_ask")
     _apply_pending_answer(session, req.question, client)
     _ensure_session_company(session, client, req.company_id)
 
@@ -455,7 +459,8 @@ async def ask(request: Request, req: AskRequest):
             yield "data: [DONE]\n\n"
             return
 
-        session["pending_ask"] = "CompanyID" if result["needs_ask"] else None
+        session["pending_ask"] = (result.get("ask_kind") or "clarification") if result.get("needs_ask") else None
+        session.setdefault("conversation", {})["pending_ask"] = session["pending_ask"]
         turn_id = None
         if result["needs_ask"]:
             yield f"data: {json.dumps({'needs_ask': result['needs_ask']})}\n\n"
@@ -480,6 +485,7 @@ async def ask(request: Request, req: AskRequest):
                     "answer_sql": result.get("answer_sql"),
                     "cache_key": result.get("cache_key"),
                     "turn_id": turn_id,
+                    "queries": result.get("queries"),
                 }
             yield f"data: {json.dumps({
                 'answer': answer,
@@ -564,7 +570,15 @@ def feedback(req: FeedbackRequest):
     client = pinned_client()
     subject = hashlib.sha256(req.session_id.encode()).hexdigest()[:12]
 
-    session = SESSIONS.get(req.session_id)
+    with _SESSIONS_LOCK:
+        session = SESSIONS.get(req.session_id)
+        if not session:
+            persisted = sessions.load(req.session_id)
+            if isinstance(persisted, dict):
+                session = persisted
+                session["_touched"] = time.time()
+                SESSIONS[req.session_id] = session
+
     if not session:
         raise HTTPException(status_code=404, detail="no recent answer on this session to give feedback on")
 
@@ -578,6 +592,7 @@ def feedback(req: FeedbackRequest):
                     "question": row["q"],
                     "answer_sql": row.get("sql"),
                     "cache_key": row.get("cache_key"),
+                    "queries": row.get("queries"),
                 }
                 break
         if turn is None:
@@ -595,24 +610,28 @@ def feedback(req: FeedbackRequest):
 
     if req.helpful:
         sql_text = turn.get("answer_sql")
-        if sql_text:
+        queries_to_validate = turn.get("queries") or ([sql_text] if sql_text else [])
+        if queries_to_validate:
             # Verify-before-promote: a thumbs-up must never write SQL into
             # the few-shot pool that the gate itself would reject on the
             # next turn (EXEC, multi-statement, cross-company literals).
             try:
                 cache = json.loads((config.work_dir(client) / "schema_cache.json").read_text())
-                gate.validate(
-                    sql_text,
-                    allowed_procs=gate.DEFAULT_ALLOWED_PROCS,
-                    company_id=company_id,
-                    schema_cache=cache,
-                )
+                for q in queries_to_validate:
+                    if q:
+                        gate.validate(
+                            q,
+                            allowed_procs=gate.DEFAULT_ALLOWED_PROCS,
+                            company_id=company_id,
+                            schema_cache=cache,
+                        )
             except Exception:  # noqa: BLE001 — GateError/missing cache both mean "don't promote"
                 trace.log_event(client, turn["question"], event="feedback_invalid_sql", subject=subject)
             else:
-                memory.promote_verified_query(
-                    client, company_id, turn["question"], sql_text, source="user_feedback",
-                )
+                if sql_text:
+                    memory.promote_verified_query(
+                        client, company_id, turn["question"], sql_text, source="user_feedback",
+                    )
     else:
         if turn.get("cache_key"):
             memory.delete_plan(turn["cache_key"])
